@@ -33,6 +33,14 @@
                     <option value="wbpa">WHISTLEBLOWINGPA</option>
                 </select>
             </div>
+
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" [(ngModel)]="newTenant.isProfile" [ngModelOptions]="{standalone: true}"/>
+                    {{'Is Profile'|translate}}
+                </label>
+            </div>
+            
             <div class="form-group">
                 <label>{{'Tenant:'|translate}}</label>
                 <select name="type" class="form-select-custom" [(ngModel)]="newTenant.tenant" required>

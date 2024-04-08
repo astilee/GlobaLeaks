@@ -341,7 +341,8 @@ export class HttpService {
     name: string,
     active: boolean,
     mode: string,
-    tenant: number
+    tenant: number,
+    isProfile: boolean,
     subdomain: string
   }): Observable<tenantResolverModel> {
     return this.httpClient.post<tenantResolverModel>("api/admin/tenants", param);
