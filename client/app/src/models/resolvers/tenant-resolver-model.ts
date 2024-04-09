@@ -5,7 +5,7 @@ export class tenantResolverModel {
   hostname: string;
   mode: string;
   tenant: number;
-  isProfile: boolean;
+  is_profile: boolean;
   name: string;
   onionservice: string;
   rootdomain: string;

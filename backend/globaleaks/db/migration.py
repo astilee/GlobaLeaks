@@ -43,6 +43,8 @@ from globaleaks.settings import Settings
 from globaleaks.utils.fs import srm
 from globaleaks.utils.log import log
 from globaleaks.utils.utility import datetime_now
+from globaleaks.db.migrations.update_67 import Tenant_v_67
+
 
 
 migration_mapping = OrderedDict([
@@ -79,7 +81,7 @@ migration_mapping = OrderedDict([
     ('SubmissionStatusChange', [SubmissionStatusChange_v_54, 0, 0, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]),
     ('Step', [models._Step, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
     ('Subscriber', [Subscriber_v_52, Subscriber_v_62, 0, 0, 0, 0, 0, 0, 0, 0, 0, models._Subscriber, 0, 0, 0, 0, 0]),
-    ('Tenant', [Tenant_v_52, models._Tenant, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
+    ('Tenant', [Tenant_v_52, models._Tenant, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, Tenant_v_67]),
     ('User', [User_v_52, User_v_54, 0, User_v_56, 0, User_v_61, 0, 0, 0, 0, User_v_64, 0, 0, User_v_66, 0, models._User, 0]),
     ('WhistleblowerFile', [WhistleblowerFile_v_57, 0, 0, 0, 0, 0, WhistleblowerFile_v_64, 0, 0, 0, 0, 0, 0, WhistleblowerFile_v_66, 0, models._WhistleblowerFile, 0]),
 

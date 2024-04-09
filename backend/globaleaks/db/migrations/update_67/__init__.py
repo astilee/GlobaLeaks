@@ -141,3 +141,12 @@ class MigrationScript(MigrationBase):
                x.value = c.value
                self.session_new.add(x)
                self.entries_count['ConfigL10N'] += 1
+
+class Tenant_v_67(Model):
+    __tablename__ = 'tenant'
+
+    id = Column(Integer, primary_key=True)
+    creation_date = Column(DateTime, default=datetime_now, nullable=False)
+    active = Column(Boolean, default=False, nullable=False)
+    is_profile = Column(Boolean, default=False, nullable=False)
+    bool_keys = ['active']
