@@ -3,16 +3,16 @@ import {tenantResolverModel} from "@app/models/resolvers/tenant-resolver-model";
 import {HttpService} from "@app/shared/services/http.service";
 
 @Component({
-  selector: "src-sites-tab1",
-  templateUrl: "./sites-tab1.component.html"
+  selector: "src-sites-tab-profiles",
+  templateUrl: "./sites-tab-profiles.component.html"
 })
-export class SitesTab1Component implements OnInit {
+export class SitesTabProfilesComponent implements OnInit {
   search: string;
-  newTenant: { name: string, active: boolean, mode: string, is_profile: boolean, profile_tenant_id: number | null, subdomain: string } = {
+  newTenant: { name: string, active: boolean, mode: string, is_profile: boolean, profile_tenant_id: number | null , subdomain: string } = {
     name: "",
     active: true,
     mode: "default",
-    is_profile: false,
+    is_profile: true,
     profile_tenant_id: 1,
     subdomain: ""
   };
@@ -41,7 +41,6 @@ export class SitesTab1Component implements OnInit {
       this.tenants.push(res);
       this.newTenant.name = "";
       this.newTenant.is_profile = false;
-      this.newTenant.profile_tenant_id = null;
     });
   }
 }
