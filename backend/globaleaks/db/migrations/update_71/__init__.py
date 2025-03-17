@@ -12,13 +12,14 @@ from globaleaks.models.properties import *
 from globaleaks.utils.utility import datetime_now
 
 
-class Tenant_v_68(Model):
+class Tenant_v_70(Model):
     __tablename__ = 'tenant'
     __table_args__ = {'sqlite_autoincrement': False}
 
     id = Column(Integer, primary_key=True, autoincrement=False)
     creation_date = Column(DateTime, default=datetime_now, nullable=False)
     active = Column(Boolean, default=False, nullable=False)
+
 
 class MigrationScript(MigrationBase):
     default_tenant_keys = ["subdomain", "onionservice", "https_admin", "https_analyst", "https_cert" ,"wizard_done", "uuid", "mode", "default_language", "name"]

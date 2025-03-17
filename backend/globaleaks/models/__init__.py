@@ -41,6 +41,7 @@ class LocalizationEngine(object):
     """
     This Class can manage all the localized strings inside one ORM object
     """
+
     def __init__(self, keys):
         self._localized_strings = {}
         self._localized_keys = keys
@@ -347,6 +348,36 @@ class ConfigL10N(_ConfigL10N, Base):
             self.value = value
 
 
+class _ContentForwarding(Model):
+    """
+    This model keeps track of submission files for the eo
+    """
+    __tablename__ = 'content_forwarding'
+
+    id = Column(UnicodeText(36), primary_key=True, default=uuid4)
+    internaltip_forwarding_id = Column(UnicodeText(36), nullable=False, index=True)
+    content_id = Column(UnicodeText(36), nullable=False, index=True)
+    forwarding_content_id = Column(UnicodeText(36), nullable=False, index=True)
+    content_origin = Column(Enum(EnumContentForwarding), default='receiver_file', nullable=False)
+    author_type = Column(Enum(EnumAuthorType), default='main', nullable=False)
+
+    @declared_attr
+    def __table_args__(self):
+        return (
+            ForeignKeyConstraint(
+                ['internaltip_forwarding_id'],
+                ['internaltip.id'],
+                ondelete='CASCADE',
+                deferrable=True,
+                initially='DEFERRED'
+            ),
+        )
+
+
+class ContentForwarding(_ContentForwarding, Base):
+    pass
+
+
 class _Context(Model):
     """
     This model keeps track of contexts settings.
@@ -465,6 +496,7 @@ class _Field(Model):
     instance = Column(Enum(EnumFieldInstance), default='instance', nullable=False)
     template_id = Column(UnicodeText(36), index=True)
     template_override_id = Column(UnicodeText(36), index=True)
+    statistical = Column(Boolean, default=False, nullable=False)
 
     unicode_keys = ['type', 'instance', 'key']
     int_keys = ['x', 'y', 'width', 'triggered_by_score']
@@ -483,6 +515,12 @@ class Field(_Field, Base):
                 ForeignKeyConstraint(['template_override_id'], ['field.id'], ondelete='SET NULL', deferrable=True, initially='DEFERRED'),
                 CheckConstraint(self.instance.in_(EnumFieldInstance.keys())),
                 CheckConstraint(self.type.in_(field_types)))
+
+    unicode_keys = ['type', 'instance', 'key']
+    int_keys = ['x', 'y', 'width', 'triggered_by_score']
+    localized_keys = ['label', 'description', 'hint', 'placeholder']
+    bool_keys = ['multi_entry', 'required', 'statistical']
+    optional_references = ['template_id', 'step_id', 'fieldgroup_id', 'template_override_id']
 
 
 class _FieldAttr(Model):
@@ -640,6 +678,32 @@ class IdentityAccessRequestCustodian(_IdentityAccessRequestCustodian, Base):
                 ForeignKeyConstraint(['custodian_id'], ['user.id'], ondelete='CASCADE', deferrable=True, initially='DEFERRED'))
 
 
+class _ContentForwarding(Model):
+    """
+    This model keeps track of submission files for the eo
+    """
+    __tablename__ = 'content_forwarding'
+
+    id = Column(UnicodeText(36), primary_key=True, default=uuid4)
+    internaltip_forwarding_id = Column(UnicodeText(36), nullable=False, index=True)
+    content_id = Column(UnicodeText(36), nullable=False, index=True)
+    forwarding_content_id = Column(UnicodeText(36), nullable=False, index=True)
+    content_origin = Column(Enum(EnumContentForwarding), default='receiver_file', nullable=False)
+    author_type = Column(Enum(EnumAuthorType), default='main', nullable=False)
+
+    @declared_attr
+    def __table_args__(self):
+        return (
+            ForeignKeyConstraint(
+                ['internaltip_forwarding_id'],
+                ['internaltip.id'],
+                ondelete='CASCADE',
+                deferrable=True,
+                initially='DEFERRED'
+            ),
+        )
+
+
 class _InternalFile(Model):
     """
     This model keeps track of submission files
@@ -654,6 +718,8 @@ class _InternalFile(Model):
     size = Column(JSON, default='', nullable=False)
     new = Column(Boolean, default=True, nullable=False)
     reference_id = Column(UnicodeText(36), default='', nullable=False)
+    verification_date = Column(DateTime, nullable=True)
+    state = Column(Enum(EnumStateFile), default='pending', nullable=False)
 
 
 class InternalFile(_InternalFile, Base):
@@ -715,6 +781,7 @@ class _InternalTipAnswers(Model):
     questionnaire_hash = Column(UnicodeText(64), primary_key=True)
     creation_date = Column(DateTime, default=datetime_now, nullable=False)
     answers = Column(JSON, default=dict, nullable=False)
+    stat_answers = Column(JSON, default=dict, nullable=False)
 
 
 class InternalTipAnswers(_InternalTipAnswers, Base):
@@ -731,11 +798,44 @@ class _InternalTipData(Model):
     creation_date = Column(DateTime, default=datetime_now, nullable=False)
     value = Column(JSON, default=dict, nullable=False)
 
+
 class InternalTipData(_InternalTipData, Base):
     @declared_attr
     def __table_args__(self):
         return (UniqueConstraint('internaltip_id', 'key'),
                 ForeignKeyConstraint(['internaltip_id'], ['internaltip.id'], ondelete='CASCADE', deferrable=True, initially='DEFERRED'))
+
+
+class _InternalTipForwarding(Model):
+    """
+    This model keeps track of forward tip.
+    """
+    __tablename__ = 'internaltip_forwarding'
+    internaltip_id = Column(UnicodeText(36), nullable=False, primary_key=True)
+    forwarding_internaltip_id = Column(UnicodeText(36), nullable=False, primary_key=True)
+
+    @declared_attr
+    def __table_args__(self):
+        return (
+            ForeignKeyConstraint(
+                ['internaltip_id'],
+                ['internaltip.id'],
+                ondelete='CASCADE',
+                deferrable=True,
+                initially='DEFERRED'
+            ),
+            ForeignKeyConstraint(
+                ['forwarding_internaltip_id'],
+                ['internaltip.id'],
+                ondelete='CASCADE',
+                deferrable=True,
+                initially='DEFERRED'
+            )
+        )
+
+
+class InternalTipForwarding(_InternalTipForwarding, Base):
+    pass
 
 
 class _Mail(Model):
@@ -750,14 +850,17 @@ class _Mail(Model):
     address = Column(UnicodeText, nullable=False)
     subject = Column(UnicodeText, nullable=False)
     body = Column(UnicodeText, nullable=False)
+    secondary_smtp = Column(Boolean, nullable=False, default=False)
 
     unicode_keys = ['address', 'subject', 'body']
+    bool_keys = ['secondary_smtp']
 
 
 class Mail(_Mail, Base):
     @declared_attr
     def __table_args__(self):
         return ForeignKeyConstraint(['tid'], ['tenant.id'], ondelete='CASCADE', deferrable=True, initially='DEFERRED'),
+
 
 class _Questionnaire(Model):
     __tablename__ = 'questionnaire'
@@ -965,13 +1068,16 @@ class SubmissionSubStatus(_SubmissionSubStatus, Base):
 class _Subscriber(Model):
     __tablename__ = 'subscriber'
 
+    id = Column(UnicodeText(36), nullable=False, default=uuid4, primary_key=True)
     tid = Column(Integer, primary_key=True)
     subdomain = Column(UnicodeText, unique=True, nullable=False)
     language = Column(UnicodeText(12), nullable=False)
+    user_id = Column(UnicodeText, default='', nullable=False)
     name = Column(UnicodeText, nullable=False)
     surname = Column(UnicodeText, nullable=False)
     phone = Column(UnicodeText, default='', nullable=False)
     email = Column(UnicodeText, nullable=False)
+    tax_code = Column(UnicodeText, nullable=True)
     organization_name = Column(UnicodeText, default='', nullable=False)
     organization_tax_code = Column(UnicodeText, unique=True, nullable=True)
     organization_vat_code = Column(UnicodeText, unique=True, nullable=True)
@@ -982,11 +1088,24 @@ class _Subscriber(Model):
     registration_date = Column(DateTime, default=datetime_now, nullable=False)
     tos1 = Column(UnicodeText, default='', nullable=False)
     tos2 = Column(UnicodeText, default='', nullable=False)
+    creation_date = Column(DateTime, default=datetime_now, nullable=False)
+    state = Column(Integer, default=None, nullable=True)
+    organization_email = Column(UnicodeText, nullable=True)
+    organization_institutional_site = Column(UnicodeText, default='', nullable=False)
+    accreditation_date = Column(DateTime, nullable=True)
+    recipient_user_id = Column(UnicodeText, default='', nullable=False)
+    recipient_name = Column(UnicodeText, nullable=True)
+    recipient_surname = Column(UnicodeText, nullable=True)
+    recipient_email = Column(UnicodeText, nullable=True)
+    recipient_tax_code = Column(UnicodeText, nullable=True)
+    requestor_id = Column(UnicodeText, nullable=True)
 
-    unicode_keys = ['subdomain', 'language', 'name', 'surname', 'phone', 'email',
-                    'organization_name',  'organization_tax_code',
+    unicode_keys = ['subdomain', 'language', 'name', 'surname', 'phone', 'email', 'tax_code',
+                    'organization_name', 'organization_tax_code',
                     'organization_vat_code', 'organization_location',
-                    'client_ip_address', 'client_user_agent']
+                    'client_ip_address', 'client_user_agent', 'state', 'organization_email',
+                    'organization_institutional_site', 'recipient_name', 'recipient_surname', 'recipient_email',
+                    'recipient_tax_code', 'requestor_id']
 
     bool_keys = ['tos1', 'tos2']
 
@@ -1006,10 +1125,11 @@ class _Tenant(Model):
     __tablename__ = 'tenant'
     __table_args__ = {'sqlite_autoincrement': True}
 
-
     id = Column(Integer, primary_key=True)
     creation_date = Column(DateTime, default=datetime_now, nullable=False)
     active = Column(Boolean, default=False, nullable=False)
+    affiliated = Column(Boolean, nullable=True)
+    external = Column(Boolean, default=False, nullable=False)
 
     bool_keys = ['active']
 
@@ -1044,6 +1164,7 @@ class _User(Model):
     crypto_pub_key = Column(UnicodeText(56), default='', nullable=False)
     crypto_rec_key = Column(UnicodeText(80), default='', nullable=False)
     crypto_bkp_key = Column(UnicodeText(84), default='', nullable=False)
+    crypto_global_stat_prv_key = Column(UnicodeText(84), default='', nullable=True)
     crypto_escrow_prv_key = Column(UnicodeText(84), default='', nullable=False)
     crypto_escrow_bkp1_key = Column(UnicodeText(84), default='', nullable=False)
     crypto_escrow_bkp2_key = Column(UnicodeText(84), default='', nullable=False)
@@ -1055,6 +1176,8 @@ class _User(Model):
     two_factor_secret = Column(UnicodeText(32), default='', nullable=False)
     reminder_date = Column(DateTime, default=datetime_null, nullable=False)
     profile_id = Column(Integer, default='', nullable=False)
+    status = Column(Enum(EnumUserStatus), default='active', nullable=False)
+    idp_id = Column(UnicodeText(18), default='', nullable=False)
     pgp_key_fingerprint = Column(UnicodeText, default='', nullable=False)
     pgp_key_public = Column(UnicodeText, default='', nullable=False)
     pgp_key_expiration = Column(DateTime, default=datetime_null, nullable=False)
@@ -1067,7 +1190,7 @@ class _User(Model):
                     'name', 'public_name',
                     'language', 'change_email_address',
                     'salt','profile_id',
-                    'two_factor_secret']
+                    'two_factor_secret', 'status', 'idp_id']
 
     localized_keys = ['description']
 
@@ -1084,6 +1207,7 @@ class _User(Model):
                  'can_edit_general_settings',
                  'forcefully_selected',
                  'readonly',
+                 'can_download_infected',
                  'clicked_recovery_key']
 
     date_keys = ['accepted_privacy_policy',
@@ -1100,7 +1224,6 @@ class User(_User, Base):
         return (ForeignKeyConstraint(['tid'], ['tenant.id'], ondelete='CASCADE', deferrable=True, initially='DEFERRED'),
                 ForeignKeyConstraint(['profile_id'], ['user_profile.id'], deferrable=True, initially='DEFERRED'),
                 ForeignKeyConstraint(['profile_id', 'role'], ['user_profile_role.profile_id', 'user_profile_role.role'], deferrable=True, initially='DEFERRED'),
-                UniqueConstraint('tid', 'username'),
                 CheckConstraint(self.role.in_(EnumUserRole.keys())))
 
     @declared_attr
