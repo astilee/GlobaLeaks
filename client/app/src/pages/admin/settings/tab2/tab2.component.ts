@@ -1,6 +1,6 @@
 import {Component, ElementRef, Input, OnInit, ViewChild, inject} from "@angular/core";
 import {NgForm} from "@angular/forms";
-import * as Flow from "@flowjs/flow.js";
+import Flow from "@flowjs/flow.js";
 import type {FlowFile} from "@flowjs/flow.js";
 import {FlowDirective} from "@flowjs/ngx-flow";
 import {AuthenticationService} from "@app/services/helper/authentication.service";
@@ -90,7 +90,7 @@ export class Tab2Component implements OnInit {
       
       flowJsInstance.on("fileSuccess", (_) => {
         this.appConfigService.reinit(false);
-        this.utilsService.reloadComponent();
+        this.updateFiles();
       });
 
       flowJsInstance.on("fileError", (_) => {
@@ -111,12 +111,11 @@ export class Tab2Component implements OnInit {
     this.utilsService.deleteFile(url).subscribe(
       () => {
         this.updateFiles();
-        this.utilsService.reloadComponent();
       }
     );
   }
 
-  updateFiles(): void {
+  updateFiles = (): void => {
     this.utilsService.getFiles().subscribe(
       (updatedFiles) => {
         this.files = updatedFiles;

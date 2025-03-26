@@ -1,5 +1,3 @@
-# -*- coding: utf-8
-#
 # Handlers implementing platform signup
 from sqlalchemy import not_
 from twisted.internet.threads import deferToThread
@@ -7,16 +5,15 @@ from globaleaks import models
 from globaleaks.db import sync_refresh_tenant_cache
 from globaleaks.handlers.admin.node import db_admin_serialize_node
 from globaleaks.handlers.admin.notification import db_get_notification
-from globaleaks.handlers.admin.tenant import db_create as db_create_tenant
+from globaleaks.handlers.admin.tenant import db_create as db_create_tenant, db_wizard
 from globaleaks.handlers.admin.user import db_get_users
 from globaleaks.handlers.base import BaseHandler
-from globaleaks.handlers.wizard import db_wizard
 from globaleaks.models import serializers
 from globaleaks.models.config import ConfigFactory
 from globaleaks.orm import db_del, transact
 from globaleaks.rest import requests, errors
 from globaleaks.state import State
-from globaleaks.utils.crypto import generateRandomKey, generateRandomPassword
+from globaleaks.utils.crypto import generateRandomKey, generateRandomPassword, GCE
 
 
 @transact
@@ -125,25 +122,39 @@ def signup_activation(session, token, hostname, language):
 
     signup.activation_token = None
 
-    password_admin = generateRandomPassword(16)
-    password_receiver = generateRandomPassword(16)
-
     node_name = signup.organization_name or signup.subdomain
+
+    node = ConfigFactory(session, tenant.id)
+    mode = node.get_val('mode')
+    salt = node.get_val('receipt_salt')
+
+    if mode == 'wbpa':
+        skip_admin_account_creation = True
+        admin_password = admin_key = ''
+    else:
+        skip_admin_account_creation = False
+        admin_password = generateRandomPassword(16)
+        admin_salt = GCE.generate_salt(salt + ":" + 'admin')
+        admin_key = GCE.derive_key(admin_password, admin_salt).encode()
+
+    receiver_password = generateRandomPassword(16)
+    receiver_salt = GCE.generate_salt(salt + ":" + 'recipient')
+    receiver_key = GCE.derive_key(receiver_password, receiver_salt).encode()
 
     wizard = {
         'node_language': signup.language,
         'node_name': node_name,
         'admin_username': 'admin',
         'admin_name': signup.name + ' ' + signup.surname,
-        'admin_password': password_admin,
+        'admin_password': admin_key,
         'admin_mail_address': signup.email,
         'admin_escrow': config.get_val('escrow'),
         'receiver_username': 'recipient',
         'receiver_name': signup.name + ' ' + signup.surname,
-        'receiver_password': password_receiver,
+        'receiver_password': receiver_key,
         'receiver_mail_address': signup.email,
         'profile': 'default',
-        'skip_admin_account_creation': False,
+        'skip_admin_account_creation': skip_admin_account_creation,
         'skip_recipient_account_creation': False,
         'enable_developers_exception_notification': True
     }
@@ -155,8 +166,8 @@ def signup_activation(session, token, hostname, language):
         'node': db_admin_serialize_node(session, 1, language),
         'notification': db_get_notification(session, 1, language),
         'signup': serializers.serialize_signup(signup),
-        'password_admin': wizard['admin_password'],
-        'password_recipient': wizard['receiver_password']
+        'password_admin': admin_password,
+        'password_recipient': receiver_password
     }
 
     State.format_and_send_mail(session, 1, signup.email, template_vars)

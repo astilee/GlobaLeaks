@@ -1,5 +1,3 @@
-# -*- coding: utf-8
-#
 # Handlers dealing with user preferences
 from globaleaks import models
 from globaleaks.handlers.base import BaseHandler
@@ -57,16 +55,15 @@ def user_serialize_user(session, user, language):
         'id': user.id,
         'creation_date': user.creation_date,
         'username': user.username,
-        'salt': '',
         'role': profile.role,
-        'enabled': profile.enabled,
+        'enabled': user.enabled,
         'last_login': user.last_login,
         'name': user.name,
         'description': user.description,
         'public_name': user.public_name,
         'mail_address': user.mail_address,
         'change_email_address': user.change_email_address,
-        'language': profile.language,
+        'language': user.language,
         'password_change_needed': user.password_change_needed,
         'password_change_date': user.password_change_date,
         'pgp_key_fingerprint': user.pgp_key_fingerprint,
@@ -75,8 +72,9 @@ def user_serialize_user(session, user, language):
         'pgp_key_remove': False,
         'picture': picture,
         'tid': user.tid,
-        'notification': profile.notification,
+        'notification': user.notification,
         'encryption': user.crypto_pub_key != '',
+        'salt': user.salt,
         'escrow': user.crypto_escrow_prv_key != '',
         'two_factor': user.two_factor_secret != '',
         'forcefully_selected': profile.forcefully_selected,
@@ -86,20 +84,20 @@ def user_serialize_user(session, user, language):
         'can_redact_information': profile.can_redact_information,
         'can_mask_information': profile.can_mask_information,
         'can_transfer_access_to_reports': profile.can_transfer_access_to_reports,
-        'can_reopen_reports': profile.can_reopen_reports,
         'can_edit_general_settings': profile.can_edit_general_settings,
         'clicked_recovery_key': user.clicked_recovery_key,
         'accepted_privacy_policy': user.accepted_privacy_policy,
         'contexts': contexts,
-        'profile_id': user.profile_id
-
+        'profile_id': user.profile_id,
+        'custom': profile.custom,
+        'send_activation_link': False
     }
 
     if State.tenants[user.tid].cache.two_factor and \
       user.two_factor_secret == '':
         ret['require_two_factor'] = True
 
-    return get_localized_values(ret, user, user.localized_keys, profile.language)
+    return get_localized_values(ret, user, user.localized_keys, language)
 
 
 @transact

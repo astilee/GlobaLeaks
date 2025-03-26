@@ -1,6 +1,5 @@
 # -*- coding: UTF-8 -*-
 from globaleaks.handlers.admin.user import db_create_user_profile
-from globaleaks.db import create_default_user_profiles
 from globaleaks import models
 from globaleaks.db.migrations.update import MigrationBase
 from globaleaks.models import Model
@@ -26,7 +25,13 @@ class MigrationScript(MigrationBase):
         old_configs = self.session_old.query(self.model_from['User']).all()
         valid_profile_attrs = {attr for attr in dir(self.model_to['UserProfile']) if not attr.startswith('_')}
         roles = ['admin', 'receiver', 'analyst', 'custodian']
-        create_default_user_profiles(self.session_new, roles)
+        for role in roles:
+            user_desc = {
+                "name": role.capitalize(),
+                "role": role,
+                "custom": True,
+            }
+            db_create_user_profile(self.session_new, 1000001, user_desc)
         new_configs = []
 
         for old_obj in old_configs:
@@ -34,8 +39,7 @@ class MigrationScript(MigrationBase):
             for attr in [
                 "name",
                 "role",
-                "enabled",
-                "notification",
+                "tid",
                 "forcefully_selected",
                 "can_delete_submission",
                 "can_postpone_expiration",
@@ -43,20 +47,18 @@ class MigrationScript(MigrationBase):
                 "can_transfer_access_to_reports",
                 "can_redact_information",
                 "can_mask_information",
-                "can_reopen_reports",
                 "can_edit_general_settings",
-                "language",
             ]:
                 if hasattr(old_obj, attr):
                     user_desc[attr] = getattr(old_obj, attr)
 
             user_desc = {key: value for key, value in user_desc.items() if key in valid_profile_attrs}
-            existing_profile = (self.session_new.query(self.model_to['UserProfile']).filter_by(name=user_desc.get("name")).first())
-
+            existing_profile = (self.session_new.query(self.model_to['UserProfile']).filter_by(name=user_desc.get("name"), tid=user_desc.get("tid")).first())
             if existing_profile:
                 profile_id = existing_profile.id
             else:
-                new_profile = db_create_user_profile(self.session_new, user_desc)
+                user_desc["custom"] = False
+                new_profile = db_create_user_profile(self.session_new, user_desc.get("tid"), user_desc)
                 profile_id = new_profile['id'] if new_profile else None
 
             if profile_id:

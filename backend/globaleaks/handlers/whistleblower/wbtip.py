@@ -1,9 +1,8 @@
-# -*- coding: utf-8 -*-
-#
 # Handlers dealing with tip interface for whistleblowers (wbtip)
-import base64
 import json
 import os
+
+from nacl.encoding import Base64Encoder
 from twisted.internet.threads import deferToThread
 from twisted.internet.defer import inlineCallbacks, returnValue
 
@@ -19,7 +18,7 @@ from globaleaks.models import serializers
 from globaleaks.orm import db_get, transact
 from globaleaks.rest import errors, requests
 from globaleaks.state import State
-from globaleaks.utils.crypto import Base64Encoder, GCE
+from globaleaks.utils.crypto import GCE
 from globaleaks.utils.fs import directory_traversal_check
 from globaleaks.utils.log import log
 from globaleaks.utils.templating import Templating
@@ -33,18 +32,17 @@ def db_notify_report_update(session, user, rtip, itip):
     :param rtip: A rtip ORM object
     :param itip: A itip ORM object
     """
-    language = session.query(models.UserProfile.language).filter(models.UserProfile.id == user.profile_id).scalar()
     data = {
       'type': 'tip_update',
-      'user': user_serialize_user(session, user, language),
-      'node': db_admin_serialize_node(session, user.tid, language),
-      'tip': serializers.serialize_rtip(session, itip, rtip, language),
+      'user': user_serialize_user(session, user, user.language),
+      'node': db_admin_serialize_node(session, user.tid, user.language),
+      'tip': serializers.serialize_rtip(session, itip, rtip, user.language),
     }
 
     if data['node']['mode'] == 'default':
-        data['notification'] = db_get_notification(session, user.tid, language)
+        data['notification'] = db_get_notification(session, user.tid, user.language)
     else:
-        data['notification'] = db_get_notification(session, 1, language)
+        data['notification'] = db_get_notification(session, 1, user.language)
 
     subject, body = Templating().get_mail_subject_and_body(data)
 
@@ -68,7 +66,7 @@ def db_get_wbtip(session, itip_id, language):
 
     itip.last_access = datetime_now()
 
-    return serializers.serialize_wbtip(session, itip, language), base64.b64decode(itip.crypto_tip_prv_key)
+    return serializers.serialize_wbtip(session, itip, language), Base64Encoder.decode(itip.crypto_tip_prv_key)
 
 
 @transact
@@ -81,13 +79,13 @@ def create_comment(session, tid, user_id, content):
     itip = db_get(session,
                   models.InternalTip,
                   (models.InternalTip.id == user_id,
-                   models.InternalTip.tid == tid))
+                   models.InternalTip.tid.in_({tid, State.tenants[tid].cache.ptid})))
 
     itip.update_date = itip.last_access = datetime_now()
 
     _content = content
     if itip.crypto_tip_pub_key:
-        _content = base64.b64encode(GCE.asymmetric_encrypt(itip.crypto_tip_pub_key, content)).decode()
+        _content = Base64Encoder.encode(GCE.asymmetric_encrypt(itip.crypto_tip_pub_key, content)).decode()
 
     comment = models.Comment()
     comment.internaltip_id = itip.id
@@ -110,7 +108,7 @@ def update_identity_information(session, tid, user_id, identity_field_id, wbi, l
                    models.InternalTip.tid == tid))
 
     if itip.crypto_tip_pub_key:
-        wbi = base64.b64encode(GCE.asymmetric_encrypt(itip.crypto_tip_pub_key, json.dumps(wbi).encode())).decode()
+        wbi = Base64Encoder.encode(GCE.asymmetric_encrypt(itip.crypto_tip_pub_key, json.dumps(wbi).encode())).decode()
 
     db_set_internaltip_data(session, itip.id, 'whistleblower_identity', wbi)
 
@@ -136,7 +134,7 @@ def store_additional_questionnaire_answers(session, tid, user_id, answers, langu
     questionnaire_hash = db_archive_questionnaire_schema(session, steps)
 
     if itip.crypto_tip_pub_key:
-        answers = base64.b64encode(GCE.asymmetric_encrypt(itip.crypto_tip_pub_key, json.dumps(answers).encode())).decode()
+        answers = Base64Encoder.encode(GCE.asymmetric_encrypt(itip.crypto_tip_pub_key, json.dumps(answers).encode())).decode()
 
     db_set_internaltip_answers(session, itip.id, questionnaire_hash, answers)
 
@@ -144,7 +142,7 @@ def store_additional_questionnaire_answers(session, tid, user_id, answers, langu
 
 
 @transact
-def change_receipt(session, itip_id, cc, new_receipt, receipt_change_needed):
+def change_receipt(session, itip_id, cc, receipt, receipt_change_needed):
     """
     Transaction for updating old receipt to a new one
     """
@@ -156,17 +154,14 @@ def change_receipt(session, itip_id, cc, new_receipt, receipt_change_needed):
     tid = itip.tid
 
     # update receipt
-    itip.receipt_hash = GCE.hash_password(new_receipt, State.tenants[tid].cache.receipt_salt)
+    wb_key, itip.receipt_hash = GCE.calculate_key_and_hash(receipt, State.tenants[tid].cache.receipt_salt)
+    itip.receipt_change_needed = receipt_change_needed
 
     if cc is None:
         return
 
-    wb_key = GCE.derive_key(new_receipt.encode(), State.tenants[tid].cache.receipt_salt)
-
     # update private keys
     itip.crypto_prv_key = Base64Encoder.encode(GCE.symmetric_encrypt(wb_key, cc))
-
-    itip.receipt_change_needed = receipt_change_needed
 
 
 class Operations(BaseHandler):
@@ -243,14 +238,9 @@ class WhistleblowerFileDownload(BaseHandler):
         self.check_file_presence(filelocation)
 
         if tip_prv_key:
-            tip_prv_key = GCE.asymmetric_decrypt(self.session.cc, base64.b64decode(tip_prv_key))
-            name = GCE.asymmetric_decrypt(tip_prv_key, base64.b64decode(name.encode())).decode()
-
-            try:
-                # First attempt
-                filelocation = GCE.streaming_encryption_open('DECRYPT', tip_prv_key, filelocation)
-            except:
-                pass
+            tip_prv_key = GCE.asymmetric_decrypt(self.session.cc, Base64Encoder.decode(tip_prv_key))
+            name = GCE.asymmetric_decrypt(tip_prv_key, Base64Encoder.decode(name.encode())).decode()
+            filelocation = GCE.streaming_encryption_open('DECRYPT', tip_prv_key, filelocation)
 
         yield self.write_file_as_download(name, filelocation)
 
@@ -276,7 +266,7 @@ class ReceiverFileDownload(BaseHandler):
         log.debug("Download of file %s by whistleblower %s",
                   rfile.id, self.session.user_id)
 
-        return rfile.name, rfile.id, base64.b64decode(wbtip.crypto_tip_prv_key), ''
+        return rfile.name, rfile.id, Base64Encoder.decode(wbtip.crypto_tip_prv_key), ''
 
     @inlineCallbacks
     def get(self, rfile_id):
@@ -287,7 +277,7 @@ class ReceiverFileDownload(BaseHandler):
 
         if tip_prv_key:
             tip_prv_key = GCE.asymmetric_decrypt(self.session.cc, tip_prv_key)
-            name = GCE.asymmetric_decrypt(tip_prv_key, base64.b64decode(name.encode())).decode()
+            name = GCE.asymmetric_decrypt(tip_prv_key, Base64Encoder.decode(name.encode())).decode()
             filelocation = GCE.streaming_encryption_open('DECRYPT', tip_prv_key, filelocation)
 
         yield self.write_file_as_download(name, filelocation, pgp_key)

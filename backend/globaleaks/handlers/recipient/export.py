@@ -1,8 +1,7 @@
-# -*- coding: utf-8 -*-
-#
 # API handling export of submissions
 import os
 from io import BytesIO
+from nacl.encoding import Base64Encoder
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.threads import deferToThread
 
@@ -19,7 +18,7 @@ from globaleaks.models import serializers
 from globaleaks.orm import transact
 from globaleaks.rest import errors
 from globaleaks.settings import Settings
-from globaleaks.utils.crypto import Base64Encoder, GCE
+from globaleaks.utils.crypto import GCE
 from globaleaks.utils.fs import directory_traversal_check
 from globaleaks.utils.securetempfile import SecureTemporaryFile
 from globaleaks.utils.templating import Templating
@@ -99,10 +98,9 @@ def serialize_rtip_export(session, user, itip, rtip, context, language):
 
 @transact
 def get_tip_export(session, tid, user_id, itip_id, language):
-    user, profile, context, itip, rtip = session.query(models.User, models.UserProfile, models.Context, models.InternalTip, models.ReceiverTip) \
+    user, context, itip, rtip = session.query(models.User, models.Context, models.InternalTip, models.ReceiverTip) \
                                        .filter(models.User.id == user_id,
                                                models.User.tid == tid,
-                                               models.User.profile_id == models.UserProfile.id,
                                                models.ReceiverTip.receiver_id == models.User.id,
                                                models.InternalTip.id == models.ReceiverTip.internaltip_id,
                                                models.InternalTip.id == itip_id,
@@ -116,7 +114,7 @@ def get_tip_export(session, tid, user_id, itip_id, language):
         rtip.access_date = rtip.last_access
 
     if itip.status == 'new':
-        db_update_submission_status(session, tid, user_id, itip, 'opened', None, profile)
+        db_update_submission_status(session, tid, user_id, itip, 'opened', None)
 
     return user.pgp_key_public, serialize_rtip_export(session, user, itip, rtip, context, language)
 

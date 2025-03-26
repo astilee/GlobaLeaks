@@ -1,4 +1,3 @@
-# -*- coding: utf-8
 import codecs
 import logging
 import os
@@ -18,7 +17,7 @@ def timedelta_to_milliseconds(t):
     :param t: the time delta object to be converted
     :return: the timedelta representation in milliseconds
     """
-    return (t.microseconds + (t.seconds + t.days * 24 * 3600) * 10**6) / 10**3.0
+    return (t.days * 86400000) + (t.seconds * 1000) + (t.microseconds / 1000.0)
 
 
 def escape_string(s):
@@ -29,16 +28,12 @@ def escape_string(s):
     :return:  The escaped string
     """
     if isinstance(s, str):
-        return codecs.encode(s, 'unicode_escape').decode()
+        return s.encode('unicode_escape').decode()
     else:
         try:
-            string = str(s, 'unicode_escape')
-        except UnicodeDecodeError:
-            return str(s, 'string_escape')
+            return str(s).encode('unicode_escape').decode()
         except Exception:
             return "[FAILURE IN ESCAPE STRING]"
-        else:
-            return string
 
 
 def openLogFile(logfile, max_file_size, rotated_log_files):

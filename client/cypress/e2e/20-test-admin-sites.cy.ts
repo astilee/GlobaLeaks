@@ -58,8 +58,6 @@ describe("admin configure, add, configure and delete tenants", () => {
     });
 
     cy.get("#admin_settings").click();
-    cy.get("textarea[name='nodeResolver.dataModel.footer']").should("be.visible").type("dummy_footer");
-    cy.get("#save_settings").click();
     cy.get('[data-cy="advanced"]').click().should("be.visible").click();
     cy.get('input[name="disable_submissions"]').click();
     cy.get('input[name="node.dataModel.pgp"]').click();
@@ -87,8 +85,6 @@ describe("admin configure, add, configure and delete tenants", () => {
       cy.visit(redirectUrl);
     });
     cy.get("#admin_settings").click();
-    cy.get("textarea[name='nodeResolver.dataModel.footer']").should("be.visible").clear();
-    cy.get("#save_settings").click();
     cy.get('[data-cy="advanced"]').click().should("be.visible").click();
     cy.get('input[name="disable_submissions"]').should('be.checked');
     cy.get('input[name="node.dataModel.pgp"]').should('be.checked');

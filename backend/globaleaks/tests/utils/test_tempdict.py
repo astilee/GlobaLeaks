@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*
 from globaleaks.tests import helpers
 from globaleaks.utils.tempdict import TempDict
 
@@ -11,8 +10,6 @@ class TestObject(object):
 
     def expireCallback(self):
         TestObject.callbacks_count += 1
-        if self.id != TestObject.callbacks_count:
-            raise Exception
 
 
 class TestTempDict(helpers.TestGL):

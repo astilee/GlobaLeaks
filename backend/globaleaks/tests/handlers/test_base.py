@@ -1,18 +1,11 @@
-# -*- coding: utf-8 -*-
 import json
 
 from globaleaks.handlers.base import BaseHandler
 from globaleaks.rest.errors import InputValidationError
 from globaleaks.tests import helpers
 
-FUTURE = 100
-
-
 class BaseHandlerMock(BaseHandler):
     check_roles = 'any'
-
-    def get(self):
-        return
 
 
 class TestBaseHandler(helpers.TestHandlerWithPopulatedDB):
@@ -20,7 +13,7 @@ class TestBaseHandler(helpers.TestHandlerWithPopulatedDB):
 
     def test_validate_request_valid1(self):
         dummy_message = {'spam': 'ham', 'firstd': {3: 4}, 'fields': "CIAOCIAO", 'nest': [{1: 2, 3: 4}]}
-        dummy_request_template = {'spam': str, 'firstd': dict, 'fields': '\w+', 'nest': [dict]}
+        dummy_request_template = {'spam': str, 'firstd': dict, 'fields': r'\w+', 'nest': [dict]}
 
         self.assertTrue(BaseHandler.validate_request(dummy_message, dummy_request_template))
 
@@ -60,5 +53,5 @@ class TestBaseHandler(helpers.TestHandlerWithPopulatedDB):
         self.assertTrue(BaseHandler.validate_python_type(None, dict))
 
     def test_validate_regexp_valid(self):
-        self.assertTrue(BaseHandler.validate_regexp('Foca', '\w+'))
-        self.assertFalse(BaseHandler.validate_regexp('Foca', '\d+'))
+        self.assertTrue(BaseHandler.validate_regexp('Foca', r'\w+'))
+        self.assertFalse(BaseHandler.validate_regexp('Foca', r'\d+'))

@@ -27,27 +27,35 @@ export class UsersComponent implements AfterViewInit {
 
   ngAfterViewInit(): void {
     setTimeout(() => {
-      this.active = "Users";
-
       this.nodeData = this.node;
-      this.tabs = [
-        {
-          id:"users",
-          title: "Users",
-          component: this.tab1
-        },
-        {
-          id:"profiles",
-          title: "Profiles",
-          component: this.tab2
-        },
-        {
-          id:"options",
-          title: "Options",
-          component: this.tab3
-        }
-      ];
-
+      this.active = !this.nodeData.dataModel.is_profile ? "Users" : "Profiles";
+      if(!this.nodeData.dataModel.is_profile){
+        this.tabs = [
+          {
+            id:"users",
+            title: "Users",
+            component: this.tab1
+          },
+          {
+            id:"profiles",
+            title: "Profiles",
+            component: this.tab2
+          },
+          {
+            id:"options",
+            title: "Options",
+            component: this.tab3
+          }
+        ];
+      } else {
+        this.tabs = [
+          {
+            id:"profiles",
+            title: "Profiles",
+            component: this.tab2
+          },
+        ];
+      }
       this.cdr.detectChanges();
     });
   }

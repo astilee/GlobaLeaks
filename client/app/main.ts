@@ -1,14 +1,3 @@
-
-
-const translationModule = TranslateModule.forRoot({
-    loader: {
-      provide: TranslateLoader,
-      useFactory: createTranslateLoader,
-      deps: [HttpClient],
-    },
-  })
-;
-
 // https://github.com/globaleaks/GlobaLeaks/issues/3277
 // Create a proxy to override localStorage methods with sessionStorage methods
 (function() {
@@ -33,6 +22,7 @@ const translationModule = TranslateModule.forRoot({
 
 import { ReceiptValidatorDirective } from "@app/shared/directive/receipt-validator.directive";
 import { mockEngine } from "@app/services/helper/mocks";
+import { MarkdownRendererService } from '@app/services/helper/markdown.service';
 import { TranslatorPipe } from "@app/shared/pipes/translate";
 import { TranslateService, TranslateModule, TranslateLoader } from "@ngx-translate/core";
 import { HTTP_INTERCEPTORS, withInterceptorsFromDi, provideHttpClient, HttpClient } from "@angular/common/http";
@@ -49,47 +39,13 @@ import { FormsModule } from "@angular/forms";
 import { NgIdleKeepaliveModule } from "@ng-idle/keepalive";
 import { MarkdownModule, MARKED_OPTIONS } from "ngx-markdown";
 import { AppComponent, createTranslateLoader } from "@app/pages/app/app.component";
-import { importProvidersFrom } from "@angular/core";
-import * as Flow from "@flowjs/flow.js";
-import {provideRouter} from "@angular/router";
-
-
-import { ApplicationRef } from '@angular/core';
+import { provideRouter } from "@angular/router";
+import { ApplicationRef, importProvidersFrom } from '@angular/core';
 import { platformBrowserDynamic } from '@angular/platform-browser-dynamic';
+import Flow from "@flowjs/flow.js";
 
 bootstrapApplication(AppComponent, {
     providers: [
-        provideRouter(appRoutes),
-        importProvidersFrom(NgbModule, BrowserModule, translationModule, NgSelectModule, FormsModule, NgbTooltipModule, NgIdleKeepaliveModule.forRoot(), MarkdownModule.forRoot({
-            markedOptions: {
-                provide: MARKED_OPTIONS,
-                useValue: {
-                    breaks: true,
-                    renderer: {
-                        link({ href, title, text, tokens }: { href: string; title?: string; text: string; tokens?: any[] }): string {
-                            // Check if the text contains an image tag (Markdown image syntax is wrapped in `![](...)`)
-                            const isImage = text.startsWith('![') && text.includes('](');
-
-                            if (isImage) {
-                              // Extract the image Markdown (e.g., ![Alt](src))
-                              const match = text.match(/!\[(.*?)\]\((.*?)\)/); // Regex to parse image Markdown
-                              if (match) {
-                                const alt = match[1]; // Alt text
-                                const src = match[2]; // Image URL
-                                // Render clickable image
-                                return `<a target="_blank" href="${href}"><img src="${src}" alt="${alt}" /></a>`;
-                              }
-                            }
-
-                            // Fallback to standard link rendering for non-image links
-                            return `<a target="_blank" href="${href}">${text}</a>`;
-                        },
-                    },
-                }
-            }
-        }), NgxFlowModule, NgOptimizedImage),
-        ReceiptValidatorDirective,
-        TranslatorPipe, TranslateService,
         { provide: APP_BASE_HREF, useValue: "/" },
         { provide: HTTP_INTERCEPTORS, useClass: appInterceptor, multi: true },
         { provide: HTTP_INTERCEPTORS, useClass: ErrorCatchingInterceptor, multi: true },
@@ -112,8 +68,38 @@ bootstrapApplication(AppComponent, {
           }
         },
         { provide: 'MockEngine', useValue: mockEngine },
+        ReceiptValidatorDirective,
+        TranslatorPipe,
+        TranslateService,
         provideHttpClient(withInterceptorsFromDi()),
         provideAnimations(),
+        provideRouter(appRoutes),
+        importProvidersFrom(NgbModule,
+                            BrowserModule,
+                            NgSelectModule,
+                            NgxFlowModule,
+                            NgOptimizedImage,
+                            FormsModule,
+                            NgbTooltipModule,
+                            NgIdleKeepaliveModule.forRoot(),
+                            MarkdownModule.forRoot({
+                              markedOptions: {
+                                provide: MARKED_OPTIONS,
+                                useFactory: (rendererService: MarkdownRendererService) => ({
+                                  breaks: true,
+                                  renderer: rendererService.getCustomRenderer(),
+                                }),
+                                deps: [MarkdownRendererService]
+                              }
+                            }),
+                            TranslateModule.forRoot({
+                              loader: {
+                                provide: TranslateLoader,
+                                useFactory: createTranslateLoader,
+                                deps: [HttpClient],
+                              },
+                            }))
+
     ]
 }).then(moduleRef => {
     // Expose Angular stability status to Cypress

@@ -1,13 +1,22 @@
 # -*- coding: UTF-8
+from nacl.encoding import Base64Encoder
+from globaleaks.handlers.admin.questionnaire import db_get_questionnaires, import_questionnaires
+
 from globaleaks import models
 from globaleaks.db.appdata import load_appdata, db_load_defaults
+from globaleaks.handlers.admin.context import db_create_context
+from globaleaks.handlers.admin.node import db_update_enabled_languages
+from globaleaks.handlers.admin.user import db_create_user, db_create_user_profile
 from globaleaks.handlers.base import BaseHandler
-from globaleaks.handlers.wizard import db_wizard
-from globaleaks.models import Config, config, serializers
+from globaleaks.models import Config, config, profiles, serializers
 from globaleaks.models.config import db_get_configs, \
     db_get_config_variable, db_set_config_variable
 from globaleaks.orm import db_del, db_get, transact, tw
 from globaleaks.rest import errors, requests
+from globaleaks.utils.crypto import GCE
+from globaleaks.utils.log import log
+
+from globaleaks.utils.sock import isIPAddress
 from globaleaks.utils.tls import gen_selfsigned_certificate
 import json
 from twisted.internet.defer import inlineCallbacks
@@ -50,6 +59,7 @@ def db_create(session, desc, isTenant = True, **kwargs):
 
     session.add(t)
 
+    # required to generate the tenant id
     session.flush()
 
     appdata = load_appdata()
@@ -59,6 +69,7 @@ def db_create(session, desc, isTenant = True, **kwargs):
         db_load_defaults(session)
     else:
         language = db_get_config_variable(session, 1, 'default_language')
+
     models.config.initialize_config(session, t.id, desc)
 
     if t.id == 1:
@@ -127,9 +138,169 @@ def get_tenant_list(session):
     return db_get_tenant_list(session)
 
 @transact
-def get(session, tid):
-    return serializers.serialize_tenant(session, db_get(session, models.Tenant, models.Tenant.id == tid))
+def get(session, self, tid):
 
+    tenant = db_get(session, models.Tenant, models.Tenant.id == tid)
+    configs = session.query(models.Config).filter(models.Config.tid == tid).all()
+    config_langs = session.query(models.ConfigL10N).filter(models.ConfigL10N.tid == tid).all()
+    user_profiles = session.query(models.UserProfile).filter(models.UserProfile.tid == tid).all()
+    questionnaires = db_get_questionnaires(session, tid, self.request.language)
+    editable_questionnaires = [q for q in questionnaires if q.get('editable', True)]
+
+    return {
+        "tenant": serializers.serialize_tenant(session, tenant),
+        "config_vars": {
+            "configs": [{col.name: getattr(config, col.name) for col in config.__table__.columns} for config in configs],
+            "config_langs": [{col.name: getattr(config_lang, col.name) for col in config_lang.__table__.columns} for config_lang in config_langs],
+        },
+        "user_profiles": [{col.name: getattr(profile, col.name) for col in profile.__table__.columns} for profile in user_profiles],
+        "questionnaires": editable_questionnaires
+    }
+
+
+def db_wizard(session, tid, hostname, request):
+    """
+    Transaction for the handling of wizard request
+
+    :param session: An ORM session
+    :param tid: A tenant ID
+    :param hostname: The hostname to be configured
+    :param request: A user request
+    """
+    admin_password = receiver_password = ''
+
+    language = request['node_language']
+
+    root_tenant_node = config.ConfigFactory(session, 1)
+
+    if tid == 1:
+        node = root_tenant_node
+        encryption = True
+        escrow = request['admin_escrow']
+    else:
+        node = config.ConfigFactory(session, tid)
+        encryption = root_tenant_node.get_val('encryption')
+        escrow = root_tenant_node.get_val('crypto_escrow_pub_key') != ''
+
+    if node.get_val('wizard_done'):
+        log.err("DANGER: Wizard already initialized!", tid=tid)
+        raise errors.ForbiddenOperation
+
+    db_update_enabled_languages(session, tid, [language], language)
+
+    node.set_val('encryption', encryption)
+
+    node.set_val('name', request['node_name'])
+    node.set_val('default_language', language)
+    node.set_val('wizard_done', True)
+    node.set_val('enable_developers_exception_notification', request['enable_developers_exception_notification'])
+
+    if tid == 1 and not isIPAddress(hostname):
+       node.set_val('hostname', hostname)
+
+    profiles.load_profile(session, tid, request['profile'])
+    if encryption and escrow:
+        crypto_escrow_prv_key, crypto_escrow_pub_key = GCE.generate_keypair()
+
+        node.set_val('crypto_escrow_pub_key', crypto_escrow_pub_key)
+
+        if  tid != 1 and root_tenant_node.get_val('crypto_escrow_pub_key'):
+            node.set_val('crypto_escrow_prv_key', Base64Encoder.encode(GCE.asymmetric_encrypt(root_tenant_node.get_val('crypto_escrow_pub_key'), crypto_escrow_prv_key)))
+
+    if not request['skip_admin_account_creation']:
+        admin_desc = models.User().dict(language)
+        admin_desc['username'] = request['admin_username']
+        admin_desc['name'] = request['admin_name']
+        admin_desc['password'] = request['admin_password']
+        admin_desc['mail_address'] = request['admin_mail_address']
+        admin_desc['language'] = language
+        admin_desc['role'] = 'admin'
+        admin_desc['pgp_key_remove'] = False
+
+        admin = db_create_user_profile(session, tid, {"name": request['admin_name'], "role": 'admin', "custom": False})
+        admin_profile = session.query(models.UserProfile).filter_by(role=admin['role'], name=admin['name']).first()
+
+        if admin_profile:
+           admin_desc['profile_id'] = admin_profile.id
+           session.add(admin_profile)
+           session.commit()
+
+        admin_user = db_create_user(session, tid, None, admin_desc, language)
+        admin_user.password_change_needed = (tid != 1)
+
+        if encryption and escrow:
+            node.set_val('crypto_escrow_pub_key', crypto_escrow_pub_key)
+            admin_user.crypto_escrow_prv_key = Base64Encoder.encode(GCE.asymmetric_encrypt(admin_user.crypto_pub_key, crypto_escrow_prv_key))
+
+    if not request['skip_recipient_account_creation']:
+        receiver_desc = models.User().dict(language)
+        receiver_desc['username'] = request['receiver_username']
+        receiver_desc['password'] = request['receiver_password']
+        receiver_desc['name'] = request['receiver_name']
+        receiver_desc['mail_address'] = request['receiver_mail_address']
+        receiver_desc['language'] = language
+        receiver_desc['role'] = 'receiver'
+        receiver_desc['pgp_key_remove'] = False
+
+        receiver = db_create_user_profile(session, tid, {"name": request['receiver_name'], "role": 'receiver', "custom": False})
+        receiver_profile = session.query(models.UserProfile).filter_by(role=receiver['role'], name=receiver['name']).first()
+
+        if receiver_profile:
+           receiver_desc['profile_id'] = receiver_profile.id
+           session.add(receiver_profile)
+           session.commit()
+
+        receiver_user = db_create_user(session, tid, None, receiver_desc, language)
+        receiver_user.password_change_needed = (tid != 1)
+
+    context_desc = models.Context().dict(language)
+    context_desc['name'] = 'Default'
+    context_desc['status'] = 'enabled'
+
+    if not request['skip_recipient_account_creation']:
+        context_desc['receivers'] = [receiver_user.id]
+
+    context = db_create_context(session, tid, None, context_desc, language)
+
+    # Root tenants initialization terminates here
+
+    if tid == 1:
+        return
+
+    # Secondary tenants initialization starts here
+    subdomain = node.get_val('subdomain')
+    rootdomain = root_tenant_node.get_val('rootdomain')
+    if subdomain and rootdomain:
+        node.set_val('hostname', subdomain + "." + rootdomain)
+
+    mode = node.get_val('mode')
+
+    if mode != 'default':
+        node.set_val('tor', False)
+
+    if mode in ['wbpa']:
+        node.set_val('simplified_login', True)
+
+        for varname in ['anonymize_outgoing_connections',
+                        'password_change_period',
+                        'default_questionnaire']:
+            node.set_val(varname, root_tenant_node.get_val(varname))
+
+        context.questionnaire_id = root_tenant_node.get_val('default_questionnaire')
+
+        # Set data retention policy to 12 months
+        context.tip_timetolive = 365
+       
+        if not request['skip_recipient_account_creation']:
+            receiver_profile = session.query(models.UserProfile).filter(models.UserProfile.id == receiver_user.profile_id).first()
+            receiver_profile.can_edit_general_settings = True
+            
+            # Set the recipient name equal to the node name
+            receiver_user.name = receiver_user.public_name = request['node_name']
+
+@transact
+def wizard(session, tid, hostname, request):
+    return db_wizard(session, tid, hostname, request)
 
 @transact
 def update(session, tid, request):
@@ -147,6 +318,26 @@ def update(session, tid, request):
 
     return serializers.serialize_tenant(session, t)
 
+@transact
+def add_user_profiles(session, model, data):
+    session.bulk_insert_mappings(model, data)
+    session.commit()
+
+@transact
+def add_or_update_configs(session, model, data):
+    for config_data in data:
+        filters = {'tid': config_data['tid'], 'var_name': config_data['var_name']}
+        if model == models.ConfigL10N:
+            filters['lang'] = config_data['lang']
+
+        existing_record = session.query(model).filter_by(**filters).first()
+
+        if existing_record:
+            existing_record.set_v(config_data['value'])
+        else:
+            session.add(model(values=config_data))
+
+    session.commit()
 
 class TenantCollection(BaseHandler):
     check_roles = 'admin'
@@ -158,18 +349,58 @@ class TenantCollection(BaseHandler):
         Return the list of registered tenants
         """
         return get_tenant_list()
-
+    
+    @inlineCallbacks
     def post(self):
         """
         Create a new tenant
         """
         raw_content = self.request.content.read()
-        request = self.validate_request(raw_content, requests.AdminTenantDesc)
         content = json.loads(raw_content)
-        is_profile = content.get('is_profile', False)
+        tenant_profile = content.get('tenant')
 
-        return create_and_initialize(request, is_profile=is_profile)
+        if tenant_profile:
+            is_profile = True
+            request = self.validate_request(tenant_profile, requests.AdminTenantDesc)
+            t = yield create_and_initialize(request, is_profile=is_profile)
 
+            if t:
+                config_vars = content.get('config_vars', {})
+                user_profiles = content.get('user_profiles', [])
+                configs = config_vars.get('configs', [])
+                config_langs = config_vars.get('config_langs', [])
+                questionnaires = content.get('questionnaires', [])
+               
+                config_data = [
+                    {"tid": t["id"], "var_name": config["var_name"], "value": config["value"]}
+                    for config in configs if config["var_name"] != "uuid"
+                ]                
+                config_lang_data = [{'tid': t['id'],'lang': lang.get("lang"),'var_name': lang.get("var_name"),'value': lang.get("value")}
+                     for lang in config_langs]
+                
+                user_profiles_data = [{**{k: v for k, v in user_profile.items() if k not in ["id", "tid"]}, "tid": t["id"]}
+                    for user_profile in user_profiles
+                ]
+
+                if config_data:
+                    yield add_or_update_configs(models.Config, config_data)
+
+                if config_lang_data:
+                    yield add_or_update_configs(models.ConfigL10N, config_lang_data)
+
+                if user_profiles_data:
+                    yield add_user_profiles(models.UserProfile, user_profiles_data)
+
+                if questionnaires:
+                    # Duplicate each questionnaire for the new tenant
+                    for q in questionnaires:
+                        yield import_questionnaires(t['id'], q)
+                    
+        else:
+            request = self.validate_request(raw_content, requests.AdminTenantDesc)
+            is_profile = content.get('is_profile', False)
+            t = yield create_and_initialize(request, is_profile=is_profile)
+            return t
 
 class TenantInstance(BaseHandler):
     check_roles = 'admin'
@@ -177,7 +408,7 @@ class TenantInstance(BaseHandler):
     invalidate_cache = True
 
     def get(self, tid):
-        return get(int(tid))
+        return get(self, int(tid))
 
     def put(self, tid):
         """

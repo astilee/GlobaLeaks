@@ -48,7 +48,7 @@
             <div class="form-group clearfix">
               <button id="add-btn" class="float-start btn btn-primary" [disabled]="newTenantForm.invalid" (click)="addTenant();toggleAddTenant()" type="button">
                 <i class="fa-solid fa-plus"></i>
-                <span>Add</span>
+                <span>{{'Add'|translate}}</span>
               </button>
             </div>
           </form>
@@ -58,7 +58,7 @@
     <div class="row">
       @if (tenants) {
         <div class="col-md-12">
-          @for (tenant of tenants | orderBy:'id' | filter:'name':search | slice: (currentPage - 1) * itemsPerPage : currentPage * itemsPerPage; track tenant; let index = $index) {
+          @for (tenant of tenants | orderBy:'id' | search:search | slice: (currentPage - 1) * itemsPerPage : currentPage * itemsPerPage; track tenant; let index = $index) {
             <div>
               <form id="tenant-{{index}}" #editTenant="ngForm" novalidate>
                 <src-siteslist [editTenant]="editTenant" [index]="(currentPage - 1) * itemsPerPage + index" [tenant]="tenant" [tenants]="tenants" [indexNumber]="(index+1)"></src-siteslist>

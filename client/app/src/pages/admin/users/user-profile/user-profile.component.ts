@@ -1,4 +1,4 @@
-import {Component, OnInit, inject} from "@angular/core";
+import {Component, ElementRef, OnInit, ViewChild, inject} from "@angular/core";
 import {NewUser} from "@app/models/admin/new-user";
 import {tenantResolverModel} from "@app/models/resolvers/tenant-resolver-model";
 import {UserProfile} from "@app/models/resolvers/user-resolver-model";
@@ -13,6 +13,7 @@ import {FormsModule} from "@angular/forms";
 import {TranslatorPipe} from "@app/shared/pipes/translate";
 import {OrderByPipe} from "@app/shared/pipes/order-by.pipe";
 import {ProfileEditorComponent} from "../profile-editor/profile-editor.component";
+import {HttpClient} from "@angular/common/http";
 
 @Component({
   selector: 'src-user-profile',
@@ -25,6 +26,8 @@ export class UserProfileComponent implements OnInit {
   protected nodeResolver = inject(NodeResolver);
   private tenantsResolver = inject(TenantsResolver);
   private utilsService = inject(UtilsService);
+  private http = inject(HttpClient);
+  @ViewChild('keyUploadInput') keyUploadInput: ElementRef<HTMLInputElement>;
 
   showAddUser = false;
   tenantData: tenantResolverModel;
@@ -44,6 +47,7 @@ export class UserProfileComponent implements OnInit {
     const user: NewUser = new NewUser();
     user.role = this.new_user.role;
     user.name = this.new_user.name;
+    user.custom = true;
     user.language = this.nodeResolver.dataModel.default_language;
     this.utilsService.addAdminUser(user).subscribe(_ => {
       this.getResolver();
@@ -51,9 +55,26 @@ export class UserProfileComponent implements OnInit {
     });
   }
 
+  importProfile(files: FileList | null) {
+    if (files && files.length > 0) {
+      this.utilsService.readFileAsText(files[0]).subscribe((txt) => {
+        return this.http.post("api/admin/users", txt).subscribe({
+          next:()=>{
+            this.getResolver();
+          },
+          error:()=>{
+            if (this.keyUploadInput) {
+                this.keyUploadInput.nativeElement.value = "";
+            }
+          }
+        });
+      });
+    }
+  }
+
   getResolver() {
     return this.httpService.requestUsersResource().subscribe(response => {
-      this.usersData = response.user_profiles
+      this.usersData = response.user_profiles.filter(profile => profile.custom != false);
     });
   }
 

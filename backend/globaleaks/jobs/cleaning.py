@@ -1,4 +1,3 @@
-# -*- coding: utf-8
 # Implementation of the daily operations.
 import os
 from datetime import datetime, timedelta
@@ -60,13 +59,12 @@ class Cleaning(DailyJob):
             user = x[0]
             expiring_submission_count = x[1]
             earliest_expiration_date = x[2]
-            language = session.query(models.UserProfile.language).filter(models.UserProfile.id == user.profile_id).scalar()
 
-            user_desc = user_serialize_user(session, user, language)
+            user_desc = user_serialize_user(session, user, user.language)
 
             data = {
                 'type': 'tip_expiration_summary',
-                'node': db_admin_serialize_node(session, tid, language),
+                'node': db_admin_serialize_node(session, tid, user.language),
                 'user': user_desc,
                 'expiring_submission_count': expiring_submission_count,
                 'earliest_expiration_date': earliest_expiration_date
@@ -78,9 +76,9 @@ class Cleaning(DailyJob):
                  return
 
             if data['node']['mode'] == 'default':
-                data['notification'] = db_get_notification(session, tid, language)
+                data['notification'] = db_get_notification(session, tid, user.language)
             else:
-                data['notification'] = db_get_notification(session, 1, language)
+                data['notification'] = db_get_notification(session, 1, user.language)
 
             subject, body = Templating().get_mail_subject_and_body(data)
 

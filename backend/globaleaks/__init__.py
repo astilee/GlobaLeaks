@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 GlobaLeaks - Free and Open-Source Whistleblowing Software
 """
@@ -6,8 +5,8 @@ import operator
 
 __author__ = 'GlobaLeaks'
 __email__ = 'info@globaleaks.org'
-__copyright__ = '2011-2024 - GlobaLeaks'
-__version__ = '5.0.43'
+__copyright__ = '2011-2025 - GlobaLeaks'
+__version__ = '5.0.64'
 __license__ = 'AGPL-3.0'
 
 DATABASE_VERSION = 69

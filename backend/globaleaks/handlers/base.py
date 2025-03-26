@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-import base64
 import json
 import mimetypes
 import os
@@ -9,6 +7,7 @@ from datetime import datetime
 
 from tempfile import NamedTemporaryFile
 
+from nacl.encoding import Base64Encoder
 from twisted.internet import abstract
 from twisted.protocols.basic import FileSender
 
@@ -19,7 +18,7 @@ from globaleaks.sessions import Sessions
 from globaleaks.settings import Settings
 from globaleaks.state import State
 from globaleaks.transactions import db_get_user
-from globaleaks.utils.crypto import GCE
+from globaleaks.utils.crypto import GCE, sha256
 from globaleaks.utils.ip import check_ip
 from globaleaks.utils.log import log
 from globaleaks.utils.pgp import PGPContext
@@ -30,7 +29,7 @@ mimetypes.add_type('text/javascript', '.js')
 
 
 def decodeString(string):
-    string = base64.b64decode(string)
+    string = Base64Encoder.decode(string)
     uint8_array = [c for c in string]
     uint16_array = []
     for i in range(len(uint8_array)):
@@ -59,7 +58,6 @@ def serve_file(request, fo):
     return d
 
 
-
 def connection_check(tid, role, client_ip, client_using_tor):
     """
     Accept or refuse a connection in relation to the platform settings
@@ -69,13 +67,18 @@ def connection_check(tid, role, client_ip, client_using_tor):
     :param client_ip: A client IP
     :param client_using_tor: A boolean for signaling Tor use
     """
-    ip_filter_enabled = State.tenants[tid].cache.get('ip_filter_' + role + '_enable')
+    cache = State.tenants[tid].cache
+    ip_filter_enabled_key = f'ip_filter_{role}_enable'
+    ip_filter_key = f'ip_filter_{role}'
+    https_allowed_key = f'https_{role}'
+
+    ip_filter_enabled = cache.get(ip_filter_enabled_key)
     if ip_filter_enabled:
-        ip_filter = State.tenants[tid].cache.get('ip_filter_' + role)
+        ip_filter = cache.get(ip_filter_key)
         if not check_ip(client_ip, ip_filter):
             raise errors.AccessLocationInvalid
 
-    https_allowed = State.tenants[tid].cache['https_' + role]
+    https_allowed = cache.get(https_allowed_key)
     if not https_allowed and not client_using_tor:
         raise errors.TorNetworkRequired
 
@@ -86,7 +89,12 @@ def db_confirmation_check(session, tid, user_id, secret):
     if user.two_factor_secret:
         State.totp_verify(user.two_factor_secret, secret)
     else:
-        if not GCE.check_password(secret, user.salt, user.hash):
+        if len(user.hash) == 64:
+            hash = sha256(Base64Encoder.decode(secret.encode())).decode()
+        else:
+            hash = GCE.hash_password(secret, user.salt)
+
+        if not GCE.check_equality(hash, user.hash):
             raise errors.InvalidAuthentication
 
 
@@ -143,7 +151,7 @@ class BaseHandler(object):
         if session is None or session.tid != self.request.tid:
             return
 
-        if session.user_role != 'whistleblower' and \
+        if session.role != 'whistleblower' and \
            self.state.tenants[1].cache.get('log_accesses_of_internal_users', False):
              self.request.log_ip_and_ua = True
 
@@ -304,9 +312,18 @@ class BaseHandler(object):
 
         return open(filepath, 'rb')
 
-    def write_file(self, filename, fp):
-        if isinstance(fp, str):
-            fp = self.open_file(fp)
+    def write_file(self, filename, filepath):
+        if isinstance(filepath, str):
+            compressed_path = filepath + '.br'
+
+            accept_encoding = self.request.getHeader('Accept-Encoding')
+            if accept_encoding and 'br' in accept_encoding and os.path.exists(compressed_path):
+                self.request.compressed = True
+                filepath = compressed_path
+
+            fp = self.open_file(filepath)
+        else:
+            fp = filepath
 
         mimetype, _ = mimetypes.guess_type(filename)
 
@@ -341,22 +358,28 @@ class BaseHandler(object):
         file_id = self.request.args[b'flowIdentifier'][0].decode()
 
         if file_id not in self.state.TempUploadFiles:
-            if self.session and self.session.user_role == 'whistleblower':
-                State.RateLimitingTable.check(self.request.path + b'#' + self.session.user_id.encode(),
+            if self.session and self.session.role == 'whistleblower':
+                rate_limit_path = self.request.path
+                user_id = self.session.user_id.encode()
+                client_ip = self.request.client_ip.encode()
+
+                State.RateLimitingTable.check(rate_limit_path + b'#' + user_id,
                                               State.tenants[1].cache.threshold_attachments_per_hour_per_report)
-                State.RateLimitingTable.check(self.request.path + b'#' + self.request.client_ip.encode(),
+                State.RateLimitingTable.check(rate_limit_path + b'#' + client_ip,
                                               State.tenants[1].cache.threshold_attachments_per_hour_per_ip)
 
             self.state.TempUploadFiles[file_id] = SecureTemporaryFile(Settings.tmp_path)
 
         f = self.state.TempUploadFiles[file_id]
 
+        max_file_size = self.state.tenants[self.request.tid].cache.maximum_filesize
+
         chunk_size = len(self.request.args[b'file'][0])
-        if ((chunk_size // (1024 * 1024)) > self.state.tenants[self.request.tid].cache.maximum_filesize or
-            (total_file_size // (1024 * 1024)) > self.state.tenants[self.request.tid].cache.maximum_filesize or
-            f.size // (1024 * 1024) > self.state.tenants[self.request.tid].cache.maximum_filesize):
+        if (chunk_size // (1024 * 1024) > max_file_size or
+            total_file_size // (1024 * 1024) > max_file_size or
+            f.size // (1024 * 1024) > max_file_size):
             log.err("File upload request rejected: file too big", tid=self.request.tid)
-            raise errors.FileTooBig(self.state.tenants[self.request.tid].cache.maximum_filesize)
+            raise errors.FileTooBig(max_file_size)
 
         with f.open('w') as f:
             f.write(self.request.args[b'file'][0])
@@ -364,12 +387,11 @@ class BaseHandler(object):
             if self.request.args[b'flowChunkNumber'][0] != self.request.args[b'flowTotalChunks'][0]:
                 return None
 
-        mime_type, _ = mimetypes.guess_type(self.request.args[b'flowFilename'][0].decode())
-        if mime_type is None:
-            mime_type = 'application/octet-stream'
-
         filename = os.path.basename(self.request.args[b'flowFilename'][0].decode())
+        mime_type, _ = mimetypes.guess_type(filename)
+        mime_type = mime_type or 'application/octet-stream'  # Default MIME type if None
 
+        # Prepare the uploaded file metadata
         self.uploaded_file = {
             'id': file_id,
             'date': datetime_now(),

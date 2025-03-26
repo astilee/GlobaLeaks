@@ -1,7 +1,4 @@
-# -*- coding: utf-8 -*-
-#
 # Handlers dealing with tip interface for receivers (rtip)
-import base64
 import copy
 import json
 import os
@@ -10,6 +7,7 @@ import time
 
 from datetime import datetime, timedelta
 
+from nacl.encoding import Base64Encoder
 from twisted.internet.threads import deferToThread
 from twisted.internet.defer import inlineCallbacks, returnValue
 
@@ -34,7 +32,7 @@ from globaleaks.utils.utility import datetime_now, datetime_null, datetime_never
 from globaleaks.utils.json import JSONEncoder
 
 
-def db_notify_grant_access(session, user, language):
+def db_notify_grant_access(session, user):
     """
     Transaction for the creation of notifications related to grant of access to report
     :param session: An ORM session
@@ -44,13 +42,13 @@ def db_notify_grant_access(session, user, language):
         'type': 'tip_access'
     }
 
-    data['user'] = user_serialize_user(session, user, language)
-    data['node'] = db_admin_serialize_node(session, user.tid, language)
+    data['user'] = user_serialize_user(session, user, user.language)
+    data['node'] = db_admin_serialize_node(session, user.tid, user.language)
 
     if data['node']['mode'] == 'default':
-        data['notification'] = db_get_notification(session, user.tid, language)
+        data['notification'] = db_get_notification(session, user.tid, user.language)
     else:
-        data['notification'] = db_get_notification(session, 1, language)
+        data['notification'] = db_get_notification(session, 1, user.language)
 
     subject, body = Templating().get_mail_subject_and_body(data)
 
@@ -85,30 +83,30 @@ def db_grant_tip_access(session, tid, user_id, user_cc, itip, rtip, receiver_id)
                           models.User.id == receiver_id)
 
     if itip.crypto_tip_pub_key and not new_receiver.crypto_pub_key:
-        # Access to encrypted submissions could be granted only if the recipient has performed first login
+        # Access to encrypted submissions could be granted only if the recipient is fully activated with encryption keys
         return
 
     _tip_key = b''
     if itip.crypto_tip_pub_key:
-        _tip_key = GCE.asymmetric_decrypt(user_cc, base64.b64decode(rtip.crypto_tip_prv_key))
+        _tip_key = GCE.asymmetric_decrypt(user_cc, Base64Encoder.decode(rtip.crypto_tip_prv_key))
         _tip_key = GCE.asymmetric_encrypt(new_receiver.crypto_pub_key, _tip_key)
 
     new_rtip = db_create_receivertip(session, new_receiver, itip, _tip_key)
     new_rtip.new = False
     if itip.deprecated_crypto_files_pub_key:
-        _files_key = GCE.asymmetric_decrypt(user_cc, base64.b64decode(rtip.deprecated_crypto_files_prv_key))
-        new_rtip.deprecated_crypto_files_prv_key = base64.b64encode(
+        _files_key = GCE.asymmetric_decrypt(user_cc, Base64Encoder.decode(rtip.deprecated_crypto_files_prv_key))
+        new_rtip.deprecated_crypto_files_prv_key = Base64Encoder.encode(
             GCE.asymmetric_encrypt(new_receiver.crypto_pub_key, _files_key))
 
     wbfiles = session.query(models.WhistleblowerFile) \
                      .filter(models.WhistleblowerFile.receivertip_id == rtip.id)
 
     for wbfile in wbfiles:
-        rf = models.WhistleblowerFile()
-        rf.internalfile_id = wbfile.internalfile_id
-        rf.receivertip_id = new_rtip.id
-        rf.new = False
-        session.add(rf)
+        wf = models.WhistleblowerFile()
+        wf.internalfile_id = wbfile.internalfile_id
+        wf.receivertip_id = new_rtip.id
+        wf.new = False
+        session.add(wf)
 
     return new_receiver, new_rtip
 
@@ -147,7 +145,7 @@ def grant_tip_access(session, tid, user_id, user_cc, itip_id, receiver_id):
 
     new_receiver, _ = db_grant_tip_access(session, tid, user, user_cc, itip, rtip, receiver_id)
     if new_receiver:
-        db_notify_grant_access(session, new_receiver, profile.language)
+        db_notify_grant_access(session, new_receiver)
         db_log(session, tid=tid, type='grant_access', user_id=user_id, object_id=itip.id, data=log_data)
 
 
@@ -179,11 +177,11 @@ def transfer_tip_access(session, tid, user_id, user_cc, itip_id, receiver_id):
     new_receiver, _ = db_grant_tip_access(session, tid, user, user_cc, itip, rtip, receiver_id)
     if new_receiver:
         db_revoke_tip_access(session, tid, user, itip, user_id)
-        db_notify_grant_access(session, new_receiver, profile.language)
+        db_notify_grant_access(session, new_receiver)
         db_log(session, tid=tid, type='transfer_access', user_id=user_id, object_id=itip.id, data=log_data)
 
 
-def get_ttl(session, orm_object_model, orm_object_id):
+def db_get_ttl(session, orm_object_model, orm_object_id):
     """
     Transaction for retrieving the data retention
 
@@ -197,7 +195,7 @@ def get_ttl(session, orm_object_model, orm_object_id):
                   .filter(orm_object_model.id == orm_object_id).one()[0]
 
 
-def recalculate_data_retention(session, itip, report_reopen_request):
+def db_recalculate_data_retention(session, itip, report_reopen_request):
     """
     Transaction for recaulating the data retention after a status change
 
@@ -207,20 +205,20 @@ def recalculate_data_retention(session, itip, report_reopen_request):
     prev_expiration_date = itip.expiration_date
     if report_reopen_request:
         # use the context-defined data retention
-        ttl = get_ttl(session, models.Context, itip.context_id)
+        ttl = db_get_ttl(session, models.Context, itip.context_id)
         if ttl > 0:
             itip.expiration_date = get_expiration(ttl)
         else:
             itip.expiration_date = datetime_never()
     elif itip.status == "closed" and itip.substatus is not None:
-        ttl = get_ttl(session, models.SubmissionSubStatus, itip.substatus)
+        ttl = db_get_ttl(session, models.SubmissionSubStatus, itip.substatus)
         if ttl > 0:
             itip.expiration_date = get_expiration(ttl)
 
     return prev_expiration_date, itip.expiration_date
 
 
-def db_update_submission_status(session, tid, user_id, itip, status_id, substatus_id, profile):
+def db_update_submission_status(session, tid, user_id, itip, status_id, substatus_id=None):
     """
     Transaction for registering a change of status of a submission
 
@@ -234,11 +232,11 @@ def db_update_submission_status(session, tid, user_id, itip, status_id, substatu
     if status_id == 'new':
         return
 
+    report_close_request = itip.status != "closed" and status_id == "closed"
+    report_reopen_request = itip.status == "closed" and status_id == "opened"
+
     itip.status = status_id
     itip.substatus = substatus_id or None
-
-    report_reopen_request = itip.status == "closed" and status_id == "opened"
-    prev_expiration_date, curr_expiration_date = recalculate_data_retention(session, itip, report_reopen_request)
 
     log_data = {
       'status': itip.status,
@@ -247,13 +245,18 @@ def db_update_submission_status(session, tid, user_id, itip, status_id, substatu
 
     db_log(session, tid=tid, type='update_report_status', user_id=user_id, object_id=itip.id, data=log_data)
 
-    if prev_expiration_date != curr_expiration_date:
-        log_data = {
-            'prev_expiration_date': int(datetime.timestamp(prev_expiration_date)),
-            'curr_expiration_date': int(datetime.timestamp(curr_expiration_date))
-        }
+    if report_close_request:
+        itip.reminder_date = datetime_never()
 
-        db_log(session, tid=tid, type='update_report_expiration', user_id=user_id, object_id=itip.id, data=log_data)
+    prev_expiration_date, currect_expiration_date = db_recalculate_data_retention(session, itip, report_reopen_request)
+
+    if prev_expiration_date != itip.expiration_date:
+       log_data = {
+           'prev_expiration_date': int(datetime.timestamp(prev_expiration_date)),
+           'curr_expiration_date': int(datetime.timestamp(itip.expiration_date))
+       }
+
+       db_log(session, tid=tid, type='update_report_expiration', user_id=user_id, object_id=itip.id, data=log_data)
 
 
 def db_update_temporary_redaction(session, tid, user_id, redaction, redaction_data):
@@ -433,7 +436,7 @@ def db_redact_comment(session, tid, user_id, itip_id, redaction, redaction_data,
     content = redact_content(currentMaskedContent.get('content'), new_permanent_redaction)
 
     comment = session.query(models.Comment).get(redaction_data['reference_id'])
-    comment.content = base64.b64encode(GCE.asymmetric_encrypt(itip_id.crypto_tip_pub_key, content)).decode()
+    comment.content = Base64Encoder.encode(GCE.asymmetric_encrypt(itip_id.crypto_tip_pub_key, content)).decode()
 
 
 def db_redact_answers(answers, redaction):
@@ -486,7 +489,7 @@ def db_redact_answers_recursively(session, tid, user_id, itip_id, redaction, red
     _content = answers
 
     if itip_id.crypto_tip_pub_key:
-        _content = base64.b64encode(
+        _content = Base64Encoder.encode(
             GCE.asymmetric_encrypt(itip_id.crypto_tip_pub_key, json.dumps(_content, cls=JSONEncoder).encode())).decode()
 
     itip_answers = session.query(models.InternalTipAnswers) \
@@ -516,7 +519,7 @@ def db_redact_whistleblower_identity(session, tid, user_id, itip_id, redaction, 
 
     _content = whistleblower_identity
     if itip_id.crypto_tip_pub_key:
-        _content = base64.b64encode(
+        _content = Base64Encoder.encode(
             GCE.asymmetric_encrypt(itip_id.crypto_tip_pub_key, json.dumps(_content, cls=JSONEncoder).encode())).decode()
 
     itip_whistleblower_identity = session.query(models.InternalTipData) \
@@ -549,7 +552,7 @@ def update_tip_submission_status(session, tid, user_id, rtip_id, status_id, subs
                                models.ReceiverTip.receiver_id != user_id):
         db_notify_report_update(session, user, rtip, itip)
 
-    db_update_submission_status(session, tid, user_id, itip, status_id, substatus_id, profile)
+    db_update_submission_status(session, tid, user_id, itip, status_id, substatus_id)
 
 
 def db_access_rtip(session, tid, user_id, itip_id):
@@ -568,7 +571,7 @@ def db_access_rtip(session, tid, user_id, itip_id):
                    models.InternalTip.id == itip_id,
                    models.ReceiverTip.receiver_id == models.User.id,
                    models.ReceiverTip.internaltip_id == models.InternalTip.id,
-                   models.InternalTip.tid == tid,
+                   models.InternalTip.tid.in_({tid, State.tenants[tid].cache.ptid}),
                    models.UserProfile.id == models.User.profile_id))
 
 
@@ -620,7 +623,7 @@ def register_rfile_on_db(session, tid, user_id, itip_id, uploaded_file):
         for k in ['name', 'description', 'type', 'size']:
             if k == 'size':
                 uploaded_file[k] = str(uploaded_file[k])
-            uploaded_file[k] = base64.b64encode(GCE.asymmetric_encrypt(itip.crypto_tip_pub_key, uploaded_file[k]))
+            uploaded_file[k] = Base64Encoder.encode(GCE.asymmetric_encrypt(itip.crypto_tip_pub_key, uploaded_file[k]))
 
     new_file = models.ReceiverFile()
     new_file.id = uploaded_file['filename']
@@ -659,11 +662,11 @@ def db_get_rtip(session, tid, user_id, itip_id, language):
 
     if itip.status == 'new':
         itip.update_date = rtip.last_access
-        db_update_submission_status(session, tid, user_id, itip, 'opened', None, profile)
+        db_update_submission_status(session, tid, user_id, itip, 'opened')
 
     db_log(session, tid=tid, type='access_report', user_id=user_id, object_id=itip.id)
 
-    return serializers.serialize_rtip(session, itip, rtip, language), base64.b64decode(rtip.crypto_tip_prv_key)
+    return serializers.serialize_rtip(session, itip, rtip, language), Base64Encoder.decode(rtip.crypto_tip_prv_key)
 
 
 @transact
@@ -745,21 +748,30 @@ def db_postpone_expiration(session, itip, expiration_date):
     :param itip: A submission model to be postponed
     :param expiration_date: The date timestamp to be set in milliseconds
     """
-    prev_expiration_date = itip.expiration_date
+    policy = db_get_ttl(session, models.Context, itip.context_id)
 
-    max_date = 32503676400
     expiration_date = expiration_date / 1000
-    expiration_date = expiration_date if expiration_date < max_date else max_date
     expiration_date = datetime.fromtimestamp(expiration_date)
 
+    # Enable to anticipate but not before 90 days since current day
     min_date = time.time() + 91 * 86400
     min_date = min_date - min_date % 86400
     min_date = datetime.fromtimestamp(min_date)
     if itip.expiration_date <= min_date:
         min_date = itip.expiration_date
 
-    if expiration_date >= min_date:
-        itip.expiration_date = expiration_date
+    # Enable to postpone but not after max(365, 2 time the policy)
+    max_date = time.time() + (max(365, 2 * policy) + 1) * 86400
+    max_date = max_date - max_date % 86400
+    max_date = datetime.fromtimestamp(max_date)
+
+    if expiration_date <= min_date:
+        expiration_date = min_date
+    elif expiration_date >= max_date:
+        expiration_date = max_date
+
+    prev_expiration_date = itip.expiration_date
+    itip.expiration_date = expiration_date
 
     return prev_expiration_date, expiration_date
 
@@ -880,7 +892,7 @@ def set_internaltip_variable(session, tid, user_id, itip_id, key, value):
     _, _, itip, _ = db_access_rtip(session, tid, user_id, itip_id)
 
     if itip.crypto_tip_pub_key and value and key in ['label']:
-        value = base64.b64encode(GCE.asymmetric_encrypt(itip.crypto_tip_pub_key, value))
+        value = Base64Encoder.encode(GCE.asymmetric_encrypt(itip.crypto_tip_pub_key, value))
 
     setattr(itip, key, value)
 
@@ -909,32 +921,25 @@ def db_create_identityaccessrequest_notifications(session, itip, rtip, iar):
     :param rtip: A rtip ID of the rtip involved in the request
     :param iar: A identity access request model
     """
-    query = (session.query(models.User)
-        .join(models.UserProfile, models.User.profile_id == models.UserProfile.id)
-        .filter(
-            models.User.role == 'custodian',
-            models.User.tid == itip.tid,
-            models.UserProfile.notification.is_(True)
-        ))
-
-    for user in query:
+    for user in session.query(models.User).filter(models.User.role == 'custodian',
+                                                  models.User.tid == itip.tid,
+                                                  models.User.notification.is_(True)):
         context = session.query(models.Context).filter(models.Context.id == itip.context_id).one()
-        language = session.query(models.UserProfile.language).filter(models.UserProfile.id == user.profile_id).scalar()
 
         data = {
             'type': 'identity_access_request'
         }
 
-        data['user'] = user_serialize_user(session, user, language)
-        data['tip'] = serializers.serialize_rtip(session, itip, rtip, language)
-        data['context'] = admin_serialize_context(session, context, language)
+        data['user'] = user_serialize_user(session, user, user.language)
+        data['tip'] = serializers.serialize_rtip(session, itip, rtip, user.language)
+        data['context'] = admin_serialize_context(session, context, user.language)
         data['iar'] = serializers.serialize_identityaccessrequest(session, iar)
-        data['node'] = db_admin_serialize_node(session, itip.tid, language)
+        data['node'] = db_admin_serialize_node(session, itip.tid, user.language)
 
         if data['node']['mode'] == 'default':
-            data['notification'] = db_get_notification(session, itip.tid, language)
+            data['notification'] = db_get_notification(session, itip.tid, user.language)
         else:
-            data['notification'] = db_get_notification(session, 1, language)
+            data['notification'] = db_get_notification(session, 1, user.language)
 
         subject, body = Templating().get_mail_subject_and_body(data)
 
@@ -958,23 +963,22 @@ def create_identityaccessrequest(session, tid, user_id, user_cc, itip_id, reques
     """
     user, rtip, itip, _ = db_access_rtip(session, tid, user_id, itip_id)
 
-    crypto_tip_prv_key = GCE.asymmetric_decrypt(user_cc, base64.b64decode(rtip.crypto_tip_prv_key))
+    crypto_tip_prv_key = GCE.asymmetric_decrypt(user_cc, Base64Encoder.decode(rtip.crypto_tip_prv_key))
 
     iar = models.IdentityAccessRequest()
     iar.internaltip_id = itip.id
     iar.request_user_id = user.id
-    iar.request_motivation = base64.b64encode(
+    iar.request_motivation = Base64Encoder.encode(
         GCE.asymmetric_encrypt(itip.crypto_tip_pub_key, request['request_motivation']))
     session.add(iar)
     session.flush()
 
     custodians = 0
-    for custodian in session.query(models.User).join(models.UserProfile, models.User.profile_id == models.UserProfile.id) \
-            .filter(models.User.tid == tid, models.User.role == 'custodian', models.UserProfile.enabled.is_(True)):
+    for custodian in session.query(models.User).filter(models.User.tid == tid, models.User.role == 'custodian', models.User.enabled == True):
         iarc = models.IdentityAccessRequestCustodian()
         iarc.identityaccessrequest_id = iar.id
         iarc.custodian_id = custodian.id
-        iarc.crypto_tip_prv_key = base64.b64encode(GCE.asymmetric_encrypt(custodian.crypto_pub_key, crypto_tip_prv_key))
+        iarc.crypto_tip_prv_key = Base64Encoder.encode(GCE.asymmetric_encrypt(custodian.crypto_pub_key, crypto_tip_prv_key))
         session.add(iarc)
         custodians += 1
 
@@ -1008,7 +1012,7 @@ def create_comment(session, tid, user_id, itip_id, content, visibility='public')
 
     _content = content
     if itip.crypto_tip_pub_key:
-        _content = base64.b64encode(GCE.asymmetric_encrypt(itip.crypto_tip_pub_key, content)).decode()
+        _content = Base64Encoder.encode(GCE.asymmetric_encrypt(itip.crypto_tip_pub_key, content)).decode()
 
     comment = models.Comment()
     comment.internaltip_id = itip.id
@@ -1040,7 +1044,7 @@ def create_redaction(session, tid, user_id, data):
         else:
             content_str = data.get('content', str(data))
             content_bytes = content_str.encode()
-            mask_content = base64.b64encode(GCE.asymmetric_encrypt(itip.crypto_tip_pub_key, content_bytes)).decode()
+            mask_content = Base64Encoder.encode(GCE.asymmetric_encrypt(itip.crypto_tip_pub_key, content_bytes)).decode()
 
     redaction = models.Redaction()
     redaction.id = data.get('id')
@@ -1243,7 +1247,7 @@ class WhistleblowerFileDownload(BaseHandler):
 
         redaction = session.query(models.Redaction) \
                            .filter(models.Redaction.reference_id == ifile.id, models.Redaction.entry == '0').one_or_none()
-        
+
         if redaction is not None and \
                 not profile.can_mask_information and \
                 not profile.can_redact_information:
@@ -1271,8 +1275,8 @@ class WhistleblowerFileDownload(BaseHandler):
         self.check_file_presence(filelocation)
 
         if tip_prv_key:
-            tip_prv_key = GCE.asymmetric_decrypt(self.session.cc, base64.b64decode(tip_prv_key))
-            name = GCE.asymmetric_decrypt(tip_prv_key, base64.b64decode(name.encode())).decode()
+            tip_prv_key = GCE.asymmetric_decrypt(self.session.cc, Base64Encoder.decode(tip_prv_key))
+            name = GCE.asymmetric_decrypt(tip_prv_key, Base64Encoder.decode(name.encode())).decode()
 
             try:
                 # First attempt
@@ -1282,7 +1286,7 @@ class WhistleblowerFileDownload(BaseHandler):
                 if not tip_prv_key2:
                     raise
 
-                files_prv_key2 = GCE.asymmetric_decrypt(self.session.cc, base64.b64decode(tip_prv_key2))
+                files_prv_key2 = GCE.asymmetric_decrypt(self.session.cc, Base64Encoder.decode(tip_prv_key2))
                 filelocation = GCE.streaming_encryption_open('DECRYPT', files_prv_key2, filelocation)
 
         yield self.write_file_as_download(name, filelocation, pgp_key)
@@ -1322,7 +1326,7 @@ class ReceiverFileDownload(BaseHandler):
         except:
             raise errors.ResourceNotFound
         else:
-            return rfile.name, rfile.id, base64.b64decode(rtip.crypto_tip_prv_key), pgp_key
+            return rfile.name, rfile.id, rtip.crypto_tip_prv_key, pgp_key
 
     @inlineCallbacks
     def get(self, rfile_id):
@@ -1338,8 +1342,8 @@ class ReceiverFileDownload(BaseHandler):
         self.check_file_presence(filelocation)
 
         if tip_prv_key:
-            tip_prv_key = GCE.asymmetric_decrypt(self.session.cc, tip_prv_key)
-            name = GCE.asymmetric_decrypt(tip_prv_key, base64.b64decode(name.encode())).decode()
+            tip_prv_key = GCE.asymmetric_decrypt(self.session.cc, Base64Encoder.decode(tip_prv_key))
+            name = GCE.asymmetric_decrypt(tip_prv_key, Base64Encoder.decode(name.encode())).decode()
             filelocation = GCE.streaming_encryption_open('DECRYPT', tip_prv_key, filelocation)
 
         yield self.write_file_as_download(name, filelocation, pgp_key)

@@ -1,18 +1,24 @@
 # -*- coding: utf-8
 import json
+from nacl.encoding import Base64Encoder
 from twisted.internet.defer import inlineCallbacks
 
 from globaleaks import models
+from globaleaks.handlers.admin.operation import set_tmp_key
 from globaleaks.handlers.base import BaseHandler
 from globaleaks.handlers.user import parse_pgp_options, \
                                      user_serialize_user
-from globaleaks.models import UserProfile, fill_localized_keys
+from globaleaks.models import Config, UserProfile, fill_localized_keys
+from globaleaks.handlers.user.reset_password import db_generate_password_reset_token
 from globaleaks.orm import db_del, db_get, db_log, transact, tw
 from globaleaks.rest import errors, requests
 from globaleaks.state import State
 from globaleaks.transactions import db_get_user
-from globaleaks.utils.crypto import GCE, Base64Encoder, generateRandomPassword
+from globaleaks.utils.crypto import GCE, generateRandomPassword, sha256
 from globaleaks.utils.utility import datetime_now, datetime_null, uuid4
+from sqlalchemy import or_
+
+protected_profiles = {'admin': 'Admin', 'receiver': 'Receiver', 'analyst': 'Analyst', 'custodian': 'Custodian'}
 
 def serialize_user_profile(user):
     """
@@ -23,25 +29,23 @@ def serialize_user_profile(user):
     """
     user_profile = {
         'id': user.id,
+        'tid': user.tid,
         'name': user.name,
         'role': user.role,
-        'enabled': user.enabled,
-        'language': user.language,
-        'notification': user.notification,
         'can_edit_general_settings': user.can_edit_general_settings,
         'can_delete_submission': user.can_delete_submission,
         'can_postpone_expiration': user.can_postpone_expiration,
         'can_grant_access_to_reports': user.can_grant_access_to_reports,
         'can_redact_information': user.can_redact_information,
         'can_mask_information': user.can_mask_information,
-        'can_reopen_reports': user.can_reopen_reports,
         'can_transfer_access_to_reports': user.can_transfer_access_to_reports,
         'forcefully_selected': user.forcefully_selected,
+        'custom': user.custom,
     }
 
     return user_profile
 
-def db_create_user_profile(session, request):
+def db_create_user_profile(session, tid, request):
     """
     Transaction for creating a new user
 
@@ -49,13 +53,13 @@ def db_create_user_profile(session, request):
     :param request: The request data
     :return: The serialized descriptor of the created object
     """
-
+    request['tid'] = tid
     user = models.UserProfile(request)
 
     for key, value in request.items():
         setattr(user, key, value)
     
-    existing_user = session.query(models.UserProfile).filter(models.UserProfile.name == user.name).first()
+    existing_user = session.query(models.UserProfile).filter(models.UserProfile.tid == user.tid, models.UserProfile.name == user.name, models.UserProfile.role == user.role).first()
     if existing_user:
         raise errors.DuplicateUserError
 
@@ -66,10 +70,9 @@ def db_create_user_profile(session, request):
     return serialize_user_profile(user)
 
 @transact
-def db_delete_user_profile(session, user_id):
-    protected_profiles = {'admin': 'Admin', 'receiver': 'Receiver', 'analyst': 'Analyst', 'custodian': 'Custodian'}
+def db_delete_user_profile(session, user_id, tid):
 
-    user = session.query(models.UserProfile).filter(models.UserProfile.id == user_id).first()
+    user = session.query(models.UserProfile).filter(models.UserProfile.tid == tid, models.UserProfile.id == user_id).first()
 
     if not user:
         raise ValueError
@@ -84,7 +87,7 @@ def db_delete_user_profile(session, user_id):
     session.commit()
 
 @transact
-def create_user_profile(session, request):
+def create_user_profile(session, tid, request):
     """
     Transaction for creating a new user
 
@@ -92,10 +95,10 @@ def create_user_profile(session, request):
     :param request: The request data
     :return: The serialized descriptor of the created object
     """
-    return db_create_user_profile(session, request)
+    return db_create_user_profile(session, tid, request)
 
 @transact
-def db_admin_update_user_profile(session, user_id, request):
+def db_admin_update_user_profile(session, user_id, tid, request):
     """
     Update the user profile in the database.
     
@@ -104,7 +107,7 @@ def db_admin_update_user_profile(session, user_id, request):
     :param request: The new data for updating the user profile
     :return: The updated user object
     """
-    user = session.query(models.UserProfile).filter(models.UserProfile.id == user_id).first()
+    user = session.query(models.UserProfile).filter(models.UserProfile.tid == tid, models.UserProfile.id == user_id).first()
     
     for key, value in request.items():
         if hasattr(user, key):
@@ -115,46 +118,29 @@ def db_admin_update_user_profile(session, user_id, request):
     return serialize_user_profile(user)
 
 @transact
-def db_get_user_profiles(session):
+def db_get_user_profiles(session, tid):
     """
     Retrieve all user profiles from the database.
     
     :param session: ORM session
     :return: List of user profiles in serialized form
     """
-    users = session.query(models.UserProfile).all()
+    default_profile_exists = session.query(Config).filter_by(tid=tid, var_name='default_profile').first()
+
+    if default_profile_exists:
+        users = session.query(models.UserProfile).filter(or_(models.UserProfile.tid == tid,
+            models.UserProfile.tid == int(default_profile_exists.value))).all()
+    else:
+        users = session.query(models.UserProfile).filter(models.UserProfile.tid == tid).all()
 
     user_profiles = []
     for user in users:
+        if user.role in protected_profiles and user.name == protected_profiles[user.role]:
+           continue
         user_data = serialize_user_profile(user)
         user_profiles.append(user_data)
 
     return user_profiles
-
-def db_set_user_password(session, tid, user, password):
-    config = models.config.ConfigFactory(session, tid)
-
-    user.hash = GCE.hash_password(password, user.salt)
-    user.password_change_date = datetime_now()
-
-    if config.get_val('encryption'):
-        root_config = models.config.ConfigFactory(session, 1)
-
-        enc_key = GCE.derive_key(password.encode(), user.salt)
-        cc, user.crypto_pub_key = GCE.generate_keypair()
-        user.crypto_prv_key = Base64Encoder.encode(GCE.symmetric_encrypt(enc_key, cc))
-        user.crypto_bkp_key, user.crypto_rec_key = GCE.generate_recovery_key(cc)
-
-        crypto_escrow_pub_key_tenant_1 = root_config.get_val('crypto_escrow_pub_key')
-        if crypto_escrow_pub_key_tenant_1:
-            user.crypto_escrow_bkp1_key = Base64Encoder.encode(GCE.asymmetric_encrypt(crypto_escrow_pub_key_tenant_1, cc))
-
-        if tid != 1:
-            crypto_escrow_pub_key_tenant_n = config.get_val('crypto_escrow_pub_key')
-            if crypto_escrow_pub_key_tenant_n:
-                user.crypto_escrow_bkp2_key = Base64Encoder.encode(GCE.asymmetric_encrypt(crypto_escrow_pub_key_tenant_n, cc))
-
-
 
 def db_create_user(session, tid, user_session, request, language):
     """
@@ -167,6 +153,10 @@ def db_create_user(session, tid, user_session, request, language):
     :param language: The language of the request
     :return: The serialized descriptor of the created object
     """
+    config = models.config.ConfigFactory(session, tid)
+
+    encryption = config.get_val('encryption')
+
     request['tid'] = tid
 
     fill_localized_keys(request, models.User.localized_keys, language)
@@ -183,20 +173,55 @@ def db_create_user(session, tid, user_session, request, language):
     if existing_user:
         raise errors.DuplicateUserError
 
-    user.salt = GCE.generate_salt()
+    salt = config.get_val('receipt_salt')
+    user.salt = GCE.generate_salt(salt + ":" + user.username)
 
     # The various options related in manage PGP keys are used here.
     parse_pgp_options(user, request)
 
-    if user_session and user_session.ek:
-        db_set_user_password(session, tid, user, generateRandomPassword(16))
+    password = request.get('password', '')
+    if not password:
+        password = generateRandomPassword(16)
+        key = Base64Encoder.decode(GCE.derive_key(password, user.salt).encode())
+    else:
+        key = Base64Encoder.decode(password)
+
+    user.hash = sha256(key)
 
     session.add(user)
 
     session.flush()
-    
+
+    # After flush align date to user.creation_date
+    user.password_change_date = user.creation_date
+
     if user_session:
         db_log(session, tid=tid, type='create_user', user_id=user_session.user_id, object_id=user.id)
+
+    if request.get('send_activation_link', False):
+        token = db_generate_password_reset_token(session, user)
+    else:
+        token = None
+
+    crypto_escrow_pub_key_tenant_1 = models.config.ConfigFactory(session, 1).get_val('crypto_escrow_pub_key')
+    crypto_escrow_pub_key_tenant_n = config.get_val('crypto_escrow_pub_key')
+
+    if encryption and crypto_escrow_pub_key_tenant_1 or crypto_escrow_pub_key_tenant_n:
+        cc, user.crypto_pub_key = GCE.generate_keypair()
+        user.crypto_prv_key = Base64Encoder.encode(GCE.symmetric_encrypt(key, cc))
+        user.crypto_bkp_key, user.crypto_rec_key = GCE.generate_recovery_key(cc)
+
+        if user_session and token:
+            set_tmp_key(user_session, user, token, cc)
+
+    if not crypto_escrow_pub_key_tenant_1 and not crypto_escrow_pub_key_tenant_n:
+        return user
+
+    if crypto_escrow_pub_key_tenant_1:
+        user.crypto_escrow_bkp1_key = Base64Encoder.encode(GCE.asymmetric_encrypt(crypto_escrow_pub_key_tenant_1, cc))
+
+    if tid != 1 and crypto_escrow_pub_key_tenant_n:
+        user.crypto_escrow_bkp2_key = Base64Encoder.encode(GCE.asymmetric_encrypt(crypto_escrow_pub_key_tenant_n, cc))
 
     return user
 
@@ -227,7 +252,8 @@ def create_user(session, tid, user_session, request, language):
     :param language: The language of the request
     :return: The serialized descriptor of the created object
     """
-    return user_serialize_user(session, db_create_user(session, tid, user_session, request, language), language)
+    user = db_create_user(session, tid, user_session, request, language)
+    return user_serialize_user(session, user, language)
 
 
 def db_admin_update_user(session, tid, user_session, user_id, request, language):
@@ -284,6 +310,20 @@ def db_get_users(session, tid, role=None, language=None):
 
     return [user_serialize_user(session, user, language) for user in users]
 
+def get_user(session, tid, id):
+    """
+    Return specific profile or user.
+    """
+    profile = session.query(models.UserProfile).filter(models.UserProfile.id == id, models.UserProfile.tid == tid).first()
+    if profile:
+        return serialize_user_profile(profile)
+    
+    user = session.query(models.User).filter(models.User.id == id, models.User.tid == tid).first()
+    if user:
+        return user_serialize_user(session, user, State.tenants[tid].cache.default_language)
+    
+    raise errors.NotFound
+   
 
 class UsersCollection(BaseHandler):
     check_roles = 'admin'
@@ -296,7 +336,7 @@ class UsersCollection(BaseHandler):
         """
         users = yield tw(db_get_users, self.request.tid, None, self.request.language)
 
-        user_profiles = yield db_get_user_profiles()
+        user_profiles = yield db_get_user_profiles(self.request.tid)
 
         response = {"users": users, "user_profiles": user_profiles}
     
@@ -306,19 +346,28 @@ class UsersCollection(BaseHandler):
     def post(self):
         """
         Create a new user or user profile.
-        If 'profile_id' is in the request, create a User; otherwise, create a UserProfile.
         """
         content = self.request.content.read().decode('utf-8')
         content_data = json.loads(content)
         profile_id = content_data.get("profile_id", "").strip()
-        is_profile_id_present = profile_id != ""        
-        request_type = requests.AdminUserDesc if is_profile_id_present else requests.AdminUserProfileDesc
-        request = yield self.validate_request(content, request_type)
-        if "profile_id" in request:
+        custom = content_data.get("custom", True)
+        is_profile_id = profile_id != ""
+    
+        if not custom and not is_profile_id:
+            user_profile_request = yield self.validate_request(content, requests.AdminUserProfileDesc)
+            user_profile = yield create_user_profile(self.request.tid, user_profile_request)
+    
+            content_data["profile_id"] = user_profile["id"]
+            is_profile_id = user_profile["id"]
+    
+        request_type = requests.AdminUserDesc if is_profile_id else requests.AdminUserProfileDesc
+        request = yield self.validate_request(json.dumps(content_data), request_type)
+    
+        if is_profile_id:
             user = yield create_user(self.request.tid, self.session, request, self.request.language)
             return user
         else:
-            profile = yield create_user_profile(request)
+            profile = yield create_user_profile(self.request.tid, request)
             return profile
 
 
@@ -326,41 +375,60 @@ class UserInstance(BaseHandler):
     check_roles = 'admin'
     invalidate_cache = True
 
+    def get(self, user_id):
+        """
+        Retrieve the specified user or user profile.
+        """
+        return tw(get_user, self.request.tid, user_id)
+
     @inlineCallbacks
     def put(self, user_id):
         """
-        Update the specified user or user profile.
-        If 'profile_id' is in the request, update the user; otherwise, update the user profile.
+         Update the specified user or user profile.
         """
         content = self.request.content.read().decode('utf-8')
-        is_profile_id = "profile_id" in content
+        content_data = json.loads(content)
+        profile_id = content_data.get("profile_id", "").strip()
+        custom = content_data.get("custom")
+        defualt_profile_id = content_data.get("defualt_profile_id")
 
-        if is_profile_id:
-            request = yield self.validate_request(content, requests.AdminUserDesc)
-            user = yield tw(db_admin_update_user,
-                self.request.tid,
-                self.session,
-                user_id,
-                request,
-                self.request.language)
+        if profile_id:
+            if not custom:
+                content_data["custom"] = custom
+                if content_data.get("profile_name") and content_data.get("profile_role"):
+                    content_data["name"] = content_data.get("profile_name")
+                    content_data["role"] = content_data.get("profile_role")
+                profile_request = yield self.validate_request(json.dumps(content_data), requests.AdminUserProfileDesc)
+                yield db_admin_update_user_profile(profile_id, self.request.tid, profile_request)
+
+            user_request = yield self.validate_request(content, requests.AdminUserDesc)
+            user = yield tw(db_admin_update_user,self.request.tid, self.session, user_id, user_request, self.request.language)
+            
+            if custom and defualt_profile_id:
+                yield db_delete_user_profile(defualt_profile_id, self.request.tid)
             
             return user
         else:
             request = yield self.validate_request(content, requests.AdminUserProfileDesc)
-    
-            profile = yield db_admin_update_user_profile(user_id, request)
-
+            profile = yield db_admin_update_user_profile(user_id, self.request.tid, request)
             return profile
 
-
+    @inlineCallbacks
     def delete(self, user_id):
         """
-        Delete the specified user.
+        Delete the specified user or user profile.
         """
         request_body = json.loads(self.request.content.read())
         is_profile = request_body.get("is_profile", False)
+        profile_id = request_body.get("profile_id")
         
         if is_profile:
-            return db_delete_user_profile(user_id)
+            profile = yield db_delete_user_profile(user_id, self.request.tid)
+            return profile
         else:
-            return tw(db_delete_user, self.request.tid, self.session, user_id)
+            if profile_id:
+                yield tw(db_delete_user, self.request.tid, self.session, user_id)
+                profile = yield db_delete_user_profile(profile_id, self.request.tid)
+                return profile
+            user = yield tw(db_delete_user, self.request.tid, self.session, user_id)
+            return user

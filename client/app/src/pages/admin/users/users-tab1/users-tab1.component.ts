@@ -14,12 +14,13 @@ import {FormsModule} from "@angular/forms";
 import {UserEditorComponent} from "../user-editor/user-editor.component";
 import {TranslatorPipe} from "@app/shared/pipes/translate";
 import {OrderByPipe} from "@app/shared/pipes/order-by.pipe";
+import {FilterPipe} from "@app/shared/pipes/filter.pipe";
 
 @Component({
     selector: "src-users-tab1",
     templateUrl: "./users-tab1.component.html",
     standalone: true,
-    imports: [FormsModule, NgbTooltipModule, NgClass, UserEditorComponent, TranslatorPipe, OrderByPipe]
+    imports: [FormsModule, NgbTooltipModule, NgClass, UserEditorComponent, TranslatorPipe, OrderByPipe, FilterPipe]
 })
 export class UsersTab1Component implements OnInit {
   private httpService = inject(HttpService);
@@ -32,12 +33,14 @@ export class UsersTab1Component implements OnInit {
   tenantData: tenantResolverModel;
   usersData: User[];
   userProfiles: UserProfile[]=[];
-  new_user: { username: string, role: string, name: string, email: string, profile_id: string } = {
+  profiles: UserProfile[]=[];
+  new_user: { username: string, role: string, name: string, email: string, profile_id: string, send_activation_link: boolean } = {
     username: "",
     role: "",
     name: "",
     email: "",
-    profile_id: ""
+    profile_id: "",
+    send_activation_link: true
   };
   editing = false;
   protected readonly Constants = Constants;
@@ -51,17 +54,24 @@ export class UsersTab1Component implements OnInit {
 
   addUser(): void {
     const user: NewUser = new NewUser();
-    const profile_User = this.userProfiles.filter(user => user.id == this.new_user.profile_id);
-
+    if (this.profiles.length > 0){
+      const profile_User = this.profiles.filter(user => user.id == this.new_user.profile_id);
+      user.role = this.new_user.profile_id !== "defualt" ? profile_User[0].role : this.new_user.role;
+      user.custom = this.new_user.profile_id !== "defualt" ? true : false;
+    }
+    else {
+      user.role = this.new_user.role;
+      user.custom = false;
+    }
     user.username = typeof this.new_user.username !== "undefined" ? this.new_user.username : "";
-    user.role = profile_User[0].role;
-    user.profile_id = this.new_user.profile_id;
+    user.profile_id = this.new_user.profile_id !== "defualt" || "" ? this.new_user.profile_id : "";
     user.name = this.new_user.name;
     user.mail_address = this.new_user.email;
     user.language = this.nodeResolver.dataModel.default_language;
+    user.send_activation_link = this.new_user.send_activation_link;
     this.utilsService.addAdminUser(user).subscribe(_ => {
       this.getResolver();
-      this.new_user = {username: "", role: "", name: "", email: "", profile_id: ""};
+      this.new_user = {username: "", role: "", name: "", email: "", profile_id: "", send_activation_link: true};
     });
   }
 
@@ -70,6 +80,7 @@ export class UsersTab1Component implements OnInit {
       this.usersResolver.dataModel = response;
       this.usersData = response.users;
       this.userProfiles = response.user_profiles;
+      this.profiles = response.user_profiles.filter(user => user.custom == true);
     });
   }
 

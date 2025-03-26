@@ -48,7 +48,7 @@ export class SitesTab1Component implements OnInit {
       }
     );
   }
-  
+
   toggleAddTenant() {
     this.showAddTenant = !this.showAddTenant;
   }

@@ -1,4 +1,3 @@
-# -*- coding: utf-8
 
 from globaleaks import __version__, DATABASE_VERSION
 from globaleaks.utils.crypto import GCE
@@ -45,7 +44,7 @@ ConfigDescriptor = {
     'crypto_escrow_pub_key': Unicode(default=''),
     'default_language': Unicode(default='en'),
     'default_questionnaire': Unicode(default='default'),
-    'description': Unicode(default='Secure whistleblowing platform based on GlobaLeaks free and open-source software.'),
+    'description': Unicode(default='Secure reporting platform based on GlobaLeaks free and open-source whistleblowing software.'),
     'enable_admin_notification_emails': Bool(default=True),
     'enable_analyst_notification_emails': Bool(default=True),
     'enable_custodian_notification_emails': Bool(default=True),
@@ -317,6 +316,7 @@ ConfigFilters = {
         'mode',
         'onionservice',
         'pgp',
+        'receipt_salt',
         'rootdomain',
         'show_contexts_in_alphabetical_order',
         'signup_tos1_enable',

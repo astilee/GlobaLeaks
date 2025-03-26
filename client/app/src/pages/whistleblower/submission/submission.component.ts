@@ -11,7 +11,7 @@ import {AppConfigService} from "@app/services/root/app-config.service";
 import {Context, Questionnaire, Receiver} from "@app/models/app/public-model";
 import {Answers} from "@app/models/receiver/receiver-tip-data";
 import {Field} from "@app/models/resolvers/field-template-model";
-import * as Flow from "@flowjs/flow.js";
+import Flow from "@flowjs/flow.js";
 import {TitleService} from "@app/shared/services/title.service";
 import {Router} from "@angular/router";
 import {WhistleblowerSubmissionService} from "@app/pages/whistleblower/whistleblower-submission.service";
@@ -26,6 +26,9 @@ import {TranslateModule} from "@ngx-translate/core";
 import {TranslatorPipe} from "@app/shared/pipes/translate";
 import {StripHtmlPipe} from "@app/shared/pipes/strip-html.pipe";
 import {OrderByPipe} from "@app/shared/pipes/order-by.pipe";
+import {HttpService} from "@app/shared/services/http.service";
+import {CryptoService} from "@app/shared/services/crypto.service";
+import {firstValueFrom} from "rxjs";
 
 @Component({
     selector: "src-submission",
@@ -45,6 +48,8 @@ export class SubmissionComponent implements OnInit {
   private appDataService = inject(AppDataService);
   private utilsService = inject(UtilsService);
   private fieldUtilitiesService = inject(FieldUtilitiesService);
+  private httpService = inject(HttpService);
+  private cryptoService = inject(CryptoService);
   submissionService = inject(SubmissionService);
 
   @ViewChild("submissionForm") public submissionForm: NgForm;
@@ -93,10 +98,10 @@ export class SubmissionComponent implements OnInit {
     this.done = false;
     this.answers = {};
     this.uploads = {};
-    this.questionnaire = context.questionnaire;
 
-    this.submissionService.create(context.id);
     this.context = context;
+    this.questionnaire = context.questionnaire;
+    this.submissionService.create(context.id);
     this.fieldUtilitiesService.onAnswersUpdate(this);
     this.utilsService.scrollToTop();
 
@@ -130,7 +135,6 @@ export class SubmissionComponent implements OnInit {
   };
 
   selectContext(context: Context) {
-    this.context = context;
     this.prepareSubmission(context);
   }
 
@@ -185,7 +189,7 @@ export class SubmissionComponent implements OnInit {
   };
 
   areReceiversSelected() {
-    return Object.keys(this.submissionService.selected_receivers).length > 0;
+    return Object.keys(this.submissionService.selected_receivers).length > 0 || Object.keys(this.submissionService.override_receivers).length > 0;
   };
 
   hasNextStep() {
@@ -290,7 +294,7 @@ export class SubmissionComponent implements OnInit {
     this.utilsService.resumeFileUploads(this.uploads);
     this.done = true;
 
-    const intervalId = setInterval(() => {
+    const intervalId = setInterval(async () => {
       if (this.uploads) {
         for (const key in this.uploads) {
 
@@ -299,19 +303,31 @@ export class SubmissionComponent implements OnInit {
           }
         }
       }
+
       if (this.uploading()) {
         return;
+      }
+
+      clearInterval(intervalId);
+
+      this.authenticationService.session.receipt = this.cryptoService.generateReceipt();
+
+      const res = await firstValueFrom(this.httpService.requestAuthType(JSON.stringify({'username': "" /* whistleblower */ })));
+
+      if (res.type == 'key') {
+        this.appDataService.updateShowLoadingPanel(true);
+        this.submissionService.submission.receipt = await this.cryptoService.hashArgon2(this.authenticationService.session.receipt, res.salt);
+        this.appDataService.updateShowLoadingPanel(false);
+      } else {
+        this.submissionService.submission.receipt = this.authenticationService.session.receipt;
       }
 
       this.submissionService.submit().subscribe({
         next: (response) => {
           this.router.navigate(["/"]).then();
-          this.authenticationService.session.receipt = response.receipt;
           this.titleService.setPage("receiptpage");
         }
       });
-
-      clearInterval(intervalId);
     }, 1000);
   }
 

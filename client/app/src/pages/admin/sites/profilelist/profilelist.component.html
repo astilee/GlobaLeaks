@@ -33,23 +33,21 @@
       <div class="col-md-6 clearfix" (click)="toggleEditing($event)">
         <span class="float-end">
           @if (tenant.active) {
-            <button class="btn btn-sm btn-primary" name="disable_tenant" (click)="toggleActivation($event)">{{'Enabled'|translate}} </button>
-          }
-          @if (!tenant.active) {
-            <button class="btn btn-sm btn-danger" name="enable_tenant" (click)="toggleActivation($event)">{{'Disabled'|translate}} </button>
-          }
-          @if (tenant.active) {
             <button class="btn btn-sm btn-primary" name="configure_tenant" (click)="configureTenant($event, tenant.id)">{{'Configure'|translate}}</button>
           }
-          @if (!editing) {
-            <button class="btn btn-sm btn-outline-secondary" name="edit_tenant" (click)="toggleEditing($event)">{{'Edit'|translate}}</button>
-          }
+          <button class="downloadButton btn btn-sm btn-outline-secondary" (click)="exportTenant(tenant)">
+            <i class="fa-solid fa-file-export"></i>
+            <span>{{ 'Export' | translate }}</span>
+          </button>
           @if (editing) {
             <button class="btn btn-sm btn-primary" name="save_tenant" (click)="saveTenant()">{{'Save'|translate}}</button>
           }
           @if (isRemovableTenant()) {
             <button class="btn btn-sm btn-danger" name="delete_tenant" (click)="deleteTenant($event, tenant)">{{'Delete'|translate}}</button>
           }
+          <button class="btn btn-sm btn-outline-secondary" name="edit_tenant" (click)="toggleEditing($event)">
+            <i class="fa" [ngClass]="{'fa-chevron-down': !editing, 'fa-chevron-up': editing}"></i>
+          </button>
         </span>
       </div>
     }

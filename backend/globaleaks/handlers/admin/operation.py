@@ -1,5 +1,5 @@
-# -*- coding: utf-8
 import os
+from nacl.encoding import Base64Encoder
 from twisted.internet.defer import inlineCallbacks, returnValue
 
 from globaleaks import models
@@ -16,7 +16,7 @@ from globaleaks.orm import db_del, db_get, db_log, transact, tw
 from globaleaks.rest import errors
 from globaleaks.state import State
 from globaleaks.transactions import db_get_user
-from globaleaks.utils.crypto import Base64Encoder, GCE
+from globaleaks.utils.crypto import GCE, sha256
 from globaleaks.utils.onion import generate_onion_service_v3
 from globaleaks.utils.templating import Templating
 from globaleaks.utils.utility import datetime_now
@@ -36,21 +36,13 @@ def check_hostname(session, tid, hostname):
     :param tid: A tenant id
     :param hostname: The hostname to be evaluated
     """
-    if hostname == '':
-        return
-
-    forbidden_endings = ['onion', 'localhost']
-
-    for v in forbidden_endings:
-        if hostname.endswith(v):
-            raise errors.InputValidationError('Hostname contains a forbidden origin')
-
+    forbidden_endings = ('onion', 'localhost')
     existing_hostnames = {h.value for h in session.query(Config)
                                                   .filter(Config.tid != tid,
                                                           Config.var_name == 'hostname')}
 
-    if hostname in existing_hostnames:
-        raise errors.InputValidationError('Hostname already reserved')
+    if hostname and (hostname.endswith(forbidden_endings) or hostname in existing_hostnames):
+        raise errors.InputValidationError('Hostname contains a forbidden origin or is already reserved')
 
 
 @transact
@@ -106,7 +98,6 @@ def toggle_escrow(session, tid, user_session):
 
             session.query(models.User).filter(models.User.tid == tid, models.User.id != user_session.user_id).update({'password_change_needed': True}, synchronize_session=False)
 
-
     else:
         if tid == 1:
             session.query(models.User).update({'crypto_escrow_bkp1_key': ''}, synchronize_session=False)
@@ -130,7 +121,7 @@ def toggle_user_escrow(session, tid, user_session, user_id):
     :param user_id: The user for which togling the key escrow access
     """
     if user_session.user_id == user_id or not user_session.ek:
-        return
+        raise errors.InputValidationError('Auto revokation of keys prevented for security reasons')
 
     user = db_get_user(session, tid, user_id)
     if not user.crypto_pub_key:
@@ -192,29 +183,30 @@ def reset_templates(session, tid):
     ConfigL10NFactory(session, tid).reset('notification', load_appdata())
 
 
-def db_set_user_password(session, tid, user_session, user_id, password):
+def db_set_user_password(session, tid, user_session, user_id, key):
     user = db_get_user(session, tid, user_id)
 
-    if password and (not user.crypto_pub_key or user_session.ek):
-        if user.crypto_pub_key and user_session.ek:
-            enc_key = GCE.derive_key(password.encode(), user.salt)
-            crypto_escrow_prv_key = GCE.asymmetric_decrypt(user_session.cc, Base64Encoder.decode(user_session.ek))
+    # if encryption is enabled accept password changes only if the admin has access to escrow keys
+    if user.crypto_pub_key and not user_session.ek:
+        return
 
-            if user_session.user_tid == 1:
-                user_cc = GCE.asymmetric_decrypt(crypto_escrow_prv_key, Base64Encoder.decode(user.crypto_escrow_bkp1_key))
-            else:
-                user_cc = GCE.asymmetric_decrypt(crypto_escrow_prv_key, Base64Encoder.decode(user.crypto_escrow_bkp2_key))
+    key = Base64Encoder.decode(key.encode())
 
-            user.crypto_prv_key = Base64Encoder.encode(GCE.symmetric_encrypt(enc_key, user_cc))
+    if user.crypto_pub_key and user_session.ek:
+        crypto_escrow_prv_key = GCE.asymmetric_decrypt(user_session.cc, Base64Encoder.decode(user_session.ek))
 
-        if len(user.hash) != 44:
-            user.salt = GCE.generate_salt()
+        if user_session.user_tid == 1:
+            user_cc = GCE.asymmetric_decrypt(crypto_escrow_prv_key, Base64Encoder.decode(user.crypto_escrow_bkp1_key))
+        else:
+            user_cc = GCE.asymmetric_decrypt(crypto_escrow_prv_key, Base64Encoder.decode(user.crypto_escrow_bkp2_key))
 
-        user.hash = GCE.hash_password(password, user.salt)
-        user.password_change_date = datetime_now()
-        user.password_change_needed = True
+        user.crypto_prv_key = Base64Encoder.encode(GCE.symmetric_encrypt(key, user_cc))
 
-        db_log(session, tid=tid, type='change_password', user_id=user_session.user_id, object_id=user_id)
+    user.hash = sha256(key)
+    user.password_change_date = datetime_now()
+    user.password_change_needed = True
+
+    db_log(session, tid=tid, type='change_password', user_id=user_session.user_id, object_id=user_id)
 
 
 @transact
@@ -222,16 +214,17 @@ def set_user_password(session, tid, user_session, user_id, password):
   return db_set_user_password(session, tid, user_session, user_id, password)
 
 
-def set_tmp_key(user_session, user, token):
-    crypto_escrow_prv_key = GCE.asymmetric_decrypt(user_session.cc, Base64Encoder.decode(user_session.ek))
+def set_tmp_key(user_session, user, token, user_cc=''):
+    if not user_cc:
+        crypto_escrow_prv_key = GCE.asymmetric_decrypt(user_session.cc, Base64Encoder.decode(user_session.ek))
 
-    if user_session.user_tid == 1:
-        user_cc = GCE.asymmetric_decrypt(crypto_escrow_prv_key, Base64Encoder.decode(user.crypto_escrow_bkp1_key))
-    else:
-        user_cc = GCE.asymmetric_decrypt(crypto_escrow_prv_key, Base64Encoder.decode(user.crypto_escrow_bkp2_key))
+        if user_session.user_tid == 1:
+            user_cc = GCE.asymmetric_decrypt(crypto_escrow_prv_key, Base64Encoder.decode(user.crypto_escrow_bkp1_key))
+        else:
+            user_cc = GCE.asymmetric_decrypt(crypto_escrow_prv_key, Base64Encoder.decode(user.crypto_escrow_bkp2_key))
 
-    enc_key = GCE.derive_key(token, user.salt)
-    key = Base64Encoder.encode(GCE.symmetric_encrypt(enc_key, user_cc))
+    key = Base64Encoder.decode(GCE.derive_key(token, user.salt).encode())
+    key = Base64Encoder.encode(GCE.symmetric_encrypt(key, user_cc))
 
     try:
         with open(os.path.abspath(os.path.join(State.settings.ramdisk_path, token)), "ab") as f:
@@ -241,16 +234,20 @@ def set_tmp_key(user_session, user, token):
         pass
 
 
-@transact
-def generate_password_reset_token(session, tid, user_session, user_id):
+def db_admin_generate_password_reset_token(session, tid, user_session, user_id, user_cc=''):
     user = session.query(User).filter(User.tid == tid, User.id == user_id).one_or_none()
     if user is None:
         return
 
     token = db_generate_password_reset_token(session, user)
 
-    if user_session.ek and user.crypto_pub_key:
-        set_tmp_key(user_session, user, token)
+    if user.crypto_pub_key and (user_cc or user_session.ek):
+        set_tmp_key(user_session, user, token, user_cc)
+
+
+@transact
+def send_password_reset_token(session, tid, user_session, user_id, user_cc=''):
+    db_admin_generate_password_reset_token(session, tid, user_session, user_id, user_cc)
 
     db_log(session, tid=tid, type='send_password_reset_email', user_id=user_session.user_id, object_id=user_id)
 
@@ -293,9 +290,9 @@ class AdminOperationHandler(OperationHandler):
         if self.session.user_id == req_args['value']:
             raise errors.ForbiddenOperation
 
-        return generate_password_reset_token(self.request.tid,
-                                             self.session,
-                                             req_args['value'])
+        return send_password_reset_token(self.request.tid,
+                                         self.session,
+                                         req_args['value'])
 
     @inlineCallbacks
     def reset_onion_private_key(self, req_args, *args, **kargs):

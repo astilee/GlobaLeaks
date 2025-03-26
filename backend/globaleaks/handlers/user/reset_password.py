@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import os
 from datetime import datetime
 
@@ -27,14 +26,13 @@ def db_generate_password_reset_token(session, user):
     :param user: The user for which issuing a password reset token
     """
     token = generateRandomKey()
-    language = session.query(models.UserProfile.language).filter(models.UserProfile.id == user.profile_id).scalar()
 
     if user.last_login > datetime_null():
         template = 'password_reset_validation'
     else:
         template = 'account_activation'
 
-    user_desc = user_serialize_user(session, user, language)
+    user_desc = user_serialize_user(session, user, user.language)
 
     try:
         with open(os.path.abspath(os.path.join(State.settings.ramdisk_path, token)), "wb") as f:
@@ -46,8 +44,8 @@ def db_generate_password_reset_token(session, user):
         'type': template,
         'user': user_desc,
         'reset_token': token,
-        'node': db_admin_serialize_node(session, user.tid, language),
-        'notification': db_get_notification(session, user.tid, language)
+        'node': db_admin_serialize_node(session, user.tid, user.language),
+        'notification': db_get_notification(session, user.tid, user.language)
     }
 
     State.format_and_send_mail(session, user.tid, user_desc['mail_address'], template_vars)
@@ -129,7 +127,7 @@ def validate_password_reset(session, reset_token, recovery_key, auth_code):
                 pass
 
             if prv_key:
-                enc_key = GCE.derive_key(reset_token, user.salt)
+                enc_key = Base64Encoder.decode(GCE.derive_key(reset_token, user.salt).encode())
                 prv_key = GCE.symmetric_decrypt(enc_key, Base64Encoder.decode(prv_key))
             else:
                 recovery_key = recovery_key.replace('-', '').upper() + '===='

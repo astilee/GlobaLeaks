@@ -8,7 +8,7 @@ import {NgForm, FormsModule} from "@angular/forms";
 import {NodeResolver} from "@app/shared/resolvers/node.resolver";
 import {tenantResolverModel} from "@app/models/resolvers/tenant-resolver-model";
 import {Observable} from "rxjs";
-import {DatePipe} from "@angular/common";
+import {CommonModule, DatePipe} from "@angular/common";
 import {TranslatorPipe} from "@app/shared/pipes/translate";
 import {TranslateModule} from "@ngx-translate/core";
 
@@ -16,7 +16,7 @@ import {TranslateModule} from "@ngx-translate/core";
     selector: "src-siteslist",
     templateUrl: "./siteslist.component.html",
     standalone: true,
-    imports: [FormsModule, DatePipe, TranslatorPipe, TranslateModule]
+    imports: [CommonModule, FormsModule, DatePipe, TranslatorPipe, TranslateModule]
 })
 export class SiteslistComponent {
   protected nodeResolver = inject(NodeResolver);
@@ -46,6 +46,7 @@ export class SiteslistComponent {
   }
 
   saveTenant() {
+    this.tenant.default_profile = "";
     const url = "api/admin/tenants/" + this.tenant.id;
     this.httpService.requestUpdateTenant(url, this.tenant).subscribe(_ => {
     });

@@ -12,17 +12,19 @@ import {Observable} from "rxjs";
 import {User, UserProfile} from "@app/models/resolvers/user-resolver-model";
 import {nodeResolverModel} from "@app/models/resolvers/node-resolver-model";
 import {preferenceResolverModel} from "@app/models/resolvers/preference-resolver-model";
-import {NgClass, DatePipe} from "@angular/common";
+import {NgClass, DatePipe, CommonModule} from "@angular/common";
 import {ImageUploadDirective} from "@app/shared/directive/image-upload.directive";
 import {PasswordStrengthValidatorDirective} from "@app/shared/directive/password-strength-validator.directive";
 import {PasswordMeterComponent} from "@app/shared/components/password-meter/password-meter.component";
 import {TranslatorPipe} from "@app/shared/pipes/translate";
+import {FilterPipe} from "@app/shared/pipes/filter.pipe";
+import {CryptoService} from "@app/shared/services/crypto.service";
 
 @Component({
     selector: "src-user-editor",
     templateUrl: "./user-editor.component.html",
     standalone: true,
-    imports: [ImageUploadDirective, FormsModule, PasswordStrengthValidatorDirective, NgbTooltipModule, NgClass, PasswordMeterComponent, DatePipe, TranslatorPipe]
+    imports: [CommonModule, ImageUploadDirective, FormsModule, PasswordStrengthValidatorDirective, NgbTooltipModule, NgClass, PasswordMeterComponent, DatePipe, TranslatorPipe, FilterPipe]
 })
 export class UserEditorComponent implements OnInit {
   private modalService = inject(NgbModal);
@@ -31,6 +33,7 @@ export class UserEditorComponent implements OnInit {
   private authenticationService = inject(AuthenticationService);
   private nodeResolver = inject(NodeResolver);
   private utilsService = inject(UtilsService);
+  private cryptoService = inject(CryptoService);
 
   @Input() user: User;
   @Input() users: User[];
@@ -38,13 +41,16 @@ export class UserEditorComponent implements OnInit {
   @Input() editUser: NgForm;
   @Input() is_profile: boolean;
   @Input() userProfiles: UserProfile[];
+  @Input() profiles: UserProfile[];
   @Output() dataToParent = new EventEmitter<string>();
   @ViewChild("uploader") uploaderInput: ElementRef;
   editing = false;
+  defualt_custom:boolean = true;
   setPasswordArgs: { user_id: string, password: string };
   changePasswordArgs: { password_change_needed: string };
   passwordStrengthScore: number = 0;
   defualtUsersArr = ['Admin', 'Analyst', 'Custodian', 'Receiver'];
+  profile_id:string;
   nodeData: nodeResolverModel;
   preferenceData: preferenceResolverModel;
   authenticationData: AuthenticationService;
@@ -71,6 +77,9 @@ export class UserEditorComponent implements OnInit {
     this.changePasswordArgs = {
       password_change_needed: ""
     };
+    this.defualt_custom = this.userProfiles.filter(user => user.id == this.user.profile_id)[0].custom;
+    this.profile_id = this.user.profile_id;
+    this.user.profile_id = this.userProfiles.filter(user => user.id == this.user.profile_id)[0].custom ? this.user.profile_id : 'defualt';
   }
 
   toggleEditing() {
@@ -85,7 +94,11 @@ export class UserEditorComponent implements OnInit {
     this.utilsService.runAdminOperation("disable_2fa", {"value": user.id}, true).subscribe();
   }
 
-  setPassword(setPasswordArgs: { user_id: string, password: string }) {
+  async setPassword(setPasswordArgs: { user_id: string, password: string }) {
+    this.appDataService.updateShowLoadingPanel(true);
+    setPasswordArgs.password = await this.cryptoService.hashArgon2(setPasswordArgs.password, this.user.salt);
+    this.appDataService.updateShowLoadingPanel(false);
+
     this.utilsService.runAdminOperation("set_user_password", setPasswordArgs, false).subscribe();
     this.user.newpassword = false;
     this.setPasswordArgs.password = "";
@@ -98,6 +111,14 @@ export class UserEditorComponent implements OnInit {
     }
     if (user.pgp_key_public !== "") {
       user.pgp_key_remove = false;
+    }
+    userData.custom = userData.profile_id !== "defualt" ? true : false;
+    userData.profile_id = userData.profile_id !== "defualt" ? userData.profile_id : this.profile_id;
+    const profile_User = this.userProfiles.filter(user => user.id == userData.profile_id);
+    userData.profile_name = profile_User[0].name
+    userData.profile_role = profile_User[0].role
+    if(!this.defualt_custom && (this.profile_id !== profile_User[0].id)){
+      userData.defualt_profile_id = this.profile_id
     }
     return this.utilsService.updateAdminUser(userData.id,userData).subscribe({
       next:()=>{
@@ -129,9 +150,17 @@ export class UserEditorComponent implements OnInit {
       modalRef.componentInstance.confirmFunction = () => {
         observer.complete()
         let url = "api/admin/users/";
-        return this.utilsService.deleteAdminUser(arg.id,url,this.is_profile).subscribe(_ => {
-          this.utilsService.deleteResource(this.users, arg);
-        });
+        const profile = this.userProfiles.filter(user => user.id == (arg.profile_id !== "defualt" ? arg.profile_id : this.profile_id));
+        if(!profile[0].custom){
+          return this.utilsService.deleteAdminUser(arg.id,url,this.is_profile,profile[0].id).subscribe(_ => {
+            this.utilsService.deleteResource(this.users, arg);
+          });
+        }
+        else{
+          return this.utilsService.deleteAdminUser(arg.id,url,this.is_profile).subscribe(_ => {
+            this.utilsService.deleteResource(this.users, arg);
+          });
+        }
       };
     });
   }
@@ -154,8 +183,42 @@ export class UserEditorComponent implements OnInit {
     return this.authenticationData.session?.user_id;
   }
 
+  getProfileName(profileId: string): { name : string, custom : boolean} {
+    const profile = this.userProfiles.find((p) => p.id === profileId);
+    return profile ? { name : profile.name, custom : profile.custom} : {name : "", custom : false};
+  }
+  
+  getUserDisplayName(user:any) {
+    const profileName = this.getProfileName(user.profile_id).name;
+    const isCustom = this.getProfileName(user.profile_id).custom;
+  
+    let roleDisplay = '';
+    switch (user.role) {
+      case 'admin':
+        roleDisplay = 'Admin';
+        break;
+      case 'receiver':
+        roleDisplay = 'Recipient';
+        break;
+      case 'custodian':
+        roleDisplay = 'Custodian';
+        break;
+      case 'analyst':
+        roleDisplay = 'Analyst';
+        break;
+      default:
+        roleDisplay = '';
+    }
+  
+    return isCustom ? `${profileName} (${roleDisplay})` : roleDisplay;
+  }
+
   toggleUserEscrow(user: User) {
-    this.user.escrow = !this.user.escrow;
-    this.utilsService.runAdminOperation("toggle_user_escrow", {"value": user.id}, true).subscribe();
+    this.utilsService.runAdminOperation("toggle_user_escrow", {"value": user.id}, true).subscribe({
+      next:()=>{},
+      error:()=>{
+        user.escrow = !user.escrow;
+      }
+    });
   }
 }

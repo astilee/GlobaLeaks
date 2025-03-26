@@ -8,15 +8,16 @@ import {NgForm, FormsModule} from "@angular/forms";
 import {NodeResolver} from "@app/shared/resolvers/node.resolver";
 import {tenantResolverModel} from "@app/models/resolvers/tenant-resolver-model";
 import {Observable} from "rxjs";
-import {DatePipe} from "@angular/common";
+import {CommonModule, DatePipe} from "@angular/common";
 import {TranslatorPipe} from "@app/shared/pipes/translate";
 import {TranslateModule} from "@ngx-translate/core";
+import {AuthenticationService} from "@app/services/helper/authentication.service";
 
 @Component({
   selector: "src-profilelist",
   templateUrl: "./profilelist.component.html",
   standalone: true,
-  imports: [FormsModule, DatePipe, TranslatorPipe, TranslateModule]
+  imports: [CommonModule, FormsModule, DatePipe, TranslatorPipe, TranslateModule]
 })
 export class ProfilelistComponent {
   protected nodeResolver = inject(NodeResolver);
@@ -24,6 +25,7 @@ export class ProfilelistComponent {
   private modalService = inject(NgbModal);
   private httpService = inject(HttpService);
   private utilsService = inject(UtilsService);
+  private authenticationService = inject(AuthenticationService);
 
   @Input() editTenant: NgForm;
   @Input() tenant: tenantResolverModel;
@@ -32,19 +34,12 @@ export class ProfilelistComponent {
   @Input() indexNumber: number;
   editing = false;
 
-  toggleActivation(event: Event): void {
-    event.stopPropagation();
-    this.tenant.active = !this.tenant.active;
-    this.tenant.default_profile = "default";
-    const url = "api/admin/tenants/" + this.tenant.id;
-    this.httpService.requestUpdateTenant(url, this.tenant).subscribe((_) => {});
-  }
-
   isRemovableTenant(): boolean {
     return this.tenant.id !== 1;
   }
 
   saveTenant() {
+    this.tenant.default_profile = "";
     const url = "api/admin/tenants/" + this.tenant.id;
     this.httpService.requestUpdateTenant(url, this.tenant).subscribe((_) => {});
   }
@@ -52,6 +47,10 @@ export class ProfilelistComponent {
   deleteTenant(event: Event, tenant: tenantResolverModel) {
     event.stopPropagation();
     this.openConfirmableModalDialog(tenant, "").subscribe((_) => {});
+  }
+
+  exportTenant(tenant:tenantResolverModel){
+    this.utilsService.saveAs(this.authenticationService, tenant.name + ".json", "api/admin/tenants/" + tenant.id);
   }
 
   configureTenant($event: Event, tid: number): void {

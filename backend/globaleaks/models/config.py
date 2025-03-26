@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 from sqlalchemy import not_
 from sqlalchemy import or_
 from globaleaks.models import Config, ConfigL10N, EnabledLanguage

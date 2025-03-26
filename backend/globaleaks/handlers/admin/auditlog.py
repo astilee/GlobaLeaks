@@ -1,4 +1,3 @@
-# -*- coding: utf-8
 import operator
 import os
 
@@ -61,7 +60,7 @@ def get_tips(session, tid):
                                  .group_by(models.ReceiverTip.internaltip_id):
         receiver_count_by_itip[itip_id] = count
 
-    for itip in session.query(models.InternalTip).filter(models.InternalTip.tid == tid):
+    for itip in session.query(models.InternalTip).filter(models.InternalTip.tid == tid).order_by(models.InternalTip.progressive.desc()):
         tips.append({
             'id': itip.id,
             'progressive': itip.progressive,
@@ -89,21 +88,6 @@ class TipsCollection(BaseHandler):
 
     def get(self):
         return get_tips(self.request.tid)
-
-
-class RecentEventsCollection(BaseHandler):
-    """
-    This handler is refreshed constantly by an admin page
-    and provide real time update about the GlobaLeaks status
-    """
-    check_roles = 'admin'
-
-    def get(self):
-        templist = [e.serialize() for e in State.tenants[self.request.tid].EventQ]
-
-        templist.sort(key=operator.itemgetter('creation_date'))
-
-        return templist
 
 
 class JobsTiming(BaseHandler):

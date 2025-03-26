@@ -29,6 +29,8 @@ a:hover {
 
 .onion-address {
   color: #5797d5;
+  font-weight: bold;
+  word-break: break-all;
 }
 
 .onion-address:hover {
@@ -58,11 +60,6 @@ a:hover {
   overflow-y: scroll;
 }
 
-#Sidebar a {
-  display: block;
-  margin-bottom: 0.5em;
-}
-
 #browser-not-supported {
   display: none;
 }
@@ -87,7 +84,7 @@ body {
 body {
   background-color: #fff;
   color: #1d1f2a;
-  font-family: Inter, "Noto Sans Armenian", "Noto Sans Arabic", "Noto Sans Bengali", "Noto Sans Hebrew", "Noto Sans HK", "Noto Sans JP", "Noto Sans Georgian", "Noto Sans Khmer", "Noto Sans KR", "Noto Sans Myanmar", "Noto Sans Sc", "Noto Sans Tamil", "Noto Sans Thaana", "Noto Sans Thai", "Noto Serif Tibetan", sans-serif;
+  font-family: "Inter Variable", "Noto Sans Armenian Variable", "Noto Sans Arabic Variable", "Noto Sans Bengali Variable", "Noto Sans Hebrew Variable", "Noto Sans HK Variable", "Noto Sans JP Variable", "Noto Sans Georgian Variable", "Noto Sans Khmer Variable", "Noto Sans KR Variable", "Noto Sans Myanmar Variable", "Noto Sans Sc Variable", "Noto Sans Tamil Variable", "Noto Sans Thaana Variable", "Noto Sans Thai Variable", "Noto Serif Tibetan", sans-serif;
   font-size: 16px;
   min-height: 20rem;
 }
@@ -127,11 +124,6 @@ th .fa-solid,
 
 #assign-submission-status {
   justify-content: flex-end;
-}
-
-.onion-address {
-  font-weight: bold;
-  word-break: break-all;
 }
 
 .invisible {
@@ -383,6 +375,7 @@ h6 {
   bottom: 1rem;
   text-align: center;
   z-index: 10;
+  left: 1rem;
 }
 
 .image-thumbnail,
@@ -622,6 +615,19 @@ p:last-child {
   padding-left: 1em;
 }
 
+#WhistleblowerLoginBox {
+  width: fit-content;
+}
+
+#HeaderBox #WhistleblowerLoginBox {
+  float: right !important;
+}
+
+#ContentBox #WhistleblowerLoginBox {
+  display: flex !important;
+  margin: 0 auto;
+}
+
 #WhistleblowerSubmitBox,
 #WhistleblowerLoginBox {
   text-align: center;
@@ -638,6 +644,7 @@ p:last-child {
   background-color: #fff;
   border: 1px solid #c8d1e0;
   border-radius: 5px;
+  text-align: left;
 }
 
 .select-card:hover,
@@ -647,10 +654,6 @@ p:last-child {
 
 .select-card.disabled {
   background-color: #f2dede;
-}
-
-.select-card  {
-  text-align: left;
 }
 
 .field-answer-entry {
@@ -859,10 +862,6 @@ text.axis-worktime {
 
 .non-default-language:hover {
   opacity: 1;
-}
-
-.image-upload .change-picture-button {
-  left: 1rem;
 }
 
 .tip-action-open {
@@ -1162,4 +1161,9 @@ body .dropdown-visible > div.multiselect-dropdown > div > span.dropdown-btn {
 
 .form-select {
   padding: 0.3em !important;
+}
+
+.text-gray {
+  color: #6c757d;
+  opacity: 0.7;
 }

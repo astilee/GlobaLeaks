@@ -73,7 +73,7 @@ describe("admin add, configure, and delete users", () => {
 
     for (let i = 0; i < new_profiles.length; i++) {
       make_profile(new_profiles[i]);
-      cy.get(".userList").should('have.length', i+5);
+      cy.get(".userList").should('have.length', i+1);
     }
 
     cy.get('[data-cy="users"]').click();
@@ -98,8 +98,8 @@ describe("admin add, configure, and delete users", () => {
     cy.visit("/#/admin/users");
     cy.get('[data-cy="profiles"]').click().should("be.visible").click();
 
-    cy.get(".userList").eq(3).within(() => {
-      cy.get("#edit_user").click();
+    cy.get(".userList").contains("Profile1").parents(".config-item").within(() => {
+      cy.get('button[name="edit_tenant"]').click();
 
       cy.get('input[name="can_mask_information"]').click();
       cy.get('input[name="can_redact_information"]').click();
@@ -119,8 +119,8 @@ describe("admin add, configure, and delete users", () => {
       const numberOfUsers = Math.min(userListLength, 7);
       for (let i = 1; i < numberOfUsers; i++) {
         cy.get(".userList").eq(i).within(() => {
-          if (Cypress.$("#edit_user").length > 0) {
-            cy.get("#edit_user").should('be.visible').click();
+          if (Cypress.$('button[name="edit_tenant"]').length > 0) {
+            cy.get('button[name="edit_tenant"]').should('be.visible').click();
             cy.get("#set_password").first().click();
             cy.get('input[name="password"]').clear().type(Cypress.env("init_password"));
             cy.get('#setPasswordButton').should('be.visible').click();

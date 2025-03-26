@@ -3,20 +3,7 @@
     <span class="col-md-7" (click)="toggleEditing();">
       <span>{{ user.name }}</span>
       <span class="badge bg-primary">
-        @switch (user.role) {
-          @case ('admin') {
-            <span>{{ 'Admin' | translate }}</span>
-          }
-          @case ('receiver') {
-            <span>{{ 'Recipient' | translate }}</span>
-          }
-          @case ('custodian') {
-            <span>{{ 'Custodian' | translate }}</span>
-          }
-          @case ('analyst') {
-            <span>{{ 'Analyst' | translate }}</span>
-          }
-        }
+        <span>{{ getUserDisplayName(user) }}</span>
       </span>
       @if (!user.enabled) {
         <span class="badge bg-secondary">{{ 'Disabled' | translate }}</span>
@@ -29,19 +16,9 @@
     </span>
     <span class="col-md-5 clearfix">
       <span class="float-end">
-        @if (!editing) {
-          <button class="btn btn-sm btn-outline-secondary" id="edit_user" (click)="toggleEditing();">
-            <span>{{ 'Edit' | translate }}</span>
-          </button>
-        }
         @if (editing) {
           <button class="btn btn-sm btn-primary" id="save_user" [disabled]="editUser.invalid" (click)="saveUser(user);toggleEditing();">
             <span>{{ 'Save' | translate }}</span>
-          </button>
-        }
-        @if (editing) {
-          <button class="btn btn-sm btn-outline-secondary" (click)="toggleEditing();">
-            <span>{{ 'Cancel' | translate }}</span>
           </button>
         }
         @if (getUserID() !== user.id) {
@@ -49,27 +26,34 @@
             <span>{{ 'Delete' | translate }}</span>
           </button>
         }
+        <button class="btn btn-sm btn-outline-secondary" name="edit_tenant" (click)="toggleEditing()">
+          <i class="fa" [ngClass]="{'fa-chevron-down': !editing, 'fa-chevron-up': editing}"></i>
+        </button>
       </span>
     </span>
   </div>
   @if (editing) {
     <div class="editor">
       <hr />
-        <div class="row">
+      <div class="row">
         <div class="col-md-6">
           <div class="form-group">
             <div appImageUpload [imageUploadModel]="user" [imageUploadModelAttr]="'picture'" [imageUploadId]="user.id"></div>
           </div>
         </div>
-        </div>
+      </div>
       <div class="row">
         <div class="col-md-12">
+          @if (profiles.length > 0) {
             <div class="form-group">
               <label>{{ 'Profile' | translate }}</label>
               <span class="text-danger" ngbTooltip="{{'This field is mandatory' | translate}}">*</span>
               <div>
-                <select name="role" class="form-select-custom" [(ngModel)]="user.profile_id" [disabled]="getUserID() == user.id" required>
-                  @for (user of userProfiles; track user) {
+                <select name="role" class="form-select-custom" [(ngModel)]="user.profile_id" [ngClass]="{'text-gray': getUserID() == user.id}" [disabled]="getUserID() == user.id" required>
+                  @if (!getProfileName(user.profile_id).custom) {
+                    <option value="defualt">None</option>
+                  }
+                  @for (user of userProfiles | filter:'custom': true; track user) {
                     <option [value]="user.id">
                       {{ user.name | translate }}
                     </option>
@@ -77,31 +61,32 @@
                 </select>
               </div>
             </div>
-            @if (user.role !== 'receiver' || !nodeData.simplified_login) {
-              <div class="form-group">
+          }
+          @if (user.role !== 'receiver' || !nodeData.simplified_login) {
+            <div class="form-group">
               <label>{{ 'Username' | translate }}</label>
               <input class="form-control" name="username" [(ngModel)]="user.username" type="text" required />
               @if (editUser.form.get('username')?.errors?.['required']) {
                 <div class="text-danger">{{'This field is mandatory' | translate }}</div>
               }
-              </div>
-            }
-            <div class="form-group">
+            </div>
+          }
+          <div class="form-group">
             <label>{{ 'Name' | translate }}</label>
             <input class="form-control" name="name" [(ngModel)]="user.name" type="text" required />
             @if (editUser.form.get('name')?.errors?.['required']) {
               <div class="text-danger">This field is mandatory </div>
             }
-            </div>
-            <div class="form-group">
+          </div>
+          <div class="form-group">
             <label>{{ 'Public name' | translate }}</label>
             <input class="form-control" name="public_name" [(ngModel)]="user.public_name" type="text" required />
-            </div>
-            <div class="form-group">
+          </div>
+          <div class="form-group">
             <label>{{ 'Description' | translate }}</label>
             <textarea name="description" class="form-control" [(ngModel)]="user.description"></textarea>
-            </div>
-            <div class="form-group">
+          </div>
+          <div class="form-group">
             <label>{{ 'Email address' | translate }}</label>
             <input class="form-control" name="email" [(ngModel)]="user.mail_address" type="email" [pattern]="Constants.emailRegexp" required />
             @if (editUser.form.get('email')?.errors?.['required']) {
@@ -112,28 +97,24 @@
             @if (editUser.form.get('email')?.errors?.['pattern']) {
               <div class="text-danger"> Invalid email address </div>
             }
-            </div>
-            @if (getUserID() !== user.id) {
-              <div class="form-group">
+          </div>
+          @if (getUserID() !== user.id) {
+            <div class="form-group">
               <label>{{ 'Password' | translate }}</label>
-              <div>
+              <div [ngClass]="{'disabled': user.encryption && !preferenceData.escrow}">
                 <span class="btn btn-outline-secondary" (click)="resetUserPassword(user)">
                   <i class="fa-solid fa-sync"></i>
                   @if (user.last_login === '1970-01-01T00:00:00Z') {
-                    <span>{{ 'Send activation link' |
-                    translate }}</span>
+                    <span>{{ 'Send activation link' | translate }}</span>
                   }
                   @if (user.last_login !== '1970-01-01T00:00:00Z') {
-                    <span>{{ 'Send reset link' |
-                    translate }}</span>
+                    <span>{{ 'Send reset link' | translate }}</span>
                   }
                 </span>
-                @if (!user.encryption || preferenceData.escrow) {
-                  <span class="btn btn-outline-secondary" (click)="user.newpassword = !user.newpassword">
-                    <i class="fa-solid fa-edit"></i>
-                    <span id="set_password">{{ 'Set password' | translate }}</span>
-                  </span>
-                }
+                <span class="btn btn-outline-secondary" (click)="user.newpassword = !user.newpassword">
+                  <i class="fa-solid fa-edit"></i>
+                  <span id="set_password">{{ 'Set password' | translate }}</span>
+                </span>
               </div>
               @if (user.newpassword) {
                 <div class="form-group">
@@ -153,26 +134,50 @@
                   @if (passwordStrengthScore && passwordStrengthScore < 2) {
                     <div class="text-danger">{{ 'The chosen password is too weak. A valid password should be at least 12 characters long and contain a variety of characters including at least a lowercase character, a capital character, a number and a special character.' | translate }}</div>
                   }
-                  </div>
-                }
-              </div>
-            }
-            <div class="form-group">
-              <input class="form-check-input" [(ngModel)]="user.password_change_needed" [disabled]="user.password_change_needed" type="checkbox" />
-              <label>{{ 'Force password change' | translate }}</label>
-              @if (changePasswordArgs.password_change_needed) {
-                <div>
-                  <span class="badge bg-primary">{{ 'Enabled' | translate }}</span>
-                  <span>{{ 'The user will be forced to change its password on next login.' | translate}}</span>
                 </div>
               }
             </div>
+          }
+          <div class="form-group">
+            <input class="form-check-input" [(ngModel)]="user.enabled" type="checkbox" />
+            <label>{{ 'Enabled' | translate }}</label>
+          </div>
+          <div class="form-group">
+            <input class="form-check-input" [(ngModel)]="user.password_change_needed" [disabled]="user.password_change_needed" type="checkbox" />
+            <label [ngClass]="{'text-gray': user.password_change_needed}">{{ 'Force password change' | translate }}</label>
+            @if (changePasswordArgs.password_change_needed) {
+              <div>
+                <span class="badge bg-primary">{{ 'Enabled' | translate }}</span>
+                <span>{{ 'The user will be forced to change its password on next login.' | translate}}</span>
+              </div>
+            }
+          </div>
           @if (user.two_factor) {
             <div class="form-group">
               <span class="btn btn-danger" (click)="disable2FA(user)">
                 <i class="fa-solid fa-ban"></i>
                 <span>{{ 'Disable two factor authentication' | translate }}</span>
               </span>
+            </div>
+          }
+          <div class="form-group">
+            <label>{{ 'Language' | translate }}</label>
+            <select class="form-select-custom" [(ngModel)]="user.language" [ngModelOptions]="{standalone: true}">
+              @for (item of appServiceData.languages_enabled_selector; track item) {
+                <option [value]="item.code">
+                  {{ item.name }}
+                </option>
+              }
+            </select>
+          </div>
+          <div class="form-group">
+            <input class="form-check-input" [(ngModel)]="user.notification" type="checkbox">
+            <label>{{ 'Enable email notifications' | translate }}</label>
+          </div>
+          @if (user.role === 'receiver') {
+            <div class="form-group">
+              <input class="form-check-input" [(ngModel)]="user.forcefully_selected" type="checkbox" [disabled]="getProfileName(user.profile_id).custom">
+              <label [ngClass]="{'text-gray': getProfileName(user.profile_id).custom}">{{ 'Forcefully selected' | translate }}</label>
             </div>
           }
         </div>
@@ -193,7 +198,7 @@
                   </p>
                 </div>
                 <div class="form-group">
-                  <input class="form-check-input" [(ngModel)]="user.pgp_key_remove" type="checkbox"/>
+                  <input class="form-check-input" [(ngModel)]="user.pgp_key_remove" type="checkbox" />
                   <label>{{ 'Remove' | translate }}</label>
                 </div>
               </div>
@@ -218,12 +223,53 @@
       @if (user.role === 'admin') {
         <div class="row">
           <div class="col-md-12">
-            @if (nodeData.escrow && user.encryption && preferenceData.escrow) {
-              <div class="form-group">
-                <input class="form-check-input" [(ngModel)]="user.escrow" name="user.escrow" type="checkbox" (ngModelChange)="toggleUserEscrow(user)" [disabled]="getUserID() === user.id">
-                <label>{{ 'Give this admin ability to change user passwords' | translate }}</label>
+            <div class="form-group">
+              <input class="form-check-input" [(ngModel)]="user.escrow" name="user.escrow" type="checkbox" (ngModelChange)="toggleUserEscrow(user)" [disabled]="getUserID() === user.id || !nodeData.escrow && !user.encryption || !preferenceData.escrow">
+              <label>{{ 'Give this admin ability to change user passwords' | translate }}</label>
+            </div>
+          </div>
+        </div>
+      }
+      @if (user.role === 'receiver') {
+        <div class="row">
+          <div class="col-md-12">
+            <div class="form-group">
+              <input class="form-check-input" name="can_mask_information" [(ngModel)]="user.can_mask_information" type="checkbox" [disabled]="getProfileName(user.profile_id).custom" />
+              <span [ngClass]="{'text-gray': getProfileName(user.profile_id).custom}">{{ 'Give this user ability to mask information' | translate }}</span>
+            </div>
+            <div class="form-group">
+              <input class="form-check-input" name="can_redact_information" [(ngModel)]="user.can_redact_information" type="checkbox" [disabled]="getProfileName(user.profile_id).custom" />
+              <span [ngClass]="{'text-gray': getProfileName(user.profile_id).custom}">{{ 'Give this user ability to permanently redact masked information' | translate }}</span>
+            </div>
+            <div class="form-group">
+              <input class="form-check-input" name="can_delete_submission" [(ngModel)]="user.can_delete_submission" type="checkbox" [disabled]="getProfileName(user.profile_id).custom" />
+              <label [ngClass]="{'text-gray': getProfileName(user.profile_id).custom}">{{ 'Allow the recipient to delete reports' | translate }}</label>
+            </div>
+            @if (!nodeData.can_postpone_expiration) {
+              <div  class="form-group">
+                <input class="form-check-input" name="can_postpone_expiration" [(ngModel)]="user.can_postpone_expiration" type="checkbox" [disabled]="getProfileName(user.profile_id).custom" />
+                <label [ngClass]="{'text-gray': getProfileName(user.profile_id).custom}">{{ "Allow the recipient to edit the reports' expiration date" | translate }}</label>
               </div>
             }
+            <div class="form-group">
+              <input class="form-check-input" name="can_grant_access_to_reports" [(ngModel)]="user.can_grant_access_to_reports" type="checkbox" [disabled]="getProfileName(user.profile_id).custom" />
+              <label [ngClass]="{'text-gray': getProfileName(user.profile_id).custom}">{{ 'Give this user ability to grant user access to reports' | translate }}</label>
+            </div>
+            <div class="form-group">
+              <input class="form-check-input" name="can_transfer_access_to_reports" [(ngModel)]="user.can_transfer_access_to_reports" type="checkbox" [disabled]="getProfileName(user.profile_id).custom" />
+              <label [ngClass]="{'text-gray': getProfileName(user.profile_id).custom}">{{ 'Give this user ability to transfer reports to other users' | translate }}</label>
+            </div>
+          </div>
+        </div>
+      }
+      @if (user.role !== 'admin') {
+        <div class="row">
+          <div class="col-md-12">
+            <label>{{ 'Give the user administrative access to the following features:' | translate }}</label>
+            <div class="form-group">
+              <input class="form-check-input" name="can_edit_general_settings" [(ngModel)]="user.can_edit_general_settings" type="checkbox" [disabled]="getProfileName(user.profile_id).custom" />
+              <span [ngClass]="{'text-gray': getProfileName(user.profile_id).custom}">{{ 'Settings' | translate }}</span>
+            </div>
           </div>
         </div>
       }

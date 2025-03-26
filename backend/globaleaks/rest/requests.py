@@ -1,4 +1,3 @@
-# -*- coding: utf-8
 #   Requests
 #   ********
 #
@@ -122,7 +121,8 @@ SubmissionDesc = {
     'receivers': [uuid_regexp],
     'identity_provided': bool,
     'answers': dict,
-    'score': int
+    'score': int,
+    'receipt': str
 }
 
 AdminUserDesc = {
@@ -132,19 +132,21 @@ AdminUserDesc = {
     'public_name': str,
     'role': user_role_regexp,
     'password_change_needed': bool,
+    'enabled': bool,
     'mail_address': email_regexp,
-    'pgp_key_public': str,
     'pgp_key_remove': bool,
     'pgp_key_fingerprint': str,
     'pgp_key_expiration': str,
-    'profile_id': str
+    'pgp_key_public': str,
+    'language': str,
+    'notification': bool,
+    'profile_id': str,
+    'send_activation_link': bool
 }
 
 AdminUserProfileDesc = {
     'name': str,
     'role': user_role_regexp,
-    'enabled': bool,
-    'notification': bool,
     'can_edit_general_settings': bool,
     'can_delete_submission': bool,
     'can_postpone_expiration': bool,
@@ -153,7 +155,7 @@ AdminUserProfileDesc = {
     'can_mask_information': bool,
     'can_transfer_access_to_reports': bool,
     'forcefully_selected': bool,
-    'language': str,
+    'custom': bool,
 }
 
 UserUserDesc = {

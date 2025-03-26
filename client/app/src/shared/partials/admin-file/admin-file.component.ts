@@ -2,7 +2,7 @@ import {Component, ElementRef, Input, OnInit, ViewChild, inject} from "@angular/
 import {NodeResolver} from "@app/shared/resolvers/node.resolver";
 import {UtilsService} from "@app/shared/services/utils.service";
 import {AuthenticationService} from "@app/services/helper/authentication.service";
-import * as Flow from "@flowjs/flow.js";
+import Flow from "@flowjs/flow.js";
 import {AppConfigService} from "@app/services/root/app-config.service";
 import {AppDataService} from "@app/app-data.service";
 import {AdminFile} from "@app/models/component-model/admin-file";
@@ -26,6 +26,7 @@ export class AdminFileComponent {
 
   @Input() adminFile: AdminFile;
   @Input() present: boolean;
+  @Input() callback!: () => void;
   @ViewChild("uploader") uploaderInput!: ElementRef<HTMLInputElement>;
 
   onFileSelected(files: FileList | null, filetype: string) {
@@ -46,7 +47,9 @@ export class AdminFileComponent {
 
       flowJsInstance.on("fileSuccess", (_) => {
         this.appConfigService.reinit(false);
-        this.utilsService.reloadCurrentRoute();
+	if (this.callback) {
+          this.callback();
+	}
       });
       flowJsInstance.on("fileError", (_) => {
         if (this.uploaderInput) {
@@ -61,7 +64,9 @@ export class AdminFileComponent {
     this.utilsService.deleteFile(url).subscribe(
       () => {
         this.appConfigService.reinit(false);
-        this.utilsService.reloadCurrentRoute();
+	if (this.callback) {
+          this.callback();
+	}
       }
     );
   }

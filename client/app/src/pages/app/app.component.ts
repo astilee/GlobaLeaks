@@ -88,6 +88,29 @@ export class AppComponent implements AfterViewInit, OnInit, OnDestroy{
   loading = false;
 
   constructor() {
+    let elem;
+    elem = document.createElement("link");
+    elem.rel = "stylesheet";
+    elem.href = "css/fonts.css";
+    document.head.appendChild(elem);
+
+    elem = document.createElement("link");
+    elem.rel = "stylesheet";
+    elem.href = "s/css";
+    document.head.appendChild(elem);
+
+    elem = document.createElement("script");
+    elem.type = "module";
+    let scriptURL = "/s/script";
+    if (window.trustedTypes?.defaultPolicy) {
+        const safeURL = window.trustedTypes.defaultPolicy.createScriptURL(scriptURL);
+        if (typeof safeURL === "string") {
+            scriptURL = safeURL;
+        }
+    }
+    elem.src = scriptURL;
+    document.body.appendChild(elem);
+
     this.initIdleState();
     this.watchLanguage();
     (window as any).scope = this.appDataService;
@@ -121,13 +144,20 @@ export class AppComponent implements AfterViewInit, OnInit, OnDestroy{
     return currentHash === "#/" || currentHash === "#/submission";
   }
   
-
   public ngAfterViewInit(): void {
     this.appDataService.showLoadingPanel$.subscribe((value:any) => {
       this.showLoadingPanel = value;
       this.supportedBrowser = this.browserCheckService.checkBrowserSupport();
       this.changeDetectorRef.detectChanges();
     });
+  }
+
+  @HostListener('document:keydown', ['$event'])
+  handleKeyDown(event: KeyboardEvent): void {
+    if (event.key === 'F5') {
+      event.preventDefault();
+      this.utilsService.reloadCurrentRoute();
+    }
   }
 
   @HostListener("window:beforeunload")
@@ -144,7 +174,7 @@ export class AppComponent implements AfterViewInit, OnInit, OnDestroy{
     this.keepalive.onPing.subscribe(() => {
       if (this.authenticationService.session) {
         const token = this.authenticationService.session.token;
-        this.cryptoService.proofOfWork(token.id).subscribe((result:any) => {
+        this.cryptoService.proofOfWork(token).subscribe((result:any) => {
 	  const param = {'token': token.id + ":" + result};
           this.httpService.requestRefreshUserSession(param).subscribe(((result:any) => {
             this.authenticationService.session.token = result.token;

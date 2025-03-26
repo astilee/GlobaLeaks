@@ -1,4 +1,3 @@
-# -*- coding: utf-8
 #   API
 #   ***
 #
@@ -30,10 +29,10 @@ from globaleaks.handlers import admin, \
                                 security, \
                                 signup, \
                                 sitemap, \
+                                support, \
                                 staticfile, \
                                 support, \
                                 user, \
-                                viewer, \
                                 wizard, \
                                 whistleblower
 
@@ -44,134 +43,180 @@ from globaleaks.utils.sock import isIPAddress
 
 tid_regexp = r'([0-9]+)'
 uuid_regexp = r'([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})'
+uuid_regexp_or_closed = r'([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}|closed)'
 key_regexp = r'([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}|[a-z_]{0,100})'
 
 api_spec = [
-    (r'/api/health', health.HealthStatusHandler),
-    (r'/api/report', report.ReportHandler),
-
-    # Public API
-    (r'/api/public', public.PublicResource),
+    ('/api/health', health.HealthStatusHandler),
+    ('/api/public', public.PublicResource),
+    ('/api/report', report.ReportHandler),
+    ('/api/support', support.SupportHandler),
+    ('/api/wizard', wizard.Wizard),
 
     # Authentication Handlers
-    (r'/api/auth/token', auth.token.TokenHandler),
-    (r'/api/auth/authentication', auth.AuthenticationHandler),
-    (r'/api/auth/tokenauth', auth.TokenAuthHandler),
-    (r'/api/auth/receiptauth', auth.ReceiptAuthHandler),
-    (r'/api/auth/session', auth.SessionHandler),
-    (r'/api/auth/tenantauthswitch/' + tid_regexp, auth.TenantAuthSwitchHandler),
-    (r'/api/auth/operatorauthswitch', auth.OperatorAuthSwitchHandler),
+    ('/api/auth/token', auth.token.TokenHandler),
+    ('/api/auth/authentication', auth.AuthenticationHandler),
+    ('/api/auth/type', auth.AuthTypeHandler),
+    ('/api/auth/tokenauth', auth.TokenAuthHandler),
+    ('/api/auth/receiptauth', auth.ReceiptAuthHandler),
+    ('/api/auth/session', auth.SessionHandler),
+    ('/api/auth/tenantauthswitch/', auth.TenantAuthSwitchHandler, r'/api/auth/tenantauthswitch/' + tid_regexp),
+    ('/api/auth/operatorauthswitch', auth.OperatorAuthSwitchHandler),
 
     # User Preferences Handler
-    (r'/api/user/preferences', user.UserInstance),
-    (r'/api/user/operations', user.operation.UserOperationHandler),
-    (r'/api/user/reset/password', user.reset_password.PasswordResetHandler),
-    (r'/api/user/reset/password/(.+)', user.reset_password.PasswordResetHandler),
-    (r'/api/user/validate/email/(.+)', user.validate_email.EmailValidation),
+    ('/api/user/preferences', user.UserInstance),
+    ('/api/user/operations', user.operation.UserOperationHandler),
+    ('/api/user/reset/password', user.reset_password.PasswordResetHandler),
+    ('/api/user/reset/password', user.reset_password.PasswordResetHandler, r'/api/user/reset/password/(.+)'),
+    ('/api/user/validate/email', user.validate_email.EmailValidation, r'/api/user/validate/email/(.+)'),
 
     # Receiver Handlers
-    (r'/api/recipient/operations', recipient.Operations),
-    (r'/api/recipient/rtips', recipient.TipsCollection),
-    (r'/api/recipient/rtips/' + uuid_regexp, recipient.rtip.RTipInstance),
-    (r'/api/recipient/rtips/' + uuid_regexp + r'/comments', recipient.rtip.RTipCommentCollection),
-    (r'/api/recipient/rtips/' + uuid_regexp + r'/iars', recipient.rtip.IdentityAccessRequestsCollection),
-    (r'/api/recipient/rtips/' + uuid_regexp + r'/export', recipient.export.ExportHandler),
-    (r'/api/recipient/rtips/' + uuid_regexp + r'/rfiles', recipient.rtip.ReceiverFileUpload),
-    (r'/api/recipient/redactions', recipient.rtip.RTipRedactionCollection),
-    (r'/api/recipient/redactions/' + uuid_regexp, recipient.rtip.RTipRedactionCollection),
-    (r'/api/recipient/rfiles/' + uuid_regexp, recipient.rtip.ReceiverFileDownload),
-    (r'/api/recipient/wbfiles/' + uuid_regexp, recipient.rtip.WhistleblowerFileDownload),
+    ('/api/recipient/operations', recipient.Operations),
+    ('/api/recipient/rtips', recipient.TipsCollection),
+    ('/api/recipient/rtips', recipient.rtip.RTipInstance, r'/api/recipient/rtips/' + uuid_regexp),
+    ('/api/recipient/rtips', recipient.rtip.RTipCommentCollection, r'/api/recipient/rtips/' + uuid_regexp + r'/comments'),
+    ('/api/recipient/rtips', recipient.rtip.IdentityAccessRequestsCollection, r'/api/recipient/rtips/' + uuid_regexp + r'/iars'),
+    ('/api/recipient/rtips', recipient.export.ExportHandler, r'/api/recipient/rtips/' + uuid_regexp + r'/export'),
+    ('/api/recipient/rtips', recipient.rtip.ReceiverFileUpload, r'/api/recipient/rtips/' + uuid_regexp + r'/rfiles'),
+    ('/api/recipient/redactions', recipient.rtip.RTipRedactionCollection),
+    ('/api/recipient/redactions', recipient.rtip.RTipRedactionCollection, r'/api/recipient/redactions/' + uuid_regexp),
+    ('/api/recipient/rfiles', recipient.rtip.ReceiverFileDownload, r'/api/recipient/rfiles/' + uuid_regexp),
+    ('/api/recipient/wbfiles', recipient.rtip.WhistleblowerFileDownload, r'/api/recipient/wbfiles/' + uuid_regexp),
 
     # Whistleblower Handlers
-    (r'/api/whistleblower/operations', whistleblower.wbtip.Operations),
-    (r'/api/whistleblower/submission', whistleblower.submission.SubmissionInstance),
-    (r'/api/whistleblower/submission/attachment', whistleblower.attachment.SubmissionAttachment),
-    (r'/api/whistleblower/wbtip', whistleblower.wbtip.WBTipInstance),
-    (r'/api/whistleblower/wbtip/comments', whistleblower.wbtip.WBTipCommentCollection),
-    (r'/api/whistleblower/wbtip/rfiles/' + uuid_regexp, whistleblower.wbtip.ReceiverFileDownload),
-    (r'/api/whistleblower/wbtip/wbfiles', whistleblower.attachment.PostSubmissionAttachment),
-    (r'/api/whistleblower/wbtip/wbfiles/' + uuid_regexp, whistleblower.wbtip.WhistleblowerFileDownload),
-    (r'/api/whistleblower/wbtip/identity', whistleblower.wbtip.WBTipIdentityHandler),
-    (r'/api/whistleblower/wbtip/fillform', whistleblower.wbtip.WBTipAdditionalQuestionnaire),
+    ('/api/whistleblower/operations', whistleblower.wbtip.Operations),
+    ('/api/whistleblower/submission', whistleblower.submission.SubmissionInstance),
+    ('/api/whistleblower/submission/attachment', whistleblower.attachment.SubmissionAttachment),
+    ('/api/whistleblower/wbtip', whistleblower.wbtip.WBTipInstance),
+    ('/api/whistleblower/wbtip/comments', whistleblower.wbtip.WBTipCommentCollection),
+    ('/api/whistleblower/wbtip/rfiles', whistleblower.wbtip.ReceiverFileDownload, r'/api/whistleblower/wbtip/rfiles/' + uuid_regexp),
+    ('/api/whistleblower/wbtip/wbfiles',  whistleblower.attachment.PostSubmissionAttachment),
+    ('/api/whistleblower/wbtip/wbfiles', whistleblower.wbtip.WhistleblowerFileDownload, r'/api/whistleblower/wbtip/wbfiles/' + uuid_regexp),
+    ('/api/whistleblower/wbtip/identity', whistleblower.wbtip.WBTipIdentityHandler),
+    ('/api/whistleblower/wbtip/fillform', whistleblower.wbtip.WBTipAdditionalQuestionnaire),
 
     # Custodian Handlers
-    (r'/api/custodian/iars', custodian.IdentityAccessRequestsCollection),
-    (r'/api/custodian/iars/' + uuid_regexp, custodian.IdentityAccessRequestInstance),
+    ('/api/custodian/iars', custodian.IdentityAccessRequestsCollection),
+    ('/api/custodian/iars', custodian.IdentityAccessRequestInstance, r'/api/custodian/iars/' + uuid_regexp),
 
     # Analyst Handlers
-    (r'/api/analyst/stats', analyst.Statistics),
+    ('/api/analyst/stats', analyst.Statistics),
 
     # Admin Handlers
-    (r'/api/admin/node', admin.node.NodeInstance),
-    (r'/api/admin/network', admin.network.NetworkInstance),
-    (r'/api/admin/users', admin.user.UsersCollection),
-    (r'/api/admin/users/' + uuid_regexp, admin.user.UserInstance),
-    (r'/api/admin/contexts', admin.context.ContextsCollection),
-    (r'/api/admin/contexts/' + uuid_regexp, admin.context.ContextInstance),
-    (r'/api/admin/questionnaires', admin.questionnaire.QuestionnairesCollection),
-    (r'/api/admin/questionnaires/duplicate', admin.questionnaire.QuestionnareDuplication),
-    (r'/api/admin/questionnaires/' + key_regexp, admin.questionnaire.QuestionnaireInstance),
-    (r'/api/admin/notification', admin.notification.NotificationInstance),
-    (r'/api/admin/fields', admin.field.FieldsCollection),
-    (r'/api/admin/fields/' + key_regexp, admin.field.FieldInstance),
-    (r'/api/admin/steps', admin.step.StepCollection),
-    (r'/api/admin/steps/' + uuid_regexp, admin.step.StepInstance),
-    (r'/api/admin/fieldtemplates', admin.field.FieldTemplatesCollection),
-    (r'/api/admin/fieldtemplates/' + key_regexp, admin.field.FieldTemplateInstance),
-    (r'/api/admin/redirects', admin.redirect.RedirectCollection),
-    (r'/api/admin/redirects/' + uuid_regexp, admin.redirect.RedirectInstance),
-    (r'/api/admin/auditlog', admin.auditlog.AuditLog),
-    (r'/api/admin/auditlog/access', admin.auditlog.AccessLog),
-    (r'/api/admin/auditlog/debug', admin.auditlog.DebugLog),
-    (r'/api/admin/auditlog/jobs', admin.auditlog.JobsTiming),
-    (r'/api/admin/auditlog/tips', admin.auditlog.TipsCollection),
-    (r'/api/admin/l10n/(' + '|'.join(LANGUAGES_SUPPORTED_CODES) + ')', admin.l10n.AdminL10NHandler),
-    (r'/api/admin/config', admin.operation.AdminOperationHandler),
-    (r'/api/admin/config/csr/gen', admin.https.CSRHandler),
-    (r'/api/admin/config/acme/run', admin.https.AcmeHandler),
-    (r'/api/admin/config/tls', admin.https.ConfigHandler),
-    (r'/api/admin/config/tls/files/(cert|chain|key)', admin.https.FileHandler),
-    (r'/api/admin/files', admin.file.FileCollection),
-    (r'/api/admin/files/(.+)', admin.file.FileInstance),
-    (r'/api/admin/tenants', admin.tenant.TenantCollection),
-    (r'/api/admin/tenants/' + '([0-9]{1,20})', admin.tenant.TenantInstance),
-    (r'/api/admin/statuses', admin.submission_statuses.SubmissionStatusCollection),
-    (r'/api/admin/statuses/' + r'(closed)' + r'/substatuses', admin.submission_statuses.SubmissionSubStatusCollection),
-    (r'/api/admin/statuses/' + uuid_regexp, admin.submission_statuses.SubmissionStatusInstance),
-    (r'/api/admin/statuses/' + r'(closed)', admin.submission_statuses.SubmissionStatusInstance),
-    (r'/api/admin/statuses/' + uuid_regexp + r'/substatuses', admin.submission_statuses.SubmissionSubStatusCollection),
-    (r'/api/admin/statuses/' + r'(closed)' + r'/substatuses/' + uuid_regexp, admin.submission_statuses.SubmissionSubStatusInstance),
-    (r'/api/admin/statuses/' + uuid_regexp + r'/substatuses/' + uuid_regexp, admin.submission_statuses.SubmissionSubStatusInstance),
+    ('/api/admin/node', admin.node.NodeInstance),
+    ('/api/admin/network', admin.network.NetworkInstance),
+    ('/api/admin/users', admin.user.UsersCollection),
+    ('/api/admin/users', admin.user.UserInstance, r'/api/admin/users/' + uuid_regexp),
+    ('/api/admin/contexts', admin.context.ContextsCollection),
+    ('/api/admin/contexts', admin.context.ContextInstance, r'/api/admin/contexts/' + uuid_regexp),
+    ('/api/admin/questionnaires', admin.questionnaire.QuestionnairesCollection),
+    ('/api/admin/questionnaires', admin.questionnaire.QuestionnaireInstance, r'/api/admin/questionnaires/' + key_regexp),
+    ('/api/admin/questionnaires/duplicate', admin.questionnaire.QuestionnareDuplication),
+    ('/api/admin/notification', admin.notification.NotificationInstance),
+    ('/api/admin/fields', admin.field.FieldsCollection),
+    ('/api/admin/fields', admin.field.FieldInstance, r'/api/admin/fields/' + key_regexp),
+    ('/api/admin/steps', admin.step.StepCollection),
+    ('/api/admin/steps', admin.step.StepInstance, r'/api/admin/steps/' + uuid_regexp),
+    ('/api/admin/fieldtemplates', admin.field.FieldTemplatesCollection),
+    ('/api/admin/fieldtemplates', admin.field.FieldTemplateInstance, r'/api/admin/fieldtemplates/' + key_regexp),
+    ('/api/admin/redirects', admin.redirect.RedirectCollection, r'/api/admin/redirects'),
+    ('/api/admin/redirects', admin.redirect.RedirectInstance, r'/api/admin/redirects/' + uuid_regexp),
+    ('/api/admin/auditlog', admin.auditlog.AuditLog),
+    ('/api/admin/auditlog/access', admin.auditlog.AccessLog),
+    ('/api/admin/auditlog/debug', admin.auditlog.DebugLog),
+    ('/api/admin/auditlog/jobs', admin.auditlog.JobsTiming),
+    ('/api/admin/auditlog/tips', admin.auditlog.TipsCollection),
+    ('/api/admin/l10n/', admin.l10n.AdminL10NHandler, r'/api/admin/l10n/(' + '|'.join(LANGUAGES_SUPPORTED_CODES) + ')'),
+    ('/api/admin/config', admin.operation.AdminOperationHandler),
+    ('/api/admin/config/csr/gen', admin.https.CSRHandler),
+    ('/api/admin/config/acme/run', admin.https.AcmeHandler),
+    ('/api/admin/config/tls', admin.https.ConfigHandler),
+    ('/api/admin/config/tls/files/', admin.https.FileHandler, r'/api/admin/config/tls/files/(cert|chain|key)'),
+    ('/api/admin/files', admin.file.FileCollection),
+    ('/api/admin/files', admin.file.FileInstance, r'/api/admin/files/(.+)'),
+    ('/api/admin/tenants', admin.tenant.TenantCollection),
+    ('/api/admin/tenants', admin.tenant.TenantInstance, r'/api/admin/tenants/' + '([0-9]{1,20})'),
+    ('/api/admin/statuses', admin.submission_statuses.SubmissionStatusCollection),
+    ('/api/admin/statuses', admin.submission_statuses.SubmissionStatusInstance, r'/api/admin/statuses/' + uuid_regexp_or_closed),
+    ('/api/admin/statuses', admin.submission_statuses.SubmissionSubStatusCollection, r'/api/admin/statuses/' + uuid_regexp_or_closed + r'/substatuses'),
+    ('/api/admin/statuses', admin.submission_statuses.SubmissionSubStatusInstance, r'/api/admin/statuses/' + uuid_regexp_or_closed + r'/substatuses/' + uuid_regexp),
 
-    # Services
-    (r'/api/support', support.SupportHandler),
-    (r'/api/signup', signup.Signup),
-    (r'/api/signup/([a-zA-Z0-9_\-]{64})', signup.SignupActivation),
-    (r'/api/wizard', wizard.Wizard),
+    # Signup
+    ('/api/signup', signup.Signup),
+    ('/api/signup', signup.SignupActivation, r'/api/signup/([a-zA-Z0-9_\-]{64})'),
 
     # Well known path
-    (r'/.well-known/acme-challenge/([a-zA-Z0-9_\-]{42,44})', admin.https.AcmeChallengeHandler),
-    (r'/.well-known/security.txt', security.SecuritytxtHandler),
+    ('/.well-known/acme-challenge', admin.https.AcmeChallengeHandler, r'/\.well-known/acme-challenge/([a-zA-Z0-9_\-]{42,44})'),
+    ('/.well-known/security.txt', security.SecuritytxtHandler),
 
     # Special Files Handlers
-    (r'/robots.txt', robots.RobotstxtHandler),
-    (r'/sitemap.xml', sitemap.SitemapHandler),
-    (r'/s/(.+)', file.FileHandler),
-    (r'/l10n/(' + '|'.join(LANGUAGES_SUPPORTED_CODES) + ')', l10n.L10NHandler),
+    ('/robots.txt', robots.RobotstxtHandler),
+    ('/sitemap.xml', sitemap.SitemapHandler),
+    ('/s/', file.FileHandler, r'/s/(.+)'),
+    ('/l10n/', l10n.L10NHandler, r'/l10n/(' + '|'.join(LANGUAGES_SUPPORTED_CODES) + ')'),
 
     # Path alias
-    (r'^(/admin|/login|/submission)$', redirect.SpecialRedirectHandler),
-
-    # File viewer app
-    (r'/(viewer/[a-zA-Z0-9_\-\/\.\@]*)', viewer.ViewerHandler),
-
-    # This handler attempts to route all non routed get requests
-    (r'/([a-zA-Z0-9_\-\/\.\@]*)', staticfile.StaticFileHandler)
+    ('/admin', redirect.SpecialRedirectHandler, r'(/admin)'),
+    ('/login', redirect.SpecialRedirectHandler, r'(/login)'),
+    ('/submission', redirect.SpecialRedirectHandler, r'(/submission)'),
 ]
+
+# Extend the tuples in the API spec that have 2 elements with None
+api_spec = [t if len(t) == 3 else (*t, re.escape(t[0])) for t in api_spec]
+
+
+default_api = staticfile.StaticFileHandler
+default_regexp = re.compile(r'/([a-zA-Z0-9_\-\/\.\@]*)')
+
+
+class TrieNode:
+    def __init__(self):
+        self.children = {}
+        self.descriptors = []  # List of tuples (regexp, handler)
+
+
+class Trie:
+    def __init__(self):
+        self.root = TrieNode()
+
+    def insert(self, prefix, regexp, handler):
+        """
+        Insert a route prefix into the Trie.
+        """
+        node = self.root
+        parts = prefix.strip('/').split('/')
+
+        for part in parts:
+            if part not in node.children:
+                node.children[part] = TrieNode()
+            node = node.children[part]
+
+        # Attach the full regexp and handler at the leaf node
+        node.descriptors.append((re.compile(regexp), handler))
+
+    def search(self, path):
+        """
+        Search for a matching handler based on the path.
+        """
+        match = None
+        node = self.root
+        parts = path.strip('/').split('/')
+
+        for part in parts:
+            if part in node.children:
+                node = node.children[part]
+            else:
+                break
+
+        for regexp, handler in node.descriptors:
+            match = regexp.match(path)
+            if match:
+                return match, handler
+
+        return default_regexp.match(path), default_api
 
 
 class APIResourceWrapper(Resource):
-    _registry = None
     isLeaf = True
     method_map = {
       'delete': 200,
@@ -184,30 +229,27 @@ class APIResourceWrapper(Resource):
 
     def __init__(self):
         Resource.__init__(self)
-        self._registry = []
+        self.registry = Trie()
         self.handler = None
 
-        for tup in api_spec:
-            args = {}
-            if len(tup) == 2:
-                pattern, handler = tup
-            else:
-                pattern, handler, args = tup
-
-            if not pattern.startswith("^"):
-                pattern = "^" + pattern
-
-            if not pattern.endswith("$"):
-                pattern += "$"
-
+        for prefix, handler, regexp in api_spec:
             if not hasattr(handler, '_decorated'):
                 handler._decorated = True
                 for m in ['delete', 'get', 'put', 'post']:
-                    # head and options method is intentionally not considered here
+                    # head and options method are intentionally not considered here
                     if hasattr(handler, m):
                         decorators.decorate_method(handler, m)
 
-            self._registry.append((re.compile(pattern), handler, args))
+            if not regexp.startswith("^"):
+                regexp = "^" + regexp
+
+            if not regexp.endswith("$"):
+                regexp += "$"
+
+            self.registry.insert(prefix, re.compile(regexp), handler)
+
+    def resolve_handler(self, path):
+        return self.registry.search(path)
 
     def should_redirect_https(self, request):
         if request.isSecure() or \
@@ -288,6 +330,7 @@ class APIResourceWrapper(Resource):
 
         :return: empty `str` or `NOT_DONE_YET`
         """
+        request.compressed = False
         request.hostname = request.getRequestHostname()
         request.port = request.getHost().port
         request.headers = request.getAllHeaders()
@@ -319,7 +362,7 @@ class APIResourceWrapper(Resource):
           (State.tenants[1].cache.hostname == '' and isIPAddress(request.hostname)):
             request.tid = 1
         else:
-            request.tid = State.tenant_hostname_id_map.get(request.hostname, None)
+            request.tid = State.tenant_hostname_id_map.get(request.hostname)
 
         if request.tid == 1:
             try:
@@ -384,15 +427,7 @@ class APIResourceWrapper(Resource):
             request.redirect(State.tenants[request.tid].cache['redirects'][request_path])
             return b''
 
-        match = None
-        for regexp, handler, args in self._registry:
-            try:
-                match = regexp.match(request_path)
-            except UnicodeDecodeError:
-                match = None
-            if match:
-                break
-
+        match, handler = self.resolve_handler(request_path)
         if match is None:
             self.handle_exception(errors.ResourceNotFound, request)
             return b''
@@ -412,7 +447,7 @@ class APIResourceWrapper(Resource):
         f = getattr(handler, method)
         groups = match.groups()
 
-        self.handler = handler(State, request, **args)
+        self.handler = handler(State, request)
 
         request.setResponseCode(self.method_map[method])
 
@@ -492,9 +527,14 @@ class APIResourceWrapper(Resource):
             if request.tid in State.tenants and State.tenants[request.tid].cache.onionservice:
                 request.setHeader(b'Onion-Location', b'http://' + State.tenants[request.tid].cache.onionservice.encode() + request.path)
 
+        request.setHeader(b"Cross-Origin-Embedder-Policy", "require-corp")
+        request.setHeader(b"Cross-Origin-Opener-Policy", "same-origin")
+        request.setHeader(b"Cross-Origin-Resource-Policy", "same-origin")
+
+        # Default CSP Policy with reporting of any violation
         request.setHeader(b'Content-Security-Policy',
                           b"base-uri 'none';"
-                          b"default-src 'none' 'report-sample';"
+                          b"default-src 'none';"
                           b"form-action 'none';"
                           b"frame-ancestors 'none';"
                           b"sandbox;"
@@ -502,23 +542,123 @@ class APIResourceWrapper(Resource):
                           b"require-trusted-types-for 'script';"
                           b"report-uri /api/report;")
 
-        request.setHeader(b"Cross-Origin-Embedder-Policy", "require-corp")
-        request.setHeader(b"Cross-Origin-Opener-Policy", "same-origin")
-        request.setHeader(b"Cross-Origin-Resource-Policy", "same-origin")
+        # CSP Policy on the entry point
+        if request.path == b'/' or request.path == b'/index.html':
+            request.setHeader(b'Content-Security-Policy',
+                              b"base-uri 'none';"
+                              b"connect-src 'self';"
+                              b"default-src 'none';"
+                              b"font-src 'self';"
+                              b"form-action 'none';"
+                              b"frame-ancestors 'none';"
+                              b"frame-src 'self';"
+                              b"img-src 'self';"
+                              b"media-src 'self';"
+                              b"script-src 'self';"
+                              b"style-src 'self';"
+                              b"trusted-types angular angular#bundler dompurify default;"
+                              b"require-trusted-types-for 'script';")
+
+            # Duplicate the above rule to get reports about any violations except for inline styles
+            request.setHeader(b'Content-Security-Policy-Report-Only',
+                              b"base-uri 'none';"
+                              b"connect-src 'self';"
+                              b"default-src 'none';"
+                              b"font-src 'self';"
+                              b"form-action 'none';"
+                              b"frame-ancestors 'none';"
+                              b"frame-src 'self';"
+                              b"img-src 'self';"
+                              b"media-src 'self';"
+                              b"script-src 'self';"
+                              b"style-src 'self' 'unsafe-inline';"
+                              b"trusted-types angular angular#bundler dompurify default;"
+                              b"require-trusted-types-for 'script';"
+                              b"report-uri /api/report;")
+
+        # CSP Policy for the crypto worker with reporting of any violation
+        elif request.path == b'/workers/crypto.worker.js':
+            request.setHeader(b'Content-Security-Policy',
+                              b"base-uri 'none';"
+                              b"default-src 'none';"
+                              b"form-action 'none';"
+                              b"frame-ancestors 'none';"
+                              b"script-src 'wasm-unsafe-eval';"
+                              b"sandbox;"
+                              b"trusted-types;"
+                              b"require-trusted-types-for 'script';"
+                              b"report-uri /api/report;")
+
+        # CSP Policy for the file viewer
+        elif request.path.startswith(b'/viewer'):
+            if request.path == b'/viewer/index.html':
+                request.setHeader(b'Content-Security-Policy',
+                                  b"base-uri 'none';"
+                                  b"default-src 'none';"
+                                  b"connect-src blob:;"
+                                  b"form-action 'none';"
+                                  b"frame-ancestors 'self';"
+                                  b"img-src blob:;"
+                                  b"media-src blob:;"
+                                  b"script-src 'self';"
+                                  b"style-src 'self';"
+                                  b"sandbox allow-scripts;"
+                                  b"trusted-types;"
+                                  b"require-trusted-types-for 'script';")
+
+                # Duplicate the above rule to get reporting of violations except for inline styles
+                request.setHeader(b'Content-Security-Policy-Report-Only',
+                                  b"base-uri 'none';"
+                                  b"default-src 'none';"
+                                  b"connect-src blob:;"
+                                  b"form-action 'none';"
+                                  b"frame-ancestors 'self';"
+                                  b"img-src blob:;"
+                                  b"media-src blob:;"
+                                  b"script-src 'self';"
+                                  b"style-src 'self' 'unsafe-inline';"
+                                  b"sandbox allow-scripts;"
+                                  b"trusted-types;"
+                                  b"require-trusted-types-for 'script';"
+                                  b"report-uri /api/report;")
+
+                request.setHeader(b"Cross-Origin-Resource-Policy", "cross-origin")
+            else:
+                request.setHeader(b'Access-Control-Allow-Origin', "null")
 
         # Disable features that could be used to deanonymize the user
         microphone = False
         if request.tid in State.tenants and getattr(State.tenants[request.tid], 'microphone', False):
             microphone = True
 
-        request.setHeader(b'Permissions-Policy', b"camera=(),"
+        # Prevent usage of the unused permissions listed in: https://developer.mozilla.org/en-US/docs/Web/API/Permissions
+        request.setHeader(b'Permissions-Policy', b"accelerometer=(),"
+                                                 b"ambient-light-sensor=(),"
+                                                 b"bluetooth=(),"
+                                                 b"camera=(),"
+                                                 b"clipboard-read=(),"
+                                                 b"clipboard-write=(self),"
                                                  b"document-domain=(),"
+                                                 b"display-capture=(),"
                                                  b"fullscreen=(),"
                                                  b"geolocation=(),"
+                                                 b"gyroscope=(),"
+                                                 b"idle-detection=(self),"
+                                                 b"keyboard-map=(),"
+                                                 b"local-fonts=(),"
+                                                 b"magnetometer=(),"
                                                  b"microphone=(" + (b"self" if microphone else b"") + b"),"
+                                                 b"midi=(),"
+                                                 b"notifications=(),"
+                                                 b"payment=(),"
+                                                 b"push=(),"
+                                                 b"screen-wake-lock=(),"
                                                  b"serial=(),"
+                                                 b"speaker-selection=(),"
+                                                 b"storage-access=(),"
                                                  b"usb=(),"
-                                                 b"web-share=()")
+                                                 b"web-share=(),"
+                                                 b"xr-spatial-tracking=()")
 
         # Prevent old browsers not supporting CSP frame-ancestors directive to includes the platform within an iframe
         request.setHeader(b'X-Frame-Options', b'deny')
@@ -551,25 +691,40 @@ class APIResourceWrapper(Resource):
 
     def detect_language(self, request):
         locales = []
-        for language in request.headers.get(b'accept-language', b'').decode().split(","):
-            parts = language.strip().split(";")
-            if len(parts) > 1 and parts[1].startswith("q="):
-                try:
-                    score = float(parts[1][2:])
-                except (ValueError, TypeError):
-                    score = 0
+
+        # Retrieve and decode the 'accept-language' header
+        accept_language = request.headers.get(b'accept-language', b'').decode()
+
+        # Get the tenant data once to avoid redundant lookups
+        tenant_cache = State.tenants.get(request.tid)
+
+        # Check if tenant exists and is cached
+        if tenant_cache:
+            enabled_languages = tenant_cache.cache.languages_enabled
+            default_language = tenant_cache.cache.default_language
+
+            for language in accept_language.split(","):
+                parts = language.strip().split(";")
+                score = 1.0  # Default score
+
+                if len(parts) > 1 and parts[1].startswith("q="):
+                    try:
+                        score = float(parts[1][2:])
+                    except (ValueError, TypeError):
+                        score = 0  # Fallback if q-value is invalid
+
+                # Append language with score if it's enabled for the tenant
+                if parts[0] in enabled_languages:
+                    locales.append((parts[0], score))
+
+            if locales:
+               # Use max() to pick the language with the highest score
+               request.language = max(locales, key=lambda pair: pair[1])[0]
             else:
-                score = 1.0
-
-            if request.tid in State.tenants and parts[0] in State.tenants[request.tid].cache.languages_enabled:
-                locales.append((parts[0], score))
-
-        if locales:
-            locales.sort(key=lambda pair: pair[1], reverse=True)
-            request.language = locales[0][0]
-        elif request.tid in State.tenants:
-            request.language = State.tenants[request.tid].cache.default_language
+               # Fallback to default language if no matching locale found
+                request.language = default_language
         else:
+            # Fallback to default 'en' if tenant doesn't exist or no valid languages enabled
             request.language = 'en'
 
         return request.language

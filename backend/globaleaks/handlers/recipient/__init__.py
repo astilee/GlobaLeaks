@@ -1,11 +1,9 @@
-# -*- coding: utf-8 -*-
-#
 # API handling recipient user functionalities
-import base64
 import json
 
 from datetime import datetime
 
+from nacl.encoding import Base64Encoder
 from sqlalchemy.sql.expression import distinct, func, and_, or_
 
 from globaleaks import models
@@ -91,12 +89,12 @@ def get_receivertips(session, tid, receiver_id, user_key, language, args={}):
         label = itip.label
         accessible = rtip.receiver_id == receiver_id
         if itip.crypto_tip_pub_key and accessible:
-            tip_key = GCE.asymmetric_decrypt(user_key, base64.b64decode(rtip.crypto_tip_prv_key))
+            tip_key = GCE.asymmetric_decrypt(user_key, Base64Encoder.decode(rtip.crypto_tip_prv_key))
 
             if label:
-                label = GCE.asymmetric_decrypt(tip_key, base64.b64decode(label.encode())).decode()
+                label = GCE.asymmetric_decrypt(tip_key, Base64Encoder.decode(label.encode())).decode()
 
-            answers = json.loads(GCE.asymmetric_decrypt(tip_key, base64.b64decode(answers.encode())).decode())
+            answers = json.loads(GCE.asymmetric_decrypt(tip_key, Base64Encoder.decode(answers.encode())).decode())
         elif itip.crypto_tip_pub_key:
             # remove useless and unusable crypted data
             answers = ""
@@ -150,8 +148,7 @@ def perform_tips_operation(session, tid, user_id, user_cc, operation, args):
     :param operation: An operation command (grant/revoke)
     :param args: The operation arguments
     """
-    profile = (session.query(models.UserProfile).join(models.User, models.User.profile_id == models.UserProfile.id)
-                .filter(models.User.id == user_id).first())
+    receiver, profile = session.query(models.User, models.UserProfile).join(models.UserProfile, models.User.profile_id == models.UserProfile.id).filter(models.User.id == user_id).first()
 
     result = session.query(models.InternalTip, models.ReceiverTip) \
                                  .filter(models.ReceiverTip.receiver_id == user_id,
@@ -167,13 +164,12 @@ def perform_tips_operation(session, tid, user_id, user_cc, operation, args):
                 db_log(session, tid=tid, type='grant_access', user_id=user_id, object_id=itip.id)
 
         if notify:
-            db_notify_grant_access(session, new_receiver, profile.language)
+            db_notify_grant_access(session, new_receiver)
 
     elif operation == 'revoke' and profile.can_grant_access_to_reports:
         for itip, _ in result:
             if db_revoke_tip_access(session, tid, user_id, itip, args['receiver']):
                 db_log(session, tid=tid, type='revoke_access', user_id=user_id, object_id=itip.id)
-
 
     else:
         raise errors.ForbiddenOperation
@@ -202,9 +198,6 @@ class Operations(BaseHandler):
 
     def put(self):
         request = self.validate_request(self.request.content.read(), requests.OpsDesc)
-
-        if request['operation'] not in ['grant', 'revoke']:
-            raise errors.ForbiddenOperation
 
         return perform_tips_operation(self.request.tid,
                                       self.session.user_id,

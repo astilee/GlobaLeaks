@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Implement the notification of new submissions
 import itertools
 
@@ -127,9 +126,9 @@ class MailGenerator(object):
                     data = {'type': 'tip'}
                 else:
                     data = {'type': 'tip_update'}
-                language = session.query(models.UserProfile.language).filter(models.UserProfile.id == user.profile_id).scalar()
-                data['user'] = user_serialize_user(session, user, language)
-                data['tip'] = serializers.serialize_rtip(session, itip, rtip, language)
+
+                data['user'] = user_serialize_user(session, user, user.language)
+                data['tip'] = serializers.serialize_rtip(session, itip, rtip, user.language)
 
                 self.process_mail_creation(session, tid, data)
             except:
@@ -150,8 +149,7 @@ class MailGenerator(object):
             data = {'type': 'unread_tips'}
 
             try:
-                language = session.query(models.UserProfile.language).filter(models.UserProfile.id == user.profile_id).scalar()
-                data['user'] = user_serialize_user(session, user, language)
+                data['user'] = user_serialize_user(session, user, user.language)
                 self.process_mail_creation(session, user.tid, data)
             except:
                 pass
@@ -162,10 +160,9 @@ class MailGenerator(object):
                                                       models.InternalTip.reminder_date < now).distinct():
 
             data = {'type': 'tip_reminder'}
-            language = session.query(models.UserProfile.language).filter(models.UserProfile.id == user.profile_id).scalar()
 
             try:
-                data['user'] = user_serialize_user(session, user, language)
+                data['user'] = user_serialize_user(session, user, user.language)
                 self.process_mail_creation(session, user.tid, data)
             except:
                 pass

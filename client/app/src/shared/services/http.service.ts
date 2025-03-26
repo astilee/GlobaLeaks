@@ -53,8 +53,12 @@ export class HttpService {
     return this.httpClient.post<Session>("api/auth/tokenauth", param);
   }
 
-  requestGeneralLogin(param: string): Observable<Session> {
-    return this.httpClient.post<Session>("api/auth/authentication", param);
+  requestGeneralLogin(param: string,header: HttpHeaders): Observable<Session> {
+    return this.httpClient.post<Session>("api/auth/authentication", param,{headers: header});
+  }
+
+  requestAuthType(param: string): Observable<any> {
+    return this.httpClient.post<any>("api/auth/type", param);
   }
 
   requestWhistleBlowerLogin(param: string, header: HttpHeaders): Observable<Session> {
@@ -362,8 +366,8 @@ export class HttpService {
     return this.httpClient.put<User | UserProfile >("api/admin/users/" + id, param);
   }
 
-  requestDeleteAdminUser(id: string,url:string,is_profile:any): Observable<userResolverModel> {
-    const body = { is_profile };
+  requestDeleteAdminUser(id: string,url:string,is_profile:any,profile_id?:string): Observable<userResolverModel> {
+    const body = profile_id ? { is_profile:is_profile, profile_id:profile_id } : { is_profile:is_profile};
     return this.httpClient.delete<userResolverModel>(url + id, {body});
   }
 

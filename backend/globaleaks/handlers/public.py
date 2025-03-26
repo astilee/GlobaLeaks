@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-#
 # Handlers dealing with public API exporting main platform configuration/resources
 import copy
 
@@ -523,7 +521,7 @@ def db_get_questionnaires(session, tid, language, serialize_templates=False):
         State.tenants[tid].microphone = False
 
     questionnaires = session.query(models.Questionnaire) \
-                            .filter(models.Questionnaire.tid.in_({1, tid}),
+                            .filter(models.Questionnaire.tid.in_({1, tid, State.tenants[tid].cache.ptid}),
                                     or_(models.Context.questionnaire_id == models.Questionnaire.id,
                                         models.Context.additional_questionnaire_id == models.Questionnaire.id),
                                     models.Context.tid == tid)
@@ -561,7 +559,6 @@ def db_get_receivers(session, tid, language):
     data = db_prepare_receivers_serialization(session, [user for user, _ in receivers])
 
     return [serialize_receiver(session, user, profile, language, data) for user, profile in receivers]
-
 
 @transact
 def get_public_resources(session, tid, language):
