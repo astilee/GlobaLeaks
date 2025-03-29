@@ -38,13 +38,11 @@ The system implements the following password security measures:
 
 Password storage
 ----------------
-Passwords are never stored in plaintext; instead, the system maintains only a hashed version. This applies to all authentication secrets, including whistleblower receipts.
+Passwords are never stored on the server either in plaintext or in form on hash; instead, the system maintains only the hash of of a key drived from the user password.
 
-The platform stores users’ passwords hashed with a random 128-bit salt, unique for each user.
+Passwords are hashed using `Argon2 <https://en.wikipedia.org/wiki/Argon2>`_ with a configuration of 16 iterations and 128MB of RAM, a per-user salt for each user and a per-system salt for whistleblowers.
 
-Passwords are hashed using `Argon2 <https://en.wikipedia.org/wiki/Argon2>`_, a key derivation function selected as the winner of the `Password Hashing Competition <https://en.wikipedia.org/wiki/Password_Hashing_Competition>`_ in July 2015.
-
-The hash involves a per-user salt for each user and a per-system salt for whistleblowers.
+The hashing algorithm used to compute the key hash is SHA256.
 
 Password complexity
 -------------------
@@ -116,7 +114,7 @@ Cookies are not used intentionally to minimize XSRF attacks and any possible att
 
 HTTP headers
 ------------
-The system implements a large set of HTTP headers specifically configured to improve software security and achieves a `score A+ by Security Headers <https://securityheaders.com/?q=https%3A%2F%2Ftry.globaleaks.org&followRedirects=on>`_ and a `score A+ by Mozilla Observatory <https://observatory.mozilla.org/analyze/try.globaleaks.org>`_.
+The system implements a large set of HTTP headers specifically configured to improve software security and achieves a `score A+ by Security Headers <https://securityheaders.com/?q=https%3A%2F%2Fdemo.globaleaks.org&followRedirects=on>`_ and a `score A+ by Mozilla Observatory <https://observatory.mozilla.org/analyze/demo.globaleaks.org>`_.
 
 Strict-Transport-Security
 +++++++++++++++++++++++++
@@ -132,7 +130,7 @@ Content-Security-Policy
 The backend implements a strict `Content Security Policy (CSP) <https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP>`_ preventing any interaction with third-party resources and restricting execution of code by means of `Trusted Types <https://www.w3.org/TR/trusted-types/>`_.
 ::
 
-  Content-Security-Policy: base-uri 'none'; connect-src 'self'; default-src 'none'; font-src 'self'; form-action 'none'; frame-ancestors 'none'; frame-src 'self'; img-src 'self'; media-src 'self'; script-src 'self' 'report-sample'; style-src 'self' 'report-sample'; trusted-types angular angular#bundler default dompurify; require-trusted-types-for 'script'; report-uri /api/report;
+  Content-Security-Policy: base-uri 'none'; connect-src 'self'; default-src 'none'; font-src 'self'; form-action 'none'; frame-ancestors 'none'; frame-src 'self'; img-src 'self'; media-src 'self'; script-src 'self' 'report-sample'; style-src 'self'; trusted-types angular angular#bundler default dompurify; require-trusted-types-for 'script'; report-uri /api/report;
 
 Specific policies are implemented in adherence to the principle of least privilege.
 
@@ -170,7 +168,7 @@ Permissions-Policy
 The backend implements the following Permissions-Policy header configuration to limit the possible de-anonymization of the user by disabling dangerous browser features:
 ::
 
-  Permissions-Policy: camera=() display-capture=() document-domain=() fullscreen=() geolocation=() microphone=() serial=() usb=() web-share=()
+  Permissions-Policy: accelerometer=(),ambient-light-sensor=(),bluetooth=(),camera=(),clipboard-read=(),clipboard-write=(),document-domain=(),display-capture=(),fullscreen=(),geolocation=(),gyroscope=(),idle-detection=(),keyboard-map=(),local-fonts=(),magnetometer=(),microphone=(),midi=(),notifications=(),payment=(),push=(),screen-wake-lock=(),serial=(),speaker-selection=(),storage-access=(),usb=(),web-share=(),xr-spatial-tracking=()
 
 X-Frame-Options
 +++++++++++++++
@@ -268,7 +266,7 @@ The software also facilitates easy setup of ``HTTPS``, offering both automatic s
 
 TLS certificates are generated using `NIST Curve P-384 <https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.186-4.pdf>`__.
 
-The configuration enables only ``TLS1.2+`` and is fine-tuned and hardened to achieve `SSLLabs grade A+ <https://www.ssllabs.com/ssltest/analyze.html?d=try.globaleaks.org>`__.
+The configuration enables only ``TLS1.2+`` and is fine-tuned and hardened to achieve `SSLLabs grade A+ <https://www.ssllabs.com/ssltest/analyze.html?d=demo.globaleaks.org>`__.
 
 In particular, only the following ciphers are enabled:
 ::
@@ -358,6 +356,8 @@ Proof of work on users' sessions
 --------------------------------
 The system implements an automatic `Proof of Work <https://en.wikipedia.org/wiki/Proof_of_work>`__ based on the hashcash algorithm for every user session, requiring clients to request a token and continuously solve a computational problem to acquire and renew the session.
 
+Specifically the algorithm used to perform the hash is Argon2id with requirement of 1 iteration and 1MB of RAM.
+
 Rate limit on users' sessions
 ------------------------------
 The system implements rate limiting on user sessions, preventing more than 5 requests per second and applying increasing delays on requests that exceed this threshold.
@@ -399,7 +399,7 @@ Any attachment uploaded by anonymous whistleblowers might contain malware, eithe
 
 Safe file opening
 +++++++++++++++++
-For scenarios where the whistleblower's trustworthiness has been validated or in projects with a low-risk threat model, the application offers an integrated file viewer. This viewer, leveraging modern browser sandboxing capabilities, allows the safe opening of a limited set of file types considered more secure than accessing files directly through the operating system. This feature is disabled by default. Administrators should enable it only after thorough evaluation and ensure that recipients' browsers are kept up-to-date.
+For scenarios where the whistleblower's trustworthiness has been validated or in projects with a low-risk threat model, the application offers an integrated file viewer. This viewer, leveraging modern browser sandboxing capabilities, allows the safe opening of a limited set of file types considered more secure than accessing files directly through the operating system.
 
 The supported file formats are:
 
@@ -409,8 +409,6 @@ The supported file formats are:
 * PDF
 * VIDEO
 * TXT
-
-The default configuration has this feature disabled.
 
 PGP encryption
 ++++++++++++++

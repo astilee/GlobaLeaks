@@ -34,7 +34,7 @@ export class Tab5Component implements OnInit {
   private questionnairesResolver = inject(QuestionnairesResolver);
 
   @Input() contentForm: NgForm;
-  userData: User[];
+  userData: User[] = [];
   questionnaireData: questionnaireResolverModel[];
   routeReload = false;
   private userDataSubscription: Subscription;
@@ -98,3 +98,4 @@ export class Tab5Component implements OnInit {
     this.routeReload = true;
   }
 }
+

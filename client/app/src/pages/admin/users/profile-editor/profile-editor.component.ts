@@ -12,14 +12,14 @@ import {Observable} from "rxjs";
 import {UserProfile} from "@app/models/resolvers/user-resolver-model";
 import {nodeResolverModel} from "@app/models/resolvers/node-resolver-model";
 import {preferenceResolverModel} from "@app/models/resolvers/preference-resolver-model";
-import {NgClass, DatePipe, CommonModule} from "@angular/common";
+import {NgClass, CommonModule} from "@angular/common";
 import {TranslatorPipe} from "@app/shared/pipes/translate";
 
 @Component({
     selector: "src-profile-editor",
     templateUrl: "./profile-editor.component.html",
     standalone: true,
-    imports: [CommonModule, FormsModule, NgbTooltipModule, NgClass, DatePipe, TranslatorPipe]
+    imports: [CommonModule, FormsModule, NgbTooltipModule, NgClass, TranslatorPipe]
 })
 export class ProfileEditorComponent implements OnInit {
   private modalService = inject(NgbModal);

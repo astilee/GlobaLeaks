@@ -7,6 +7,7 @@ Build-Depends:
   devscripts,
   dh-apparmor,
   dh-python,
+  pybuild-plugin-pyproject,
   python3-all,
   python3-setuptools,
   python3-sphinx
@@ -27,6 +28,7 @@ Depends:
   lsb-base,
   python3:any,
   python3-acme,
+  python3-brotli,
   python3-cryptography,
   python3-h2,
   python3-nacl,
@@ -34,6 +36,7 @@ Depends:
   python3-gnupg,
   python3-priority,
   python3-pyotp,
+  python3-six,
   python3-sqlalchemy,
   python3-twisted,
   python3-txtorcon,

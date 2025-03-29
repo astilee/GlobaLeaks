@@ -275,6 +275,7 @@ class MockDict:
             'name': 'Generic User',
             'last_login': '1970-01-01 00:00:00.000000',
             'forcefully_selected': True,
+            'send_activation_link': False,
             'can_edit_general_settings': False,
             'can_grant_access_to_reports': True,
             'can_transfer_access_to_reports': True,
@@ -286,10 +287,10 @@ class MockDict:
         }
         
         self.dummyQuestionnaire = {
-                    'id': 'test',
-                    'name': 'test'
+            'id': 'test',
+            'name': 'test'
         }
-     
+
         self.dummyContext = {
             'id': '',
             'name': 'Already localized name',
@@ -824,7 +825,6 @@ class TestGLWithPopulatedDB(TestGL):
         profile = session.query(UserProfile).filter_by(role=role, name=name,tid = 1).first()
         return profile.id if profile else None
     
-
     @transact
     def mock_users_keys(self, session):
         OLD_USER_KEY, OLD_USER_KEY_HASH = GCE.calculate_key_and_hash(VALID_PASSWORD, VALID_SALT)

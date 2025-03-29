@@ -1,11 +1,12 @@
 # -*- coding: UTF-8
+import json
 from nacl.encoding import Base64Encoder
-from globaleaks.handlers.admin.questionnaire import db_get_questionnaires, import_questionnaires
 
 from globaleaks import models
 from globaleaks.db.appdata import load_appdata, db_load_defaults
 from globaleaks.handlers.admin.context import db_create_context
 from globaleaks.handlers.admin.node import db_update_enabled_languages
+from globaleaks.handlers.admin.questionnaire import db_get_questionnaires, import_questionnaires
 from globaleaks.handlers.admin.user import db_create_user, db_create_user_profile
 from globaleaks.handlers.base import BaseHandler
 from globaleaks.models import Config, config, profiles, serializers
@@ -15,10 +16,8 @@ from globaleaks.orm import db_del, db_get, transact, tw
 from globaleaks.rest import errors, requests
 from globaleaks.utils.crypto import GCE
 from globaleaks.utils.log import log
-
 from globaleaks.utils.sock import isIPAddress
 from globaleaks.utils.tls import gen_selfsigned_certificate
-import json
 from twisted.internet.defer import inlineCallbacks
 
 default_profile_id = 1000001
@@ -298,9 +297,11 @@ def db_wizard(session, tid, hostname, request):
             # Set the recipient name equal to the node name
             receiver_user.name = receiver_user.public_name = request['node_name']
 
+
 @transact
 def wizard(session, tid, hostname, request):
     return db_wizard(session, tid, hostname, request)
+
 
 @transact
 def update(session, tid, request):

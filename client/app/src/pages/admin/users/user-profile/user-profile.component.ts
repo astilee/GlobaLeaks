@@ -8,7 +8,6 @@ import {TenantsResolver} from "@app/shared/resolvers/tenants.resolver";
 import {HttpService} from "@app/shared/services/http.service";
 import {UtilsService} from "@app/shared/services/utils.service";
 import {NgbTooltipModule} from "@ng-bootstrap/ng-bootstrap";
-import {NgClass} from "@angular/common";
 import {FormsModule} from "@angular/forms";
 import {TranslatorPipe} from "@app/shared/pipes/translate";
 import {OrderByPipe} from "@app/shared/pipes/order-by.pipe";
@@ -18,7 +17,7 @@ import {HttpClient} from "@angular/common/http";
 @Component({
   selector: 'src-user-profile',
   standalone: true,
-  imports: [FormsModule, NgbTooltipModule, NgClass, ProfileEditorComponent, TranslatorPipe, OrderByPipe],
+  imports: [FormsModule, NgbTooltipModule, ProfileEditorComponent, TranslatorPipe, OrderByPipe],
   templateUrl: './user-profile.component.html',
 })
 export class UserProfileComponent implements OnInit {

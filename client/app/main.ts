@@ -46,6 +46,32 @@ import Flow from "@flowjs/flow.js";
 
 bootstrapApplication(AppComponent, {
     providers: [
+        provideRouter(appRoutes),
+        importProvidersFrom(NgbModule,
+                            BrowserModule,
+                            NgSelectModule,
+                            NgxFlowModule,
+                            NgOptimizedImage,
+                            FormsModule,
+                            NgbTooltipModule,
+                            NgIdleKeepaliveModule.forRoot(),
+                            MarkdownModule.forRoot({
+                              markedOptions: {
+                                provide: MARKED_OPTIONS,
+                                useFactory: (rendererService: MarkdownRendererService) => ({
+                                  breaks: true,
+                                  renderer: rendererService.getCustomRenderer(),
+                                }),
+                                deps: [MarkdownRendererService]
+                              }
+                            }),
+                            TranslateModule.forRoot({
+                              loader: {
+                                provide: TranslateLoader,
+                                useFactory: createTranslateLoader,
+                                deps: [HttpClient],
+                              },
+                            })),
         { provide: APP_BASE_HREF, useValue: "/" },
         { provide: HTTP_INTERCEPTORS, useClass: appInterceptor, multi: true },
         { provide: HTTP_INTERCEPTORS, useClass: ErrorCatchingInterceptor, multi: true },
@@ -72,34 +98,7 @@ bootstrapApplication(AppComponent, {
         TranslatorPipe,
         TranslateService,
         provideHttpClient(withInterceptorsFromDi()),
-        provideAnimations(),
-        provideRouter(appRoutes),
-        importProvidersFrom(NgbModule,
-                            BrowserModule,
-                            NgSelectModule,
-                            NgxFlowModule,
-                            NgOptimizedImage,
-                            FormsModule,
-                            NgbTooltipModule,
-                            NgIdleKeepaliveModule.forRoot(),
-                            MarkdownModule.forRoot({
-                              markedOptions: {
-                                provide: MARKED_OPTIONS,
-                                useFactory: (rendererService: MarkdownRendererService) => ({
-                                  breaks: true,
-                                  renderer: rendererService.getCustomRenderer(),
-                                }),
-                                deps: [MarkdownRendererService]
-                              }
-                            }),
-                            TranslateModule.forRoot({
-                              loader: {
-                                provide: TranslateLoader,
-                                useFactory: createTranslateLoader,
-                                deps: [HttpClient],
-                              },
-                            }))
-
+        provideAnimations()
     ]
 }).then(moduleRef => {
     // Expose Angular stability status to Cypress

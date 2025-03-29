@@ -1,3 +1,118 @@
+Changes in version 5.0.65
+    List every report present only to the channel to recipients only if recipients selection is not enabled
+    Show the receipt interface only when users visit /#/submission
+    Fix visualization of questions in case of missing field attribute multimedia_type
+    Bump client dependencies to latest versions
+    Update translations
+    [doc] Update documentation about Secure File Viewer since it is now a default component always enabled
+
+Changes in version 5.0.64
+    Fix possibility of enabling field triggers inside fieldgroups broken since release 5.0.0
+    Bump client dependencies to latest version
+
+Changes in version 5.0.63
+    Revise markdown sanitization functions fixing processing for images and addition of target blank attribute
+    Fix issue #4435
+    Bump client dependencies to latest version
+
+Changes in version 5.0.62
+    Correct validation of wizard form causing failures in relation to input processing of firefox
+    Rewrite code in rest/api.py for better understanding
+    Correct implementation of redirect handlers for /admin /login and /submission
+    Bump client dependencies to latests version
+
+Changes in version 5.0.61
+    Correct gl-admin script in relation to password and 2fa resets
+
+Changes in version 5.0.60
+    Correct fix included in 5.0.9 correcting regression introduced in 5.0.58 preventing submission of new reports
+    Fix receipt change handler for recipient assisted submissions
+
+Changes in version 5.0.59
+    Fix interface indicating the minimum valid date for report expiration date change broken since version 5
+    Fix icons on datepicker selector in releation to #4345
+    Fix regression introduced in 5.0.58 preventing submission of new reports
+
+Changes in version 5.0.58
+    Make it possible for an administrator so send activation links to users upon their creation (#4425)
+    Restore possibility to receiver submissions for platforms activated before encryption was implemented
+    Revise interface for enabling and disabling escrow keys
+    [ci] Raise tests code coverage to 90%
+    [ci] Improved testing of REST api, cache and decorators
+    [ci] Add test orm to verify lockdown on queries
+    [doc] Add documentation about Quality Assurance process
+
+Changes in version 5.0.57
+    Fix file upload for files bigger than 1MB resulting in failure since version 5.0.44
+
+Changes in version 5.0.56
+    Fix bug in change of expiration date introduced in 5.0.51
+    Fix issue #4422
+    Bump client dependencies to latest version
+
+Changes in version 5.0.55
+    Re-implement auto-expand of text areas as in version 4
+    Add CSS IDs to enable to customize some of the section of the report
+    Add tip-status-id and tip-substatus-id css classes to enable to customize sections with CSS by report status
+    Revise functionality of simplified login interface broken since initial version 5
+    Disable button send activation link for users that do not have access to escrow keys
+    Re-add signup data visualization for platforms in mode != 'demo'
+    Bump client dependencies to latest version
+
+Changes in version 5.0.54
+    Revise code related to password initialization in demo and wbpa mode
+
+Changes in version 5.0.53
+   Revise fix of bug loading of questionnaires designed with informative steps
+     without questions reintroduced in 5.0.47 and short term fixed in 5.0.52
+   Update application to use Angular 19
+   Bump client dependencies to latest version
+
+Changes in version 5.0.52
+   Fix bug loading of questionnaires designed with informative steps
+     without questions reintroduced in 5.0.47
+
+Changes in version 5.0.51
+   Reset reports reminders when reports are put in closed statuses
+   Fix users password generation for users created using signup feature
+
+Changes in version 5.0.50
+   Fix admin loading and re-loading of images
+   Bump client dependencies to latest version
+
+Changes in version 5.0.49
+   Re-enable email notifications, disabled by mistake during testing of 5.0.48
+
+Changes in version 5.0.48
+    Revise correction for issue #4394
+
+Changes in version 5.0.47
+    Adopt new angular builder: angular-devkit/build-angular:browser-esbuild
+      to optimize packaging
+    Adopt variable fonts when available (#4388)
+    Correct globaleaks/utils/securetempfile.py enabling to call open() on
+      already opened file to fix bug on encryption of files introduced in
+      5.0.44 preventing correct storage of files on setups with more than
+      one recipient (#4394)
+    Reimplementing python packaging replacing setup.py with pyproject.toml
+    Fix issue #4390
+    Bump client dependencies to latest versions
+
+Changes in version 5.0.46
+    Fix issue on creation of users on multitenant systems introduced in 5.0.44
+
+Changes in version 5.0.45
+    Revise mock implementation in relation to multi-lang mocks
+
+Changes in version 5.0.44
+    Move password hashing on clientside
+    Upgrade proof of work from sha256 to argon2id with 1 step and 1MB of requirement
+    Refactor SecureTemporaryFile replacing AES with ChaCha20
+    Enable Brotli compression of static (offline) and dynamic (on-the-fly) content
+    Fix bug visualization of files uploaded by recipients introduced in 5.0.19
+    Bump client dependencies to latest version
+    Update translations
+
 Changes in version 5.0.43
     Correct regression on logs missing newlines introduced in 5.0.38
 

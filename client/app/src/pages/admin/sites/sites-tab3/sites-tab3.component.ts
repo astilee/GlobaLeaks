@@ -6,7 +6,6 @@ import {SlicePipe} from "@angular/common";
 import {NgbPagination, NgbPaginationPrevious, NgbPaginationNext, NgbPaginationFirst, NgbPaginationLast, NgbTooltipModule} from "@ng-bootstrap/ng-bootstrap";
 import {TranslatorPipe} from "@app/shared/pipes/translate";
 import {FilterPipe} from "@app/shared/pipes/filter.pipe";
-import {FilterSearchPipe} from "@app/shared/pipes/filter-search.pipe";
 import {OrderByPipe} from "@app/shared/pipes/order-by.pipe";
 import {TranslateModule} from "@ngx-translate/core";
 import {ProfilelistComponent} from "../profilelist/profilelist.component";
@@ -17,7 +16,7 @@ import {HttpClient} from "@angular/common/http";
   selector: 'src-sites-tab3',
   templateUrl: './sites-tab3.component.html',
   standalone: true,
-  imports: [FormsModule, ProfilelistComponent, NgbPagination, NgbPaginationPrevious, NgbPaginationNext, NgbPaginationFirst, NgbPaginationLast, NgbTooltipModule, SlicePipe, TranslatorPipe, FilterPipe, FilterSearchPipe, OrderByPipe, TranslateModule]
+  imports: [FormsModule, ProfilelistComponent, NgbPagination, NgbPaginationPrevious, NgbPaginationNext, NgbPaginationFirst, NgbPaginationLast, NgbTooltipModule, SlicePipe, TranslatorPipe, FilterPipe, OrderByPipe, TranslateModule]
 })
 export class SitesTab3Component implements OnInit {
   private httpService = inject(HttpService);

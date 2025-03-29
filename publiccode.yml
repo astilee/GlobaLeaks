@@ -1,11 +1,11 @@
 name: GlobaLeaks
-releaseDate: '2025-01-18'
+releaseDate: '2025-03-28'
 publiccodeYmlVersion: '0.4.0'
 url: 'https://github.com/globaleaks/globaleaks-whistleblowing-software'
 landingURL: 'https://www.globaleaks.org/'
 roadmap: "https://docs.globaleaks.org/en/stable/roadmap/"
 logo: brand/assets/globaleaks-icon-color.svg
-softwareVersion: 5.0.43
+softwareVersion: 5.0.65
 softwareType: standalone/web
 developmentStatus: stable
 platforms:
@@ -156,7 +156,7 @@ description:
       agencies, corporations and more.
       The software is recognized by the
       [Digital Public Good Alliance](https://digitalpublicgoods.net) as a
-      [Digital Public Good](https://app.digitalpublicgoods.net/a/11113).
+      [Digital Public Good](https://digitalpublicgoods.net/r/globaleaks).
     documentation: 'https://docs.globaleaks.org/'
     features:
       - PNRR
@@ -230,6 +230,7 @@ description:
       - "Full self-contained application"
       - "Easy integration of the platform with existing websites and intranets"
       - "REST API"
+      - "IPv6 Ready"
     screenshots:
       - documentation/images/whistleblower/home.en.png
       - documentation/images/whistleblower/submission.en.png
@@ -257,7 +258,7 @@ description:
       indipendenti, attivisti,  agenzie pubbliche, imprese private e altro.
       Il software è riconosciuto dalla
       [Digital Public Good Alliance](https://digitalpublicgoods.net/) come un
-      [Digital Public Good](https://app.digitalpublicgoods.net/a/11113).
+      [Digital Public Good](https://digitalpublicgoods.net/r/globaleaks).
     documentation: 'https://docs.globaleaks.org/'
     features:
       - PNRR
@@ -331,6 +332,7 @@ description:
       - "Applicazione completamente autoncontenuta"
       - "Facile integrazione della piattaforma con siti web e intranet esistenti"
       - "REST API"
+      - "IPv6 Ready"
     screenshots:
       - documentation/images/whistleblower/home.it.png
       - documentation/images/whistleblower/submission.it.png

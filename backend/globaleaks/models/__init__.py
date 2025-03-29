@@ -24,6 +24,21 @@ field_types = [
   'fieldgroup'
 ]
 
+field_types = [
+  'inputbox',
+  'textarea',
+  'selectbox',
+  'multichoice',
+  'checkbox',
+  'fileupload',
+  'tos',
+  'date',
+  'daterange',
+  'voice',
+  'fieldgroup'
+]
+
+
 class LocalizationEngine(object):
     """
     This Class can manage all the localized strings inside one ORM object

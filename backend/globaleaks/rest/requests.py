@@ -156,6 +156,7 @@ AdminUserProfileDesc = {
     'can_transfer_access_to_reports': bool,
     'forcefully_selected': bool,
     'custom': bool,
+    'send_activation_link': bool
 }
 
 UserUserDesc = {

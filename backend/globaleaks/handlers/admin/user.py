@@ -1,4 +1,3 @@
-# -*- coding: utf-8
 import json
 from nacl.encoding import Base64Encoder
 from twisted.internet.defer import inlineCallbacks
@@ -8,8 +7,8 @@ from globaleaks.handlers.admin.operation import set_tmp_key
 from globaleaks.handlers.base import BaseHandler
 from globaleaks.handlers.user import parse_pgp_options, \
                                      user_serialize_user
-from globaleaks.models import Config, UserProfile, fill_localized_keys
 from globaleaks.handlers.user.reset_password import db_generate_password_reset_token
+from globaleaks.models import Config, UserProfile, fill_localized_keys
 from globaleaks.orm import db_del, db_get, db_log, transact, tw
 from globaleaks.rest import errors, requests
 from globaleaks.state import State
@@ -175,6 +174,8 @@ def db_create_user(session, tid, user_session, request, language):
 
     salt = config.get_val('receipt_salt')
     user.salt = GCE.generate_salt(salt + ":" + user.username)
+
+    user.language = request['language']
 
     # The various options related in manage PGP keys are used here.
     parse_pgp_options(user, request)

@@ -46,7 +46,7 @@ pygments_style = 'sphinx'
 html_theme = 'sphinx_rtd_theme'
 html_logo = 'logo-html.png'
 html_baseurl = 'https://docs.globaleaks.org/'
-html_favicon = '../client/app/assets/data/favicon.ico'
+html_favicon = '../client/app/images/favicon.ico'
 html_show_copyright = False
 htmlhelp_basename = 'globaleaks'
 html_static_path = ['_static']
@@ -63,7 +63,7 @@ html_context = {
 }
 
 latex_elements = {
-  'sphinxsetup': 'TitleColor={HTML}{3679BB}, InnerLinkColor={HTML}{3679BB}, OuterLinkColor={HTML}{3679BB}',
+  'sphinxsetup': 'InnerLinkColor={HTML}{205282}, OuterLinkColor={HTML}{205282}',
 }
 
 latex_documents = []
