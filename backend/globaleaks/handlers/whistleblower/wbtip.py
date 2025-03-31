@@ -13,7 +13,7 @@ from globaleaks.handlers.base import BaseHandler
 from globaleaks.handlers.whistleblower.submission import decrypt_tip, \
     db_set_internaltip_answers, db_get_questionnaire, \
     db_archive_questionnaire_schema, db_set_internaltip_data
-from globaleaks.handlers.user import user_serialize_user
+from globaleaks.handlers.user import serialize_user
 from globaleaks.models import serializers
 from globaleaks.orm import db_get, transact
 from globaleaks.rest import errors, requests
@@ -34,7 +34,7 @@ def db_notify_report_update(session, user, rtip, itip):
     """
     data = {
       'type': 'tip_update',
-      'user': user_serialize_user(session, user, user.language),
+      'user': serialize_user(session, user, user.language),
       'node': db_admin_serialize_node(session, user.tid, user.language),
       'tip': serializers.serialize_rtip(session, itip, rtip, user.language),
     }
@@ -53,10 +53,12 @@ def db_notify_report_update(session, user, rtip, itip):
         'tid': user.tid
     }))
 
+
 def db_notify_recipients_of_tip_update(session, itip_id):
     for user, rtip, itip in session.query(models.User, models.ReceiverTip, models.InternalTip) \
                                    .filter(models.User.id == models.ReceiverTip.receiver_id,
                                            models.ReceiverTip.internaltip_id == models.InternalTip.id,
+                                           models.ReceiverTip.last_access > models.ReceiverTip.last_notification,
                                            models.InternalTip.id == itip_id):
         db_notify_report_update(session, user, rtip, itip)
 

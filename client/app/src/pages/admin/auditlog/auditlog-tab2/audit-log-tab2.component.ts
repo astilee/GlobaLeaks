@@ -26,7 +26,7 @@ export class AuditLogTab2Component implements OnInit{
   }
 
   loadAuditLogData() {
-    this.users = this.usersResolver.dataModel.users;
+    this.users = this.usersResolver.dataModel;
   }
 
   getPaginatedData(): User[] {

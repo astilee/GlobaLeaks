@@ -28,21 +28,21 @@
             <i class="fa-solid fa-volume-down"></i>
           </span>
         }
-        @if (preferencesService.dataModel.can_grant_access_to_reports) {
+        @if (preferencesService.dataModel.profile.permissions.can_grant_access_to_reports) {
           <span id="tip-action-grant-access"
             (click)="openGrantTipAccessModal()" ngbTooltip="{{'Grant access' | translate}}"
             class="btn btn-outline-secondary">
             <i class="fa-solid fa-user-plus"></i>
           </span>
         }
-        @if (preferencesService.dataModel.can_grant_access_to_reports) {
+        @if (preferencesService.dataModel.profile.permissions.can_grant_access_to_reports) {
           <span id="tip-action-revoke-access"
             (click)="openRevokeTipAccessModal()" ngbTooltip="{{'Revoke access' | translate}}"
             class="btn btn-outline-secondary">
             <i class="fa-solid fa-user-minus"></i>
           </span>
         }
-        @if (preferencesService.dataModel.can_transfer_access_to_reports) {
+        @if (preferencesService.dataModel.profile.permissions.can_transfer_access_to_reports) {
           <span id="tip-action-transfer-access"
             (click)="openTipTransferModal()" ngbTooltip="{{'Transfer access' | translate}}"
             class="btn btn-outline-secondary">
@@ -50,7 +50,7 @@
           </span>
         }
         @if (!tip || tip.context) {
-          @if (!tip || preferencesService.dataModel.can_postpone_expiration) {
+          @if (!tip || preferencesService.dataModel.profile.permissions.can_postpone_expiration) {
             <span id="tip-action-postpone"
               (click)="tipPostpone()" ngbTooltip="{{'Edit the expiration date' | translate}}"
               class="btn btn-outline-secondary">
@@ -58,14 +58,14 @@
             </span>
           }
         }
-        @if (preferencesService.dataModel.can_delete_submission) {
+        @if (preferencesService.dataModel.profile.permissions.can_delete_submission) {
           <span id="tip-action-delete"
             (click)="tipDelete()" ngbTooltip="{{'Delete' | translate}}"
             class="btn btn-outline-secondary">
             <i class="fa-solid fa-trash"></i>
           </span>
         }
-        @if ((preferencesService.dataModel.can_redact_information || preferencesService.dataModel.can_mask_information)) {
+        @if ((preferencesService.dataModel.profile.permissions.can_redact_information || preferencesService.dataModel.profile.permissions.can_mask_information)) {
           <span id="tip-action-mask"
             (click)="toggleRedactMode()" ngbTooltip="{{redactOperationTitle | translate}}"
             class="btn btn-outline-secondary" [ngClass]="{'active': redactMode}">

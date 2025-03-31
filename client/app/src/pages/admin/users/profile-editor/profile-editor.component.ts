@@ -33,14 +33,13 @@ export class ProfileEditorComponent implements OnInit {
   @Input() users: UserProfile[];
   @Input() index: number;
   @Input() editUser: NgForm;
-  @Input() is_profile: boolean;
   @Output() dataToParent = new EventEmitter<string>();
   editing = false;
-  defualtUsersArr = ['Admin', 'Analyst', 'Custodian', 'Receiver'];
   nodeData: nodeResolverModel;
   preferenceData: preferenceResolverModel;
   authenticationData: AuthenticationService;
   appServiceData: AppDataService;
+  defaultUsersArr = ['Admin', 'Analyst', 'Custodian', 'Receiver'];
   protected readonly Constants = Constants;
 
   ngOnInit(): void {
@@ -64,7 +63,7 @@ export class ProfileEditorComponent implements OnInit {
 
   saveUser(userData: UserProfile ) {
     const user = userData;
-    return this.utilsService.updateAdminUser(userData.id,userData).subscribe({
+    return this.utilsService.updateAdminUserProfile(userData.id, userData).subscribe({
       next:()=>{
         this.sendDataToParent();
       },
@@ -90,8 +89,7 @@ export class ProfileEditorComponent implements OnInit {
 
       modalRef.componentInstance.confirmFunction = () => {
         observer.complete()
-        let url = "api/admin/users/";
-        return this.utilsService.deleteAdminUser(arg.id,url,this.is_profile).subscribe(_ => {
+        return this.utilsService.deleteAdminUserProfile(arg.id).subscribe(_ => {
           this.utilsService.deleteResource(this.users, arg);
         });
       };

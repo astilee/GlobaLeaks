@@ -1,19 +1,55 @@
-from sqlalchemy import not_
-from sqlalchemy import or_
-from globaleaks.models import Config, ConfigL10N, EnabledLanguage
+import copy 
+
+from sqlalchemy import and_, case, delete, not_, or_, tuple_
+from sqlalchemy.orm import aliased
+
+from globaleaks import LANGUAGES_SUPPORTED_CODES
+from globaleaks.models import Config, ConfigL10N
 from globaleaks.models.properties import *
 from globaleaks.models.config_desc import ConfigDescriptor, ConfigFilters, ConfigL10NFilters
 from globaleaks.utils.onion import generate_onion_service_v3
-
-
 from globaleaks.utils.utility import datetime_null
 
 
-import copy
 # List of variables that on creation are set with the value
 # they have on the root tenant
 inherit_from_root_tenant = ['default_questionnaire']
-default_tenant_keys = ["subdomain", "tor_onion_key", "onionservice", "https_admin", "https_analyst", "https_cert", "wizard_done", "uuid", "mode", "name", "encryption", "https_whistleblower", "receipt_salt", "crypto_escrow_pub_key", "counter_submissions"]
+
+root_tenant_keys = ["version", "version_db", "latest_version", "profile", "default_language", "subdomain", "tor_onion_key", "onionservice", "https_admin", "https_analyst", "https_cert", "wizard_done", "uuid", "mode", "name", "encryption", "https_whistleblower", "receipt_salt", "crypto_escrow_pub_key", "counter_profiles", "counter_submissions", "counter_tenants"]
+
+secondary_tenant_keys = ["profile", "default_language", "subdomain", "tor_onion_key", "onionservice", "https_admin", "https_analyst", "https_cert", "wizard_done", "uuid", "mode", "name", "encryption", "https_whistleblower", "receipt_salt", "crypto_escrow_pub_key", "counter_profiles", "counter_submissions", "counter_tenants"]
+
+protected_keys = ["version", "version_db", "latest_version", "profile", "default_language", "subdomain", "tor_onion_key", "onionservice", "https_admin", "https_analyst", "https_cert", "wizard_done", "uuid", "mode", "name", "encryption", "https_whistleblower", "receipt_salt", "crypto_escrow_pub_key", "counter_profiles", "counter_submissions", "counter_tenants"]
+
+
+DEFAULT_PROFILE_ID = 1000001
+
+
+def db_get_pid(session, tid):
+    profile_value = session.query(Config.value).filter(
+        Config.tid == tid,
+        Config.var_name == 'profile',
+    ).scalar()
+
+    if not profile_value:
+        return None
+
+    if profile_value == 'default':
+        return DEFAULT_PROFILE_ID
+
+    config_profile = aliased(Config)
+    config_uuid4 = aliased(Config)
+
+    result_tid = session.query(config_uuid4.tid).join(
+        config_profile,
+        config_uuid4.value == config_profile.value
+    ).filter(
+        config_profile.var_name == 'profile',
+        config_profile.value == profile_value,
+        config_uuid4.var_name == 'uuid'
+    ).scalar()
+
+    return result_tid
 
 
 def get_default(default):
@@ -22,25 +58,20 @@ def get_default(default):
 
     return default
 
-def process_items(combined_values, default_profile_id, tid, pid):
-    result = {}
-    default_tenant_result = {}
-    t_result = {}
-    p_result = {}
-    for item in combined_values:
-        if item.tid == default_profile_id:
-            default_tenant_result[item.var_name] = item
-            if item.var_name not in result:
-                result[item.var_name] = item
-        if item.tid == pid:
-            p_result[item.var_name] = item
-            if item.var_name not in result or item.var_name not in t_result:
-                result[item.var_name] = item
-        if item.tid == tid:
-            t_result[item.var_name] = item
-            result[item.var_name] = item
 
-    return result, default_tenant_result, t_result, p_result
+def process_items(combined_values, tid, pid):
+    # Step 1: Split by tid
+    by_tid = {DEFAULT_PROFILE_ID: {}, pid: {}, tid: {}}
+
+    for item in combined_values:
+        if item.tid in by_tid:
+            by_tid[item.tid][item.var_name] = item
+
+    # Step 2: Merge in priority order: default < profile < tenant
+    result = {**by_tid[DEFAULT_PROFILE_ID], **by_tid[pid], **by_tid[tid]}
+
+    return result, by_tid[tid], by_tid[pid], by_tid[DEFAULT_PROFILE_ID]
+
 
 def db_get_configs(session, filter_name):
     configs = {}
@@ -58,219 +89,208 @@ def db_get_configs(session, filter_name):
 class ConfigFactory(object):
     def __init__(self, session, tid):
         self.session = session
-        self.default_profile_id = 1000001
         self.tid = tid
-        self.parent_profile = None
-        self.init_default_profile_id()
-
-    def init_default_profile_id(self):
-        default_profile = self.session.query(Config.value).filter(
-            Config.tid == self.tid,
-            Config.var_name == 'default_profile',
-        ).scalar()
-
-        if default_profile is not None and default_profile != "default":
-            self.parent_profile = int(default_profile)
+        self.pid = db_get_pid(session, tid)
 
     def get_all(self, filter_name):
-        filters = [Config.var_name.in_(ConfigFilters[filter_name]), or_(
-          Config.tid == self.default_profile_id,
-          Config.tid == self.tid,
-          Config.tid == self.parent_profile
-        )]
+        filters = [
+          Config.tid.in_([self.tid, self.pid, DEFAULT_PROFILE_ID]),
+          Config.var_name.in_(ConfigFilters[filter_name])
+        ]
 
         combined_values = self.session.query(Config).filter(*filters).all()
-        return process_items(combined_values, self.default_profile_id, self.tid, self.parent_profile)
+        return process_items(combined_values, self.tid, self.pid)
+
+    def get_cfg(self, var_name):
+        configurations = self.session.query(Config).filter(Config.var_name == var_name).filter(
+            Config.tid.in_([self.tid, self.pid, DEFAULT_PROFILE_ID])
+        ).all()
+
+        return {config.tid: config for config in configurations}
+
+    def get_val(self, var_name):
+        config = self.get_cfg(var_name)
+        if not config:
+            return get_default(ConfigDescriptor[var_name].default)
+
+        if self.tid in config:
+            return config.get(self.tid).value
+        elif self.pid in config:
+            return config.get(self.pid).value
+        else:
+            return config.get(DEFAULT_PROFILE_ID).value
+
+    def set_val(self, var_name, value):
+        config = self.get_cfg(var_name)
+        if config:
+            if self.tid in config:
+                if self.pid in config:
+                    if config[self.pid] == value:
+                        self.session.remove(config[self.tid])
+                        return
+
+                elif DEFAULT_PROFILE_ID in config:
+                    if config[DEFAULT_PROFILE_ID] == value:
+                        self.session.remove(config[self.tid])
+                        return
+            else:
+                if self.pid in config:
+                    if config[self.pid] == value:
+                        return
+
+                elif DEFAULT_PROFILE_ID in config:
+                    if config[DEFAULT_PROFILE_ID] == value:
+                        return
+
+        self.session.merge(Config({'tid': self.tid, 'var_name': var_name, 'value': value}))
+
+    def remove_val(self, tid, var_name):
+        self.session.query(Config).filter(Config.tid == tid, Config.var_name == var_name).delete(synchronize_session=False)
+
+    def sync_profile(self, t_result, d_result):
+        result = self.session.query(Config).filter(Config.var_name == 'profile', Config.value == str(self.tid)).all()
+        tid_list = [config.tid for config in result]
+
+        for entry in self.session.query(Config).filter(Config.tid.in_(tid_list)).all():
+            if entry.var_name not in protected_keys and entry.var_name in t_result and t_result[entry.var_name] == entry.value or entry.var_name not in t_result and entry.var_name in d_result and d_result[entry.var_name].value == entry.value:
+                self.remove_val(entry.tid, entry.var_name)
 
     def update(self, filter_name, data):
-        result, default_tenant_result, t_result, p_result = self.get_all(filter_name)
+        result, t_result, p_result, d_result = self.get_all(filter_name)
         for k, v in result.items():
             if k in data:
-                if self.tid != self.default_profile_id and self.tid != 1:
+                if self.tid != DEFAULT_PROFILE_ID and self.tid != 1:
                     if k in t_result:
-                        if (k in p_result and data[k] == p_result[k].value) or (k not in p_result and data[k] == default_tenant_result[k].value):
-                            if k not in default_tenant_keys:
-                                self.remove_val(k, self.tid)
+                        if not data[k] or (k in p_result and data[k] == p_result[k].value) or (k not in p_result and k in d_result and data[k] == d_result[k].value):
+                            if k not in protected_keys:
+                                self.remove_val(self.tid, k)
                                 del t_result[k]
                         else:
                             v.set_v(data[k])
                             t_result[k] = data[k]
-                    elif (k in p_result and data[k] != p_result[k].value) or (k not in p_result and data[k] != default_tenant_result[k].value):
+                    elif data[k] and ((k in p_result and data[k] != p_result[k].value) or (k not in p_result and data[k] != d_result[k].value)):
                         self.session.add(Config({'tid': self.tid, 'var_name': k, 'value': data[k]}))
                 else:
                     t_result[k] = data[k]
                     v.set_v(data[k])
 
-        if self.tid > self.default_profile_id:
-            self.sync_profile(default_tenant_result, t_result)
-
-    def sync_profile(self, default_tenant_result, t_result):
-        result = self.session.query(Config).filter(Config.var_name == 'default_profile', Config.value == str(self.tid)).all()
-        tid_list = [config.tid for config in result]
-
-        for entry in self.session.query(Config).filter(Config.tid.in_(tid_list)).all():
-            if entry.var_name not in default_tenant_keys and entry.var_name in t_result and t_result[entry.var_name] == entry.value or entry.var_name not in t_result and entry.var_name in default_tenant_result and default_tenant_result[entry.var_name].value == entry.value:
-                self.remove_val(entry.var_name, entry.tid)
-
-    def get_cfg(self, var_name):
-        configurations = self.session.query(Config).filter(Config.var_name == var_name).filter(
-            Config.tid.in_([self.tid, self.parent_profile, self.default_profile_id])
-        ).all()
-
-        config_map = {config.tid: config for config in configurations}
-
-        return (
-                config_map.get(self.tid) or
-                config_map.get(self.parent_profile) or
-                config_map.get(self.default_profile_id)
-        )
-
-    def get_val(self, var_name):
-        config = self.get_cfg(var_name)
-        if config is None:
-            return get_default(ConfigDescriptor[var_name].default)
-
-        new_config = copy.deepcopy(config)
-        new_config.tid = self.tid
-        return new_config.value
-
-    def set_val(self, var_name, value):
-        v = self.get_cfg(var_name)
-        if v:
-            v.set_v(value)
-
-    def remove_val(self, var_name, tid):
-        v = self.session.query(Config).filter(Config.tid == tid, Config.var_name == var_name).one_or_none()
-
-        if v:
-            self.session.delete(v)
-            self.session.commit()
+        if self.tid > DEFAULT_PROFILE_ID:
+            self.sync_profile(t_result, d_result)
 
     def serialize(self, filter_name):
         values, _, _, _ = self.get_all(filter_name)
         return {k: v.value for k, v in values.items()}
 
-    def update_defaults(self):
-        actual = set([c[0] for c in self.session.query(Config.var_name).filter(Config.tid == self.tid)])
-        allowed = set(ConfigDescriptor.keys())
-        extra = list(actual - allowed)
-
-        if extra:
-            self.session.query(Config).filter(Config.tid == self.tid, Config.var_name.in_(extra)).delete(synchronize_session=False)
-
-        missing = list(allowed - actual)
-        for key in missing:
-            self.session.add(Config({'tid': self.tid, 'var_name': key, 'value': get_default(ConfigDescriptor[key].default)}))
-
 
 class ConfigL10NFactory(object):
     def __init__(self, session, tid):
         self.session = session
-        self.default_profile_id = 1000001
         self.tid = tid
-
-    def initialize(self, keys, lang, data):
-        if self.tid == self.default_profile_id or self.tid == 1:
-            for key in keys:
-                value = data[key][lang] if key in data else ''
-                self.session.add(ConfigL10N({'tid': self.tid, 'lang': lang, 'var_name': key, 'value': value}))
+        self.pid = db_get_pid(session, tid)
 
     def get_all(self, filter_name, lang):
-
-        default_profile_value = None
-        filters = [ConfigL10N.lang == lang,ConfigL10N.var_name.in_(ConfigL10NFilters[filter_name])]
-
-        default_profile = self.session.query(Config.value).filter(
-            Config.tid == self.tid,
-            Config.var_name == 'default_profile',
-        ).scalar()
-
-        if default_profile is not None and default_profile != "default":
-            default_profile_value = int(default_profile)
-
-        filters.append(
-            or_(
-                ConfigL10N.tid == self.default_profile_id,
-                ConfigL10N.tid == self.tid,
-                ConfigL10N.tid == default_profile_value
-            )
-        )
+        filters = [
+          ConfigL10N.tid.in_([self.tid, self.pid, DEFAULT_PROFILE_ID]),
+          ConfigL10N.lang == lang,
+          ConfigL10N.var_name.in_(ConfigL10NFilters[filter_name])
+        ]
 
         combined_values = self.session.query(ConfigL10N).filter(*filters).all()
-        result, default_tenant_result, t_result ,p_result = process_items(combined_values, self.default_profile_id, self.tid, default_profile_value)
-        return list(result.values()), default_tenant_result, t_result,p_result
+        result, t_result, p_result, d_result = process_items(combined_values, self.tid, self.pid)
+        return list(result.values()), t_result, p_result, d_result
 
-    def serialize(self, filter_name, lang):
-        rows, _, _ ,_= self.get_all(filter_name, lang)
-        return {c.var_name: c.value for c in rows if c.var_name in ConfigL10NFilters[filter_name]}
+    def get_cfg(self, lang, var_name):
+        configurations = self.session.query(ConfigL10N).filter(ConfigL10N.lang == lang, ConfigL10N.var_name == var_name).filter(
+            ConfigL10N.tid.in_([self.tid, self.pid, DEFAULT_PROFILE_ID])
+        ).all()
 
-    def update(self, filter_name, data, lang):
-        result, default_tenant_result, t_result, p_result = self.get_all(filter_name, lang)
-        c_map = {c.var_name: c for c in result}
+        return {config.tid: config for config in configurations}
 
-        for key in (x for x in ConfigL10NFilters[filter_name] if x in data):
-            if key in c_map:
-                if self.tid != self.default_profile_id and self.tid != 1:
-                    if key in t_result:
-                        if (key in p_result and data[key] == p_result[key].value) or (key not in p_result and data[key] == default_tenant_result[key].value):
-                            if key not in default_tenant_keys:
-                                self.remove_val(key, lang, self.tid)
-                                del t_result[key]
-                        else:
-                            c_map[key].set_v(data[key])
-                            t_result[key] = data[key]
-                    elif (key in p_result and data[key] != p_result[key].value) or (key not in p_result and data[key] != default_tenant_result[key].value):
-                        self.session.add(ConfigL10N({'tid': self.tid, 'lang': lang, 'var_name': key, 'value': data[key]}))
-                else:
-                    c_map[key].set_v(data[key])
-                    t_result[key] = data[key]
-        if self.tid > self.default_profile_id:
-            self.sync_profile(lang, default_tenant_result, t_result)
+    def get_val(self, lang, var_name):
+        config = self.get_cfg(lang, var_name)
+        if not config:
+            return ""
 
-    def sync_profile(self, lang, default_tenant_result, t_result):
-        result = self.session.query(Config).filter(Config.var_name == 'default_profile', Config.value == str(self.tid)).all()
+        if self.tid in config:
+            return config.get(self.tid).value
+        elif self.pid in config:
+            return config.get(self.pid).value
+        else:
+            return config.get(DEFAULT_PROFILE_ID).value
+
+    def set_val(self, lang, var_name, value):
+        config = self.get_cfg(lang, var_name)
+        if config:
+            if self.tid in config:
+                if self.pid in config:
+                    if config[self.pid] == value:
+                        self.session.remove(config[self.tid])
+                        return
+
+                elif DEFAULT_PROFILE_ID in config:
+                    if config[DEFAULT_PROFILE_ID] == value:
+                        self.session.remove(config[self.tid])
+                        return
+            else:
+                if self.pid in config:
+                    if config[self.pid] == value:
+                        return
+
+                elif DEFAULT_PROFILE_ID in config:
+                    if config[DEFAULT_PROFILE_ID] == value:
+                        return
+
+        self.session.merge(ConfigL10N({'tid': self.tid, 'lang': lang, 'var_name': var_name, 'value': value}))
+
+    def remove_val(self, tid, lang, var_name):
+        self.session.query(ConfigL10N).filter(ConfigL10N.tid == tid, ConfigL10N.lang == lang, ConfigL10N.var_name == var_name).delete(synchronize_session=False)
+
+    def reset(self, filter_name):
+        self.session.query(ConfigL10N).filter(ConfigL10N.tid == self.tid, ConfigL10N.var_name.in_(ConfigFilters[filter_name]))
+
+    def sync_profile(self, lang, t_result, d_result):
+        result = self.session.query(Config).filter(Config.var_name == 'profile', Config.value == str(self.tid)).all()
         tid_list = [config.tid for config in result]
 
         for entry in self.session.query(ConfigL10N).filter(ConfigL10N.tid.in_(tid_list)).all():
-            if entry.var_name not in default_tenant_keys and entry.var_name in t_result and t_result[entry.var_name] == entry.value or entry.var_name not in t_result and entry.var_name in default_tenant_result and default_tenant_result[entry.var_name] == entry.value:
-                self.remove_val(entry.var_name, lang,entry.tid)
+            if (entry.var_name not in protected_keys and entry.var_name in t_result and t_result[entry.var_name] == entry.value) or (entry.var_name not in t_result and entry.var_name in d_result and d_result[entry.var_name] == entry.value):
+                self.remove_val(entry.tid, lang, entry.var_name)
 
-    def update_defaults(self, filter_name, langs, data, reset=False):
-        null = datetime_null()
-        templates = data.get('templates', {})
+    def update(self, filter_name, data, lang):
+        result, t_result, p_result, d_result = self.get_all(filter_name, lang)
+        c_map = {c.var_name: c for c in result}
 
-        for lang in langs:
-            old_keys = []
+        for k in (x for x in ConfigL10NFilters[filter_name] if x in data):
+            if k in c_map:
+                if self.tid != self.pid:
+                    if k in t_result:
+                        if not data[k] or (k in p_result and data[k] == p_result[k].value) or (k not in p_result and k in d_result and data[k] == d_result[k].value):
+                            self.remove_val(self.tid, lang, k)
+                            del t_result[k]
+                        else:
+                            c_map[k].set_v(data[k])
+                            t_result[k] = data[k]
+                    elif (k in p_result and data[k] != p_result[k].value) or (k not in p_result and data[k] != d_result[k].value):
+                        self.session.add(ConfigL10N({'tid': self.tid, 'lang': lang, 'var_name': k, 'value': data[k]}))
+                else:
+                    c_map[k].set_v(data[k])
+                    t_result[k] = data[k]
+            else:
+                self.session.add(ConfigL10N({'tid': self.tid, 'lang': lang, 'var_name': k, 'value': data[k]}))
 
-            values, _, _, _ = self.get_all(filter_name, lang)
-            for cfg in values:
-                old_keys.append(cfg.var_name)
-                if (cfg.update_date == null or reset) and cfg.var_name in templates:
-                    cfg.value = templates[cfg.var_name][lang]
+        if self.tid > DEFAULT_PROFILE_ID:
+            self.sync_profile(lang, t_result, d_result)
 
-            ConfigL10NFactory.initialize(self, list(set(ConfigL10NFilters[filter_name]) - set(old_keys)), lang, data)
+    def serialize(self, filter_name, lang):
+        rows, _, _, _ = self.get_all(filter_name, lang)
 
-    def get_val(self, var_name, lang):
-        v = self.session.query(ConfigL10N.value).filter(ConfigL10N.tid == self.tid, ConfigL10N.lang == lang, ConfigL10N.var_name == var_name).one_or_none()
-        if v is None:
-            return ''
+        ret = {var_name: "" for var_name in ConfigL10NFilters[filter_name]}
 
-        return v.value
+        for c in rows:
+            if c.var_name in ConfigL10NFilters[filter_name]:
+                ret[c.var_name] = c.value
 
-    def remove_val(self, var_name, lang, tid):
-        v = self.session.query(ConfigL10N).filter(ConfigL10N.tid == tid, ConfigL10N.lang == lang, ConfigL10N.var_name == var_name).one_or_none()
-        if v:
-            self.session.delete(v)
-            self.session.commit()
-
-    def set_val(self, var_name, lang, value):
-        v = self.session.query(ConfigL10N).filter(ConfigL10N.tid == self.tid, ConfigL10N.lang == lang, ConfigL10N.var_name == var_name).one_or_none()
-        if v:
-            v.set_v(value)
-
-    def reset(self, filter_name, data):
-        langs = [x[0] for x in self.session.query(EnabledLanguage.name).filter(EnabledLanguage.tid == self.tid)]
-        self.update_defaults(filter_name, langs, data, reset=True)
+        return ret
 
 
 def db_get_config_variable(session, tid, var):
@@ -291,6 +311,7 @@ def initialize_config(session, tid, data):
     if tid != 1:
         # Initialization valid for secondary tenants
         variables['mode'] = data['mode']
+        variables['profile'] = data['profile']
 
     if data['mode'] == 'default':
         variables['onionservice'], variables['tor_onion_key'] = generate_onion_service_v3()
@@ -300,34 +321,76 @@ def initialize_config(session, tid, data):
         for name in inherit_from_root_tenant:
             variables[name] = root_tenant_node[name]
 
-    if tid in (1, 1000001):
-        variables.pop('default_profile', None)
+    if tid == 1:
+        for name in root_tenant_keys:
+            session.add(Config({'tid': tid, 'var_name': name, 'value': variables[name]}))
 
-    for name, value in variables.items():
-        if tid in (1, 1000001) or name in default_tenant_keys:
+    elif tid < 1000001:
+        for name in secondary_tenant_keys:
+            session.add(Config({'tid': tid, 'var_name': name, 'value': variables[name]}))
+
+    elif tid == DEFAULT_PROFILE_ID:
+        for name, value in variables.items():
             session.add(Config({'tid': tid, 'var_name': name, 'value': value}))
 
-    default_profile = data.get('default_profile')
-    if default_profile and default_profile != 'default':
-        variables['default_profile'] = default_profile
-        session.add(Config({'tid': tid, 'var_name': 'default_profile', 'value': default_profile}))
 
-def add_new_lang(session, tid, lang, appdata_dict):
-    l = EnabledLanguage()
-    l.tid = tid
-    l.name = lang
-    session.add(l)
+def load_defaults(session, appdata):
+    langs = LANGUAGES_SUPPORTED_CODES
 
-    ConfigL10NFactory(session, tid).initialize(ConfigL10NFilters['node'], lang, appdata_dict['node'])
-    ConfigL10NFactory(session, tid).initialize(ConfigL10NFilters['notification'], lang, appdata_dict['templates'])
+    session.query(Config).filter(Config.tid == DEFAULT_PROFILE_ID).delete(synchronize_session=False)
+    session.query(ConfigL10N).filter(ConfigL10N.tid == DEFAULT_PROFILE_ID).delete(synchronize_session=False)
 
+    keys = ConfigDescriptor.keys()
+    for key in keys:
+        session.add(Config({'tid': DEFAULT_PROFILE_ID, 'var_name': key, 'value': get_default(ConfigDescriptor[key].default)}))
 
-def update_defaults(session, tid, appdata):
-    ConfigFactory(session, tid).update_defaults()
+    for lang in LANGUAGES_SUPPORTED_CODES:
+        for d in ['node', 'notification']:
+            keys = ConfigL10NFilters[d]
 
-    langs = [x[0] for x in session.query(EnabledLanguage.name).filter(EnabledLanguage.tid == tid)]
+            if d == 'notification':
+                data = appdata['templates']
+            else:
+                data = appdata[d]
 
-    session.query(ConfigL10N).filter(ConfigL10N.tid == tid, not_(ConfigL10N.var_name.in_(list(set(ConfigL10NFilters['node']).union(ConfigL10NFilters['notification']))))).delete(synchronize_session=False)
+            for k in keys:
+                value = data[k][lang] if k in data else ''
+                if value:
+                    session.add(ConfigL10N({'tid': DEFAULT_PROFILE_ID, 'lang': lang, 'var_name': k, 'value': value}))
 
-    ConfigL10NFactory(session, tid).update_defaults('node', langs, appdata['node'])
-    ConfigL10NFactory(session, tid).update_defaults('notification', langs, appdata['templates'])
+    session.flush()
+
+    subquery = session.query(
+        Config.var_name,
+        Config.value
+    ).filter(Config.tid == DEFAULT_PROFILE_ID, Config.var_name.notin_(protected_keys))
+
+    stmt = delete(Config).where(
+        and_(
+            Config.tid != DEFAULT_PROFILE_ID,
+            or_(
+                tuple_(Config.var_name, Config.value).in_(subquery),
+                Config.value == ''
+            )
+        )
+    )
+
+    session.execute(stmt.execution_options(synchronize_session=False))
+
+    subquery = session.query(
+        ConfigL10N.var_name,
+        ConfigL10N.lang,
+        ConfigL10N.value
+    ).filter(ConfigL10N.tid == DEFAULT_PROFILE_ID)
+
+    stmt = delete(ConfigL10N).where(
+        and_(
+            ConfigL10N.tid != DEFAULT_PROFILE_ID,
+            or_(
+                tuple_(ConfigL10N.var_name, ConfigL10N.lang, ConfigL10N.value).in_(subquery),
+                ConfigL10N.value == ''
+            )
+        )
+    )
+
+    session.execute(stmt.execution_options(synchronize_session=False))

@@ -11,7 +11,7 @@ from globaleaks import models
 from globaleaks.db import compact_db, db_get_tracked_attachments, db_get_tracked_files, db_refresh_tenant_cache
 from globaleaks.handlers.admin.node import db_admin_serialize_node
 from globaleaks.handlers.admin.notification import db_get_notification
-from globaleaks.handlers.user import user_serialize_user
+from globaleaks.handlers.user import serialize_user
 from globaleaks.jobs.job import DailyJob
 from globaleaks.orm import db_del, db_log, transact, tw
 from globaleaks.utils.fs import srm
@@ -60,7 +60,7 @@ class Cleaning(DailyJob):
             expiring_submission_count = x[1]
             earliest_expiration_date = x[2]
 
-            user_desc = user_serialize_user(session, user, user.language)
+            user_desc = serialize_user(session, user, user.language)
 
             data = {
                 'type': 'tip_expiration_summary',

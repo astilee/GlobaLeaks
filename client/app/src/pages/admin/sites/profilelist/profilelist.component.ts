@@ -39,7 +39,7 @@ export class ProfilelistComponent {
   }
 
   saveTenant() {
-    this.tenant.default_profile = "";
+    this.tenant.profile = 'default';
     const url = "api/admin/tenants/" + this.tenant.id;
     this.httpService.requestUpdateTenant(url, this.tenant).subscribe((_) => {});
   }

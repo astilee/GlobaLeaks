@@ -126,7 +126,7 @@ def db_set_internaltip_data(session, itip_id, key, value, date=None):
 
 
 def db_assign_submission_progressive(session, tid):
-    counter = session.query(models.Config).filter((models.Config.tid == tid or models.Config.tid == State.tenants[tid].cache.ptid), models.Config.var_name == 'counter_submissions').one()
+    counter = session.query(models.Config).filter(models.Config.tid == tid, models.Config.var_name == 'counter_submissions').one()
     counter.value += 1
     return counter.value
 
@@ -157,7 +157,7 @@ def db_create_receivertip(session, receiver, internaltip, tip_key):
 
 
 def db_create_submission(session, tid, request, user_session, client_using_tor, client_using_mobile):
-    encryption = db_get(session, models.Config, ((models.Config.tid == tid or models.Config.tid == State.tenants[tid].cache.ptid), models.Config.var_name == 'encryption'))
+    encryption = db_get(session, models.Config, (models.Config.tid == tid, models.Config.var_name == 'encryption'))
 
     crypto_is_available = State.tenants[tid].cache.encryption
 

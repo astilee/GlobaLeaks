@@ -14,7 +14,7 @@ import {DeleteConfirmationComponent} from "@app/shared/modals/delete-confirmatio
 import {ClipboardService} from "ngx-clipboard";
 import {TlsConfig} from "@app/models/component-model/tls-confiq";
 import {nodeResolverModel} from "@app/models/resolvers/node-resolver-model";
-import {NewUser} from "@app/models/admin/new-user";
+import {NewUser, NewUserProfile} from "@app/models/admin/new-user";
 import {User,UserProfile } from "@app/models/resolvers/user-resolver-model";
 import {NewContext} from "@app/models/admin/new-context";
 import {contextResolverModel} from "@app/models/resolvers/context-resolver-model";
@@ -577,8 +577,12 @@ export class UtilsService {
     return this.http.delete<void>(url);
   }
 
-  deleteAdminUser(user_id: string,url:string,is_profile:any,profile_id?:string) {
-    return this.httpService.requestDeleteAdminUser(user_id,url,is_profile,profile_id);
+  deleteAdminUser(user_id: string) {
+    return this.httpService.requestDeleteAdminUser(user_id);
+  }
+
+  deleteAdminUserProfile(user_profile_id: string) {
+    return this.httpService.requestDeleteAdminUserProfile(user_profile_id);
   }
 
   deleteAdminContext(user_id: string) {
@@ -597,8 +601,16 @@ export class UtilsService {
     return this.httpService.requestAddAdminUser(user);
   }
 
-  updateAdminUser(id: string, user: User | UserProfile ) {
+  updateAdminUser(id: string, user: User) {
     return this.httpService.requestUpdateAdminUser(id, user);
+  }
+
+  addAdminUserProfile(user_profile: NewUserProfile) {
+    return this.httpService.requestAddAdminUserProfile(user_profile);
+  }
+
+  updateAdminUserProfile(id: string, user_profile: UserProfile) {
+    return this.httpService.requestUpdateAdminUserProfile(id, user_profile);
   }
 
   addAdminContext(context: NewContext) {

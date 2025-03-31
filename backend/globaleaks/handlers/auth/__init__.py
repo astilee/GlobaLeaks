@@ -3,14 +3,14 @@ import json
 from datetime import timedelta
 from random import SystemRandom
 from sqlalchemy import exists, func, or_, and_
-
+from sqlalchemy.orm import joinedload
 from nacl.encoding import Base64Encoder
 from twisted.internet.defer import inlineCallbacks, returnValue
 
 import globaleaks.handlers.auth.token
-
 from globaleaks.handlers.base import connection_check, BaseHandler
-from globaleaks.models import InternalTip, User, UserProfile
+from globaleaks.handlers.user import user_permissions
+from globaleaks.models import InternalTip, User, UserProfile, UserProfilePermission
 from globaleaks.models.config import ConfigFactory
 from globaleaks.orm import db_log, transact, tw
 from globaleaks.rest import errors, requests
@@ -18,6 +18,7 @@ from globaleaks.sessions import initialize_submission_session, Sessions
 from globaleaks.settings import Settings
 from globaleaks.state import State
 from globaleaks.utils.crypto import GCE, sha256
+from globaleaks.utils.objectdict import ObjectDict
 from globaleaks.utils.utility import datetime_now, deferred_sleep, uuid4
 
 
@@ -121,16 +122,20 @@ def login(session, tid, username, password, authcode, client_using_tor, client_i
     :return: Returns a user session in case of success
     """
     if tid in State.tenants and State.tenants[tid].cache.simplified_login:
-        result = (session.query(User, UserProfile).join(UserProfile, User.profile_id == UserProfile.id).filter(or_(User.id == username, User.username == username),
-                          User.enabled.is_(True), User.tid == tid).one_or_none())
+        user = session.query(User) \
+                      .options(joinedload(User.profile).joinedload(UserProfile.permissions),
+                               joinedload(User.profile).joinedload(UserProfile.roles)) \
+                      .filter(or_(User.id == username, User.username == username),
+                                  User.enabled.is_(True), User.tid == tid).one_or_none()
     else:
-        result = (session.query(User, UserProfile).join(UserProfile, User.profile_id == UserProfile.id).filter(or_(User.username == username),
-                          User.enabled.is_(True), User.tid == tid).one_or_none())
+        user = session.query(User) \
+                      .options(joinedload(User.profile).joinedload(UserProfile.permissions),
+                               joinedload(User.profile).joinedload(UserProfile.roles)) \
+                      .filter(or_(User.username == username),
+                                  User.enabled.is_(True), User.tid == tid).one_or_none()
 
-    if result is None:
+    if user is None:
         db_login_failure(session, tid, 0)
-
-    user, profile = result
 
     try:
         if len(user.hash) == 64:
@@ -175,12 +180,11 @@ def login(session, tid, username, password, authcode, client_using_tor, client_i
 
     db_log(session, tid=tid, type='login', user_id=user.id)
 
-    session = Sessions.new(tid, user.id, user.tid, user.role, crypto_prv_key, user.crypto_escrow_prv_key)
+    permissions = ObjectDict()
+    for r in user_permissions:
+        permissions[r] = r in user.profile.permissions_list
 
-    if user.role == 'receiver' and profile.can_edit_general_settings:
-        session.permissions['can_edit_general_settings'] = True
-
-    return session
+    return Sessions.new(tid, user.id, user.tid, user.role, crypto_prv_key, user.crypto_escrow_prv_key, user.profile.roles_list, permissions)
 
 
 @transact
@@ -359,7 +363,8 @@ class TenantAuthSwitchHandler(BaseHandler):
                                self.session.user_tid,
                                self.session.role,
                                self.session.cc,
-                               self.session.ek)
+                               self.session.ek,
+                               self.session.permissions)
 
         session.properties['management_session'] = True
 
@@ -378,7 +383,8 @@ class OperatorAuthSwitchHandler(BaseHandler):
                                self.session.user_tid,
                                "whistleblower",
                                self.session.cc,
-                               self.session.ek)
+                               self.session.ek,
+                               self.session.permissions)
 
         session.properties['operator_session'] = self.session.user_id
 

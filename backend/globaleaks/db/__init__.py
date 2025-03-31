@@ -70,17 +70,9 @@ def initialize_db(session):
     :param session: An ORM session
     """
     from globaleaks.handlers.admin import tenant
-    from globaleaks.handlers.admin import user
-    roles = ['admin', 'receiver', 'analyst', 'custodian']
-    tenant.db_create(session, {'active': False, 'mode': 'default', 'profile_counter': 1000000, 'name': 'GLOBALEAKS', 'subdomain': ''},False)
-    tenant.db_create(session, {'active': True, 'mode': 'default', 'profile_counter': 1000000, 'name': 'GLOBALEAKS', 'subdomain': ''})
-    for role in roles:
-        user_desc = {
-            "name": role.capitalize(),
-            "role": role,
-            "custom": True,
-        }
-        user.db_create_user_profile(session, 1000001, user_desc)
+    tenant.db_create(session, {'active': True, 'mode': 'default', 'profile': 'default', 'name': 'GLOBALEAKS', 'subdomain': ''})
+    tenant.db_create(session, {'active': True, 'mode': 'default', 'profile': 'default', 'name': 'GLOBALEAKS', 'subdomain': ''}, False)
+
 
 def update_db():
     """
@@ -167,7 +159,8 @@ def sync_initialize_snimap(session):
     for cfg in db_load_tls_configs(session):
         State.snimap.load(cfg['tid'], cfg)
 
-def update_cache(cfg, tid):
+
+def update_cache(tid, cfg):
     tenant_cache = State.tenants[tid].cache
     if cfg.var_name in ['https_cert', 'tor_onion_key'] or cfg.var_name in ConfigFilters['node']:
         tenant_cache[cfg.var_name] = cfg.value
@@ -176,9 +169,9 @@ def update_cache(cfg, tid):
     elif cfg.var_name in ConfigFilters['node']:
         tenant_cache[cfg.var_name] = cfg.value
 
-def db_refresh_tenant_cache(session, to_refresh=None):
 
-    active_tids = set([tid[0] for tid in session.query(models.Tenant.id).filter(models.Tenant.active.is_(True))])
+def db_refresh_tenant_cache(session, to_refresh=None):
+    active_tids = set([tid[0] for tid in session.query(models.Tenant.id)])#.filter(models.Tenant.active.is_(True))])
 
     cached_tids = set(State.tenants.keys())
 
@@ -210,14 +203,15 @@ def db_refresh_tenant_cache(session, to_refresh=None):
         if to_refresh in active_tids:
             tids = [to_refresh]
             if to_refresh < 1000001:
-                default_profile_exists = session.query(Config).filter_by(tid=to_refresh, var_name='default_profile').first()
-                if default_profile_exists:
-                    tids.append(default_profile_exists.tid)
+                profile_exists = session.query(Config).filter_by(tid=to_refresh, var_name='profile').first()
+                if profile_exists:
+                    tids.append(profile_exists.tid)
 
-            elif to_refresh > 1000001:
-                matching_tids = [tid[0] for tid in session.query(Config.tid).filter_by(var_name='default_profile', value=str(to_refresh)).all()]
+            elif to_refresh >= 1000001:
+                matching_tids = [tid[0] for tid in session.query(Config.tid).filter_by(var_name='profile', value=str(to_refresh)).all()]
                 tids.extend(matching_tids)
 
+                # Invalidate every tenant using the updated profile
                 for tid in matching_tids:
                     Cache.invalidate(tid)
         else:
@@ -233,9 +227,9 @@ def db_refresh_tenant_cache(session, to_refresh=None):
             State.tenants[tid] = TenantState()
 
         tenant_cache = State.tenants[tid].cache
-        default_profile = session.query(Config.value).filter(Config.tid == tid, Config.var_name == 'default_profile').scalar()
-        if default_profile is not None and default_profile != "default":
-            tenant_cache['ptid'] = int(default_profile)
+        profile = session.query(Config.value).filter(Config.tid == tid, Config.var_name == 'profile').scalar()
+        if profile is not None and profile != 1000001:
+            tenant_cache['ptid'] = profile
         else:
             tenant_cache['ptid'] = tid
 
@@ -254,34 +248,22 @@ def db_refresh_tenant_cache(session, to_refresh=None):
         State.tenants[tid].cache['languages_enabled'].append(lang)
 
     configs = defaultdict(dict)
-    default_configs = {}
 
     for cfg in session.query(Config).filter(or_(Config.tid.in_(tids), Config.tid == 1000001)):
-        if cfg.tid == 1000001:
-            default_configs[cfg.var_name] = cfg
-        else:
-            configs[cfg.tid][cfg.var_name] = cfg
+        configs[cfg.tid][cfg.var_name] = cfg
 
-    for var_name, default_cfg in default_configs.items():
+    for var_name, default_cfg in configs[1000001].items():
         for tid, tenant in list(configs.items()):
-            if "default_profile" in tenant and tenant["default_profile"].value != 'default':
-                profile_id = int(tenant["default_profile"].value)
-                profile = configs[profile_id]
+            # TODO: get value from tenant or profile
+            if var_name in tenant:
+                update_cache(tid, tenant[var_name])
             else:
-                profile_id = None
-                profile = None
+                update_cache(tid, default_cfg)
 
-            if to_refresh == 1 or to_refresh is None or (to_refresh < 1000001 and to_refresh == tid) or (1000001 < to_refresh == profile_id) or (1000001 < to_refresh == tid):
-                if var_name in tenant:
-                    update_cache(tenant[var_name], tid)
-                elif profile and var_name in profile:
-                    update_cache(profile[var_name], tid)
-                elif tid:
-                    update_cache(default_cfg, tid)
     query = (session.query(models.User.tid,models.User.mail_address,models.User.pgp_key_public)
             .filter(models.User.role == 'admin', models.User.enabled.is_(True), models.User.notification.is_(True), models.User.tid.in_(tids)))
     results = query.all()
-    
+
     for tid, mail, pub_key in results:
         State.tenants[tid].cache.notification.admin_list.extend([(mail, pub_key)])
 
@@ -305,11 +287,11 @@ def db_refresh_tenant_cache(session, to_refresh=None):
         if tenant_cache.onionservice:
             tenant_cache.onionnames.append(tenant_cache.onionservice.encode())
 
-        if not tenant_cache.onionservice and root_tenant_cache.onionservice:
-            tenant_cache.onionservice = tenant_cache.subdomain + '.' + root_tenant_cache.onionservice
-
         if tenant_cache.subdomain:
             State.tenant_subdomain_id_map[tenant_cache.subdomain] = tid
+
+            if not tenant_cache.onionservice and root_tenant_cache.onionservice:
+                tenant_cache.onionservice = tenant_cache.subdomain + '.' + root_tenant_cache.onionservice
 
             if root_tenant_cache.rootdomain and tenant_cache.reachable_via_web:
                 tenant_cache.hostnames.append('{}.{}'.format(tenant_cache.subdomain, root_tenant_cache.rootdomain).encode())

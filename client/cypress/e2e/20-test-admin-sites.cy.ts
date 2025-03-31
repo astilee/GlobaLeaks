@@ -41,6 +41,7 @@ describe("admin configure, add, configure and delete tenants", () => {
     cy.takeScreenshot("admin/sites_management_options");
     cy.logout();
   });
+
   it("should add and configure the profile tenant", () => {
     cy.login_admin();
     cy.visit("/#/admin/sites");

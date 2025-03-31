@@ -1,14 +1,16 @@
 # -*- coding: UTF-8 -*-
-from globaleaks.handlers.admin.user import db_create_user_profile
+from sqlalchemy import tuple_
 from globaleaks import models
+from globaleaks.db.appdata import load_appdata
 from globaleaks.db.migrations.update import MigrationBase
+from globaleaks.handlers.admin import tenant, user
+from globaleaks.handlers.user import user_permissions
 from globaleaks.models import Model
+from globaleaks.models.config import get_default
+from globaleaks.models.config_desc import ConfigDescriptor
 from globaleaks.models.properties import *
 from globaleaks.utils.utility import datetime_now
-from globaleaks.models.config_desc import ConfigDescriptor
-from globaleaks.models.config import get_default
-from globaleaks.db.appdata import load_appdata
-from sqlalchemy import tuple_
+
 
 class Tenant_v_68(Model):
     __tablename__ = 'tenant'
@@ -21,55 +23,37 @@ class Tenant_v_68(Model):
 class MigrationScript(MigrationBase):
     default_tenant_keys = ["subdomain", "onionservice", "https_admin", "https_analyst", "https_cert" ,"wizard_done", "uuid", "mode", "default_language", "name"]
 
+    skip_count_check = {
+        'Config': True,
+        'ConfigL10N': True,
+        'EnabledLanguage': True,
+        'SubmissionStatus': True
+    }
+
     def migrate_User(self):
         old_configs = self.session_old.query(self.model_from['User']).all()
-        valid_profile_attrs = {attr for attr in dir(self.model_to['UserProfile']) if not attr.startswith('_')}
-        roles = ['admin', 'receiver', 'analyst', 'custodian']
-        for role in roles:
-            user_desc = {
-                "name": role.capitalize(),
-                "role": role,
-                "custom": True,
-            }
-            db_create_user_profile(self.session_new, 1000001, user_desc)
-        new_configs = []
-
         for old_obj in old_configs:
-            user_desc = {}
-            for attr in [
-                "name",
-                "role",
-                "tid",
-                "forcefully_selected",
-                "can_delete_submission",
-                "can_postpone_expiration",
-                "can_grant_access_to_reports",
-                "can_transfer_access_to_reports",
-                "can_redact_information",
-                "can_mask_information",
-                "can_edit_general_settings",
-            ]:
-                if hasattr(old_obj, attr):
-                    user_desc[attr] = getattr(old_obj, attr)
+            user_desc = {
+                'tid': getattr(old_obj, 'tid'),
+                'name': getattr(old_obj, 'name'),
+                'role': getattr(old_obj, 'role'),
+                'roles': [getattr(old_obj, 'role')],
+                'permissions': {}
+            }
 
-            user_desc = {key: value for key, value in user_desc.items() if key in valid_profile_attrs}
-            existing_profile = (self.session_new.query(self.model_to['UserProfile']).filter_by(name=user_desc.get("name"), tid=user_desc.get("tid")).first())
-            if existing_profile:
-                profile_id = existing_profile.id
-            else:
-                user_desc["custom"] = False
-                new_profile = db_create_user_profile(self.session_new, user_desc.get("tid"), user_desc)
-                profile_id = new_profile['id'] if new_profile else None
+            for p in user_permissions:
+                if getattr(old_obj, p):
+                    user_desc['permissions'][p] = True
 
-            if profile_id:
-                new_obj = self.model_to['User']()
-                for key in new_obj.__mapper__.column_attrs.keys():
-                    if hasattr(old_obj, key):
-                        setattr(new_obj, key, getattr(old_obj, key))
-                new_obj.profile_id = profile_id
-                new_configs.append(new_obj)
+            new_profile = user.db_create_user_profile(self.session_new, user_desc.get("tid"), user_desc)
 
-        self.session_new.bulk_save_objects(new_configs)
+            new_obj = self.model_to['User']()
+            for key in new_obj.__mapper__.column_attrs.keys():
+                if hasattr(old_obj, key):
+                    setattr(new_obj, key, getattr(old_obj, key))
+
+            new_obj.profile_id = new_profile['id']
+            self.session_new.add(new_obj)
 
     def migrate_Tenant(self):
         old_tenants = self.session_old.query(self.model_from['Tenant']).all()
@@ -79,77 +63,10 @@ class MigrationScript(MigrationBase):
             for key in new_tenant.__mapper__.column_attrs.keys():
                 setattr(new_tenant, key, getattr(old_obj, key, None))
             new_tenants.append(new_tenant)
-    
-        defualt_tenant = self.model_to['Tenant']()
-        defualt_tenant.id = 1000001
-        defualt_tenant.active = False
-        new_tenants.append(defualt_tenant)
 
         self.session_new.add_all(new_tenants)
-        self.entries_count['Tenant'] = len(new_tenants)
-    
-    def migrate_Config(self):
-        old_configs = self.session_old.query(self.model_from['Config']).all()
-        new_configs = []
-        for old_obj in old_configs:
-            new_obj = self.model_to['Config']()
-            for key in new_obj.__mapper__.column_attrs.keys():
-                setattr(new_obj, key, getattr(old_obj, key))
-            new_configs.append(new_obj)
-        self.session_new.bulk_save_objects(new_configs)
 
-        variables = {name: get_default(desc.default) for name, desc in ConfigDescriptor.items()}
-
-        variables.update({
-            'tenant_counter': self.session_old.query(self.model_from['Tenant']).count(),
-            'profile_counter': 1000000
-        })
-
-        merged_configs = []
-        for var_name, value in variables.items():
-            new_config = self.model_to['Config']()
-            new_config.tid = 1 if var_name in ['tenant_counter', 'profile_counter'] else 1000001
-            new_config.var_name = var_name
-            new_config.value = value
-            merged_configs.append(new_config)
-
-        self.session_new.bulk_save_objects(merged_configs)
-        self.entries_count['Config'] += len(merged_configs)
-
-        default_config = {entry.var_name: entry.value for entry in self.session_new.query(self.model_to['Config']).filter_by(tid=1000001).all()}
-        tenant_configs = self.session_new.query(self.model_to['Config'].tid,self.model_to['Config'].var_name,self.model_to['Config'].value).filter(self.model_to['Config'].tid.notin_([1000001, 1])).all()
-    
-        to_delete = []
-        for tid, var_name, value in tenant_configs:
-            if var_name in default_config and value == default_config[var_name] and var_name not in self.default_tenant_keys:
-                to_delete.append((tid, var_name))
-    
-        if to_delete:
-            self.session_new.query(self.model_to['Config']).filter(tuple_(self.model_to['Config'].tid, self.model_to['Config'].var_name).in_(to_delete)).delete(synchronize_session=False)
-            self.entries_count['Config'] -= len(to_delete)
-
-    def migrate_ConfigL10N(self):
-        old_configs = self.session_old.query(self.model_from['ConfigL10N']).all()
-        new_configs = []
-        for old_obj in old_configs:
-            new_obj = self.model_to['ConfigL10N']()
-            for key in new_obj.__mapper__.column_attrs.keys():
-                setattr(new_obj, key, getattr(old_obj, key))
-            new_configs.append(new_obj)
-        self.session_new.bulk_save_objects(new_configs)
-
-        models.config.add_new_lang(self.session_new, 1000001, 'en', load_appdata())
-        self.entries_count['ConfigL10N'] += 72
-        self.entries_count['EnabledLanguage'] += 1
-
-        default_config = {(entry.var_name, entry.lang): entry.value for entry in self.session_new.query(self.model_to['ConfigL10N']).filter_by(tid=1000001).all()}
-        tenant_configs = self.session_new.query(self.model_to['ConfigL10N'].tid,self.model_to['ConfigL10N'].var_name,self.model_to['ConfigL10N'].lang,self.model_to['ConfigL10N'].value).filter(self.model_to['ConfigL10N'].tid.notin_([1000001, 1])).all()
-
-        to_delete = []
-        for tid, var_name, lang, value in tenant_configs:
-            if (var_name, lang) in default_config and value == default_config[(var_name, lang)] and var_name not in self.default_tenant_keys:
-                to_delete.append((tid, var_name, lang))
-
-        if to_delete:
-            self.session_new.query(self.model_to['ConfigL10N']).filter(tuple_(self.model_to['ConfigL10N'].tid, self.model_to['ConfigL10N'].var_name, self.model_to['ConfigL10N'].lang).in_(to_delete)).delete(synchronize_session=False)
-            self.entries_count['ConfigL10N'] -= len(to_delete)
+    def epilogue(self):
+        tenant.db_create(self.session_new, {'active': False, 'mode': 'default', 'profile': 'default', 'name': 'GLOBALEAKS', 'subdomain': ''}, False)
+        self.entries_count['SubmissionStatus'] += 3
+        self.entries_count['Tenant'] += 1

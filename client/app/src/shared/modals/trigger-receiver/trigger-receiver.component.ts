@@ -32,8 +32,8 @@ export class TriggerReceiverComponent implements OnInit {
 
   ngOnInit(): void {
     this.selected = {value: [], name: ""};
-    this.userData = this.users.dataModel.users;
-    this.admin_receivers_by_id = this.utilsService.array_to_map(this.users.dataModel.users);
+    this.userData = this.users.dataModel;
+    this.admin_receivers_by_id = this.utilsService.array_to_map(this.users.dataModel);
   }
 
   confirm() {

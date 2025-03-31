@@ -1,6 +1,19 @@
-export class userResolverModel {
-  users: User[];
-  user_profiles: UserProfile[];
+export class UserProfile {
+  id: string;
+  tid: number;
+  name: string;
+  role: string;
+  roles: string[];
+  permissions: {
+    can_postpone_expiration: boolean;
+    can_delete_submission: boolean;
+    can_grant_access_to_reports: boolean;
+    can_edit_general_settings: boolean;
+    can_transfer_access_to_reports: boolean;
+    can_mask_information: boolean;
+    can_redact_information: boolean;
+  };
+  custom: boolean;
 }
 
 export class User {
@@ -30,37 +43,9 @@ export class User {
   escrow: boolean;
   two_factor: boolean;
   forcefully_selected: boolean;
-  can_postpone_expiration: boolean;
-  can_delete_submission: boolean;
-  can_grant_access_to_reports: boolean;
-  can_edit_general_settings: boolean;
   clicked_recovery_key: boolean;
   contexts: string[];
   newpassword: boolean;
-  can_transfer_access_to_reports: boolean;
-  can_mask_information: boolean;
-  can_redact_information: boolean;
   profile_id: string;
-  custom: boolean;
-  profile_name?: string;
-  profile_role?: string;
-  defualt_profile_id?:string;
-}
-
-export class UserProfile {
-  id: string;
-  tid: number;
-  role: string;
-  name: string;
-  password_change_needed: boolean;
-  password_change_date: string;
-  forcefully_selected: boolean;
-  can_postpone_expiration: boolean;
-  can_delete_submission: boolean;
-  can_grant_access_to_reports: boolean;
-  can_edit_general_settings: boolean;
-  can_transfer_access_to_reports: boolean;
-  can_mask_information: boolean;
-  can_redact_information: boolean;
-  custom: boolean;
+  profile: UserProfile;
 }

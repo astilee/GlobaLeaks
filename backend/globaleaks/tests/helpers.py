@@ -1,6 +1,7 @@
 """
 Utilities and basic TestCases.
 """
+import copy
 import json
 import mimetypes
 import os
@@ -32,7 +33,8 @@ from globaleaks.handlers.admin.field import create_field, db_create_field
 from globaleaks.handlers.admin.questionnaire import db_get_questionnaire, create_questionnaire
 from globaleaks.handlers.admin.step import db_create_step
 from globaleaks.handlers.admin.tenant import create as create_tenant, db_wizard
-from globaleaks.handlers.admin.user import create_user, create_user_profile
+from globaleaks.handlers.admin.user import create_user
+from globaleaks.handlers.admin.user_profile import user_permissions
 from globaleaks.handlers.recipient import rtip
 from globaleaks.handlers.whistleblower import wbtip
 from globaleaks.handlers.whistleblower.submission import create_submission
@@ -45,6 +47,7 @@ from globaleaks.settings import Settings
 from globaleaks.state import State, TenantState
 from globaleaks.utils import tempdict, token
 from globaleaks.utils.crypto import GCE, generateRandomKey, sha256
+from globaleaks.utils.objectdict import ObjectDict
 from globaleaks.utils.securetempfile import SecureTemporaryFile
 from globaleaks.utils.utility import datetime_now, datetime_never, uuid4
 from globaleaks.utils.log import log
@@ -267,25 +270,15 @@ class MockDict:
             'profile_id': '',
             'contexts': [],
             'send_activation_link': False,
-        }
-
-        self.dummyProfile = {
-            'id': uuid4(),
-            'role': 'receiver',
-            'name': 'Generic User',
-            'last_login': '1970-01-01 00:00:00.000000',
-            'forcefully_selected': True,
-            'send_activation_link': False,
             'can_edit_general_settings': False,
             'can_grant_access_to_reports': True,
             'can_transfer_access_to_reports': True,
             'can_delete_submission': True,
             'can_postpone_expiration': True,
             'can_mask_information': True,
-            'can_redact_information': True,
-            'custom': False,
+            'can_redact_information': True
         }
-        
+
         self.dummyQuestionnaire = {
             'id': 'test',
             'name': 'test'
@@ -585,7 +578,7 @@ class TestGL(unittest.TestCase):
             yield db.create_db()
             yield db.initialize_db()
 
-        yield self.set_hostnames(0)
+        yield self.set_hostnames(1)
 
         yield db.refresh_tenant_cache()
 
@@ -615,11 +608,6 @@ class TestGL(unittest.TestCase):
         self.dummyQuestionnaire = dummyStuff.dummyQuestionnaire
         self.dummyContext = dummyStuff.dummyContext
         self.dummySubmission = dummyStuff.dummySubmission
-        self.dummyProfileReceiver = self.get_dummy_profile('receiver','Receiver')
-        self.dummyProfileReceiver1 = self.get_dummy_profile('receiver','Receiver1')
-        self.dummyProfileAdmin = self.get_dummy_profile('admin','admin')
-        self.dummyProfileAnalyst = self.get_dummy_profile('analyst','Analyst')
-        self.dummyProfileCustodian = self.get_dummy_profile('custodian','Custodian')
         self.dummyAdmin = self.get_dummy_user('admin', 'admin')
         self.dummyAnalyst = self.get_dummy_user('analyst', 'analyst')
         self.dummyCustodian = self.get_dummy_user('custodian', 'custodian')
@@ -643,7 +631,14 @@ class TestGL(unittest.TestCase):
 
     def get_dummy_user(self, role, username):
         new_u = dict(MockDict().dummyUser)
+        new_u['id'] = username
         new_u['role'] = role
+
+        if role == 'admin':
+            new_u['roles'] = [role, 'custodian']
+        else:
+            new_u['roles'] = [role]
+
         new_u['username'] = username
         new_u['name'] = new_u['public_name'] = new_u['mail_address'] = "%s@%s.xxx" % (username, username)
         new_u['description'] = ''
@@ -651,13 +646,6 @@ class TestGL(unittest.TestCase):
         new_u['enabled'] = True
         new_u['salt'] = VALID_SALT
 
-        return new_u
-    
-    def get_dummy_profile(self, role, name):
-        new_u = dict(MockDict().dummyProfile)
-        new_u['role'] = role
-        new_u['name'] = name
-        
         return new_u
 
     def get_dummy_receiver(self, username):
@@ -821,17 +809,12 @@ class TestGLWithPopulatedDB(TestGL):
         yield db.refresh_tenant_cache()
 
     @transact
-    def get_profile_id(self, session, role, name):
-        profile = session.query(UserProfile).filter_by(role=role, name=name,tid = 1).first()
-        return profile.id if profile else None
-    
-    @transact
     def mock_users_keys(self, session):
         OLD_USER_KEY, OLD_USER_KEY_HASH = GCE.calculate_key_and_hash(VALID_PASSWORD, VALID_SALT)
         OLD_USER_PRV_KEY_ENC = Base64Encoder.encode(GCE.symmetric_encrypt(OLD_USER_KEY, USER_PRV_KEY))
 
-        session.query(models.Config).filter(models.Config.tid == 1, models.Config.var_name == 'receipt_salt').one().value = VALID_SALT
-        session.query(models.Config).filter(models.Config.tid == 1, models.Config.var_name == 'crypto_escrow_pub_key').one().value = ESCROW_PUB_KEY
+        db_set_config_variable(session, 1, 'receipt_salt', VALID_SALT)
+        db_set_config_variable(session, 1, 'crypto_escrow_pub_key', ESCROW_PUB_KEY)
 
         for user in session.query(models.User):
             if user.id == self.dummyAdmin['id']:
@@ -854,28 +837,16 @@ class TestGLWithPopulatedDB(TestGL):
 
     @inlineCallbacks
     def fill_data(self):
-        #  # fill_data/create_receiver_profile
-        self.dummyProfileReceiver = yield create_user_profile(1, self.dummyProfileReceiver)
-        self.dummyProfileReceiver1 = yield create_user_profile(1, self.dummyProfileReceiver1)
-        self.dummyProfileAdmin = yield create_user_profile(1, self.dummyProfileAdmin)
-        self.dummyProfileAnalyst = yield create_user_profile(1, self.dummyProfileAnalyst)
-        self.dummyProfileCustodian = yield create_user_profile(1, self.dummyProfileCustodian)
-
         # fill_data/create_admin
-        self.dummyAdmin['profile_id'] = yield self.get_profile_id(role='admin', name='admin')
         self.dummyAdmin = yield create_user(1, None, self.dummyAdmin, 'en')
 
         # fill_data/create_analyst
-        self.dummyAnalyst['profile_id'] = yield self.get_profile_id(role='analyst', name='Analyst')
         self.dummyAnalyst = yield create_user(1, None, self.dummyAnalyst, 'en')
 
         # fill_data/create_custodian
-        self.dummyCustodian['profile_id'] = yield self.get_profile_id(role='custodian', name='Custodian')
         self.dummyCustodian = yield create_user(1, None, self.dummyCustodian, 'en')
 
         # fill_data/create_receiver
-        self.dummyReceiver_1['profile_id'] = yield self.get_profile_id(role='receiver', name='Receiver1')
-        self.dummyReceiver_2['profile_id'] = yield self.get_profile_id(role='receiver', name='Receiver')
         self.dummyReceiver_1 = yield create_user(1, None, self.dummyReceiver_1, 'en')
         self.dummyReceiver_2 = yield create_user(1, None, self.dummyReceiver_2, 'en')
 
@@ -915,7 +886,7 @@ class TestGLWithPopulatedDB(TestGL):
         # fill_data create_tenant
         for i in range(1, self.population_of_tenants):
             name = 'tenant-' + str(i+1)
-            t = yield create_tenant({'mode': 'default', 'name': name, 'active': True, 'subdomain': name})
+            t = yield create_tenant({'mode': 'default', 'name': name, 'active': True, 'subdomain': name, 'profile': '1000001'})
             yield tw(db_wizard, t['id'], '127.0.0.1', self.dummyWizard)
             yield self.set_hostnames(i)
 
@@ -1049,10 +1020,17 @@ class TestHandler(TestGLWithPopulatedDB):
             if role == 'whistlebower':
                 session = initialize_submission_session(1)
             else:
-                session = Sessions.new(tid, user_id, 1, role, USER_PRV_KEY, USER_ESCROW_PRV_KEY if role == 'admin' else '')
+                session = Sessions.new(tid, user_id, 1, role, USER_PRV_KEY, USER_ESCROW_PRV_KEY if role == 'admin' else '', [role], permissions)
 
             if permissions:
-                session.permissions = permissions
+                for p in user_permissions:
+                    if p not in permissions:
+                        permissions[p] = user_permissions[p]
+
+            session.permissions = copy.deepcopy(user_permissions)
+            if permissions:
+                for p in permissions:
+                    session.permissions[p] = permissions[p]
 
             if properties:
                 session.properties.update(properties)
@@ -1092,7 +1070,18 @@ class TestHandler(TestGLWithPopulatedDB):
         return handler
 
     def get_dummy_request(self):
-        return self._test_desc['model']().dict(u'en')
+        request = self._test_desc['model']().dict(u'en')
+        if isinstance(self._test_desc['model'](), models.User):
+            request['profile'] = {}
+        elif isinstance(self._test_desc['model'](), models.UserProfile):
+            request['role'] = 'admin'
+            request['roles'] = ['admin', 'recipient']
+            request['permissions'] = {}
+            for p in user_permissions:
+                request['permissions'][p] = False
+
+
+        return request
 
 
 class TestCollectionHandler(TestHandler):
@@ -1104,17 +1093,14 @@ class TestCollectionHandler(TestHandler):
     @inlineCallbacks
     def fill_data(self):
         # fill_data/create_admin
-        self.dummyProfileAdmin = yield create_user_profile(1, self.dummyProfileAdmin)
-        self.dummyAdmin['profile_id'] = yield self.get_profile_id(role='admin', name='admin')
         self.dummyAdmin = yield create_user(1, None, self.dummyAdmin, 'en')
 
     @inlineCallbacks
     def test_get(self):
         data = self.get_dummy_request()
-        
-        if 'role' in data and data['role']:
-           yield create_user_profile(1, self.get_dummy_profile(data['role'],data['role'].capitalize()))
-           data['profile_id'] = yield self.get_profile_id(role=data['role'], name=data['role'].capitalize())
+
+        for k, v in self._test_desc['data'].items():
+            data[k] = v
 
         yield self._test_desc['create'](1, self.session, data, 'en')
 
@@ -1129,9 +1115,6 @@ class TestCollectionHandler(TestHandler):
 
         for k, v in self._test_desc['data'].items():
             data[k] = v
-            if k == 'role' and v:
-               yield create_user_profile(1, self.get_dummy_profile(v,v.capitalize()))
-               data['profile_id'] = yield self.get_profile_id(role=v, name=v.capitalize())
 
         handler = self.request(data, role='admin')
 
@@ -1152,17 +1135,14 @@ class TestInstanceHandler(TestHandler):
     @inlineCallbacks
     def fill_data(self):
         # fill_data/create_admin
-        self.dummyProfileAdmin = yield create_user_profile(1, self.dummyProfileAdmin)
-        self.dummyAdmin['profile_id'] = yield self.get_profile_id(role='admin', name='admin')
         self.dummyAdmin = yield create_user(1, None, self.dummyAdmin, 'en')
 
     @inlineCallbacks
     def test_get(self):
         data = self.get_dummy_request()
 
-        if 'role' in data and data['role']:
-            yield create_user_profile(1, self.get_dummy_profile(data['role'],data['role']))
-            data['profile_id'] = yield self.get_profile_id(role=data['role'], name=data['role'])
+        for k, v in self._test_desc['data'].items():
+            data[k] = v
 
         data = yield self._test_desc['create'](1, self.session, data, 'en')
 
@@ -1175,10 +1155,6 @@ class TestInstanceHandler(TestHandler):
     def test_put(self):
         data = self.get_dummy_request()
 
-        if 'role' in data and data['role']:
-            yield create_user_profile(1, self.get_dummy_profile(self._test_desc['data']['role'],self._test_desc['data']['role'].capitalize()))
-            data['profile_id'] = yield self.get_profile_id(role=self._test_desc['data']['role'], name=self._test_desc['data']['role'].capitalize())
-           
         data = yield self._test_desc['create'](1, self.session, data, 'en')
 
         for k, v in self._test_desc['data'].items():
@@ -1196,10 +1172,6 @@ class TestInstanceHandler(TestHandler):
     @inlineCallbacks
     def test_delete(self):
         data = self.get_dummy_request()
-        
-        if 'role' in data and data['role']:
-            yield create_user_profile(1, self.get_dummy_profile(data['role'],data['role']))
-            data['profile_id'] = yield self.get_profile_id(role=data['role'], name=data['role'])
 
         data = yield self._test_desc['create'](1, self.session, data, 'en')
 

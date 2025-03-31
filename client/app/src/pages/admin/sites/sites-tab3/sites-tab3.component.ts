@@ -23,15 +23,15 @@ export class SitesTab3Component implements OnInit {
   private utilsService = inject(UtilsService);
   private http = inject(HttpClient);
   @ViewChild('keyUploadInput') keyUploadInput: ElementRef<HTMLInputElement>;
-  
+
   search: string;
-  newTenant: { name: string, active: boolean, is_profile:boolean, default_profile: string, mode: string, subdomain: string } = {
+  newTenant: { name: string, active: boolean, profile: string, mode: string, subdomain: string, is_profile: boolean} = {
     name: "",
     active: true,
     mode: "",
-    default_profile: "default",
+    profile: "default",
     subdomain: "",
-    is_profile: true,
+    is_profile: true
   };
   tenants: tenantResolverModel[];
   showAddTenant: boolean = false;
@@ -57,11 +57,9 @@ export class SitesTab3Component implements OnInit {
   importTenant(files: FileList | null) {
     if (files && files.length > 0) {
       this.utilsService.readFileAsText(files[0]).subscribe((txt) => {
-        
         let jsonTxt = JSON.parse(txt);
-        jsonTxt.tenant.default_profile = "default";
-        jsonTxt.tenant.is_profile = true;
-        
+        jsonTxt.tenant.profile = "default";
+
         return this.http.post("api/admin/tenants", jsonTxt).subscribe({
           next: () => {
             this.getResolver();
@@ -75,7 +73,6 @@ export class SitesTab3Component implements OnInit {
       });
     }
   }
-  
 
   getResolver(){
     this.httpService.fetchTenant().subscribe(

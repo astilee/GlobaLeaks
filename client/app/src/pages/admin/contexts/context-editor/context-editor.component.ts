@@ -48,10 +48,9 @@ export class ContextEditorComponent implements OnInit {
 
   ngOnInit(): void {
     this.questionnairesData = this.questionnairesResolver.dataModel;
-
-    this.usersData = this.usersResolver.dataModel.users;
+    this.usersData = this.usersResolver.dataModel;
     this.nodeData = this.nodeResolver.dataModel;
-    this.adminReceiversById = this.utilsService.array_to_map(this.usersResolver.dataModel.users);
+    this.adminReceiversById = this.utilsService.array_to_map(this.usersResolver.dataModel);
   }
 
   toggleEditing(): void {

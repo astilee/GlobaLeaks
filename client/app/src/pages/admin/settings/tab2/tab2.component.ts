@@ -70,9 +70,7 @@ export class Tab2Component implements OnInit {
     this.authenticationData.permissions = {
       can_upload_files: false
     };
-    this.preferenceData.permissions = {
-      can_upload_files: false
-    };
+    this.preferenceData.profile.permissions.can_upload_files = false;
     this.updateFiles();
     this.permissionStatus = this.authenticationData.session.permissions.can_upload_files;
   }

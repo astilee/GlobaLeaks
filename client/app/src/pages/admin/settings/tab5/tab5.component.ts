@@ -42,7 +42,7 @@ export class Tab5Component implements OnInit {
   protected readonly Constants = Constants;
 
   ngOnInit(): void {
-    this.userData = this.usersResolver.dataModel.users;
+    this.userData = this.usersResolver.dataModel;
     this.filterUserData();
 
     this.questionnaireData = this.questionnairesResolver.dataModel;

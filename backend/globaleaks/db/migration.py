@@ -37,7 +37,7 @@ from globaleaks.db.migrations.update_67 import \
 from globaleaks.db.migrations.update_68 import Subscriber_v_67, User_v_67
 from globaleaks.db.migrations.update_69 import Tenant_v_68
 
-
+from globaleaks.handlers.admin import tenant
 from globaleaks.orm import get_engine, get_session, make_db_uri
 from globaleaks.models import config, Base
 from globaleaks.settings import Settings
@@ -81,10 +81,11 @@ migration_mapping = OrderedDict([
     ('Step', [models._Step, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
     ('Subscriber', [Subscriber_v_52, Subscriber_v_62, 0, 0, 0, 0, 0, 0, 0, 0, 0, Subscriber_v_67, 0, 0, 0, 0, models._Subscriber, 0]),
     ('Tenant', [Tenant_v_52, models._Tenant, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, Tenant_v_68]),
-    ('UserProfile', [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, models._UserProfile]),
     ('User', [User_v_52, User_v_54, 0, User_v_56, 0, User_v_61, 0, 0, 0, 0, User_v_64, 0, 0, User_v_66, 0, User_v_67, 0, models._User]),
+    ('UserProfile', [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, models._UserProfile]),
+    ('UserProfilePermission', [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, models._UserProfilePermission]),
+    ('UserProfileRole', [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, models._UserProfileRole]),
     ('WhistleblowerFile', [WhistleblowerFile_v_57, 0, 0, 0, 0, 0, WhistleblowerFile_v_64, 0, 0, 0, 0, 0, 0, WhistleblowerFile_v_66, 0, models._WhistleblowerFile, 0, 0]),
-
     ('WhistleblowerTip', [WhistleblowerTip_v_59, 0, 0, 0, 0, 0, 0, 0, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1])
 ])
 
@@ -133,8 +134,7 @@ def perform_data_update(db_file):
     try:
         original_version = config.ConfigFactory(session, 1).get_val('version')
         if original_version != __version__:
-            for tid in [t[0] for t in session.query(models.Tenant.id)]:
-                config.update_defaults(session, tid, appdata)
+            config.load_defaults(session, appdata)
 
             db_load_defaults(session)
 

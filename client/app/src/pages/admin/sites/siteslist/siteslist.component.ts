@@ -35,7 +35,7 @@ export class SiteslistComponent {
   toggleActivation(event: Event): void {
     event.stopPropagation();
     this.tenant.active = !this.tenant.active;
-    this.tenant.default_profile = "default";
+    this.tenant.profile = "default";
     const url = "api/admin/tenants/" + this.tenant.id;
     this.httpService.requestUpdateTenant(url, this.tenant).subscribe(_ => {
     });
@@ -46,7 +46,7 @@ export class SiteslistComponent {
   }
 
   saveTenant() {
-    this.tenant.default_profile = "";
+    this.tenant.profile = "default";
     const url = "api/admin/tenants/" + this.tenant.id;
     this.httpService.requestUpdateTenant(url, this.tenant).subscribe(_ => {
     });

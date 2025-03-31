@@ -99,39 +99,40 @@ def db_update_questionnaire(session, tid, questionnaire_id, request, language):
 
     return serialize_questionnaire(session, tid, questionnaire, language)
 
+
 @transact
 def import_questionnaires(session, tid, questionnaire):
     """
     Duplicate questionnaire for a new tenant
-    
+
     :param session: An ORM session
     :param tid: The new tenant ID
     :param questionnaire: Source questionnaire data
     """
     # Create a deep copy of the questionnaire to avoid modifying the original
     q = questionnaire.copy()
-    
+
     # Generate new UUID for the questionnaire
     old_questionnaire_id = q['id']
     q['id'] = str(uuid4())
-    
+
     # Update step IDs and field IDs
     id_map = {old_questionnaire_id: q['id']}
-    
+
     for step in q['steps']:
         old_step_id = step['id']
         new_step_id = str(uuid4())
         id_map[old_step_id] = new_step_id
         step['id'] = new_step_id
         step['questionnaire_id'] = q['id']
-        
+
         for field in step['children']:
             old_field_id = field['id']
             new_field_id = str(uuid4())
             id_map[old_field_id] = new_field_id
             field['id'] = new_field_id
             field['step_id'] = new_step_id
-            
+
             # Update option IDs
             for option in field.get('options', []):
                 if 'id' in option:
@@ -139,12 +140,12 @@ def import_questionnaires(session, tid, questionnaire):
                     new_option_id = str(uuid4())
                     id_map[old_option_id] = new_option_id
                     option['id'] = new_option_id
-            
+
             # Update field attributes
             for attr in field.get('attrs', {}).values():
                 if 'id' in attr:
                     attr['id'] = str(uuid4())
-    
+
     # Update trigger references
     for step in q['steps']:
         for trigger in step.get('triggered_by_options', []):
@@ -152,17 +153,18 @@ def import_questionnaires(session, tid, questionnaire):
                 trigger['field'] = id_map[trigger['field']]
             if trigger.get('option') in id_map:
                 trigger['option'] = id_map[trigger['option']]
-        
+
         for field in step['children']:
             for trigger in field.get('triggered_by_options', []):
                 if trigger.get('field') in id_map:
                     trigger['field'] = id_map[trigger['field']]
                 if trigger.get('option') in id_map:
                     trigger['option'] = id_map[trigger['option']]
-    
+
     # Create the new questionnaire in the database
     db_create_questionnaire(session, tid, None, q, 'en')
-    
+
+
 @transact
 def duplicate_questionnaire(session, tid, user_session, questionnaire_id, new_name):
     """

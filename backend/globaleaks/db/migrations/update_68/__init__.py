@@ -28,7 +28,7 @@ class Subscriber_v_67(Model):
 
 class User_v_67(Model):
     __tablename__ = 'user'
-    
+
     id = Column(UnicodeText(36), primary_key=True, default=uuid4)
     tid = Column(Integer, default=1, nullable=False)
     creation_date = Column(DateTime, default=datetime_now, nullable=False)
