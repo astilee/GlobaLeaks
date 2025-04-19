@@ -209,6 +209,11 @@ def get_auth_type(session, tid, username):
     return {'type': 'password'}
 
 
+@transact
+def get_user_roles(session, tid, user_id):
+    return session.query(User).filter(User.tid == tid, User.id == user_id).one().profile.roles_list
+
+
 class AuthTypeHandler(BaseHandler):
     """
     Get auth type for specified user
@@ -369,6 +374,30 @@ class TenantAuthSwitchHandler(BaseHandler):
         session.properties['management_session'] = True
 
         return {'redirect': '/t/%s/#/login?token=%s' % (State.tenants[tid].cache.uuid, session.id)}
+
+
+class RoleAuthSwitchHandler(BaseHandler):
+    """
+    Login handler for switching tenant
+    """
+    check_roles = 'any'
+
+    @inlineCallbacks
+    def get(self, role):
+        roles = yield get_user_roles(self.request.tid, self.session.user_id)
+
+        if role not in roles:
+            raise errors.InvalidAuthentication
+
+        session = Sessions.new(self.session.tid,
+                               self.session.user_id,
+                               self.session.user_tid,
+                               role,
+                               self.session.cc,
+                               self.session.ek,
+                               self.session.permissions)
+
+        returnValue({'redirect': '/#/login?token=%s' % (session.id)})
 
 
 class OperatorAuthSwitchHandler(BaseHandler):
