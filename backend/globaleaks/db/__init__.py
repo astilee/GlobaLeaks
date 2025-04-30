@@ -5,7 +5,6 @@ import warnings
 from collections import defaultdict
 from operator import or_
 
-from sqlalchemy.exc import SAWarning
 from globaleaks.rest.cache import Cache
 
 from globaleaks import models, DATABASE_VERSION
@@ -84,22 +83,19 @@ def update_db():
         return 0
 
     try:
-        with warnings.catch_warnings():
-            from globaleaks.db import migration
-            warnings.simplefilter("ignore", category=SAWarning)
+        from globaleaks.db import migration
+        log.err('Found an already initialized database version: %d', db_version)
 
-            log.err('Found an already initialized database version: %d', db_version)
+        if db_version != DATABASE_VERSION:
+            log.err('Performing schema migration from version %d to version %d',
+                    db_version, DATABASE_VERSION)
 
-            if db_version != DATABASE_VERSION:
-                log.err('Performing schema migration from version %d to version %d',
-                        db_version, DATABASE_VERSION)
+            migration.perform_migration(db_version)
+        else:
+            migration.perform_data_update(db_file_path)
+            compact_db()
 
-                migration.perform_migration(db_version)
-            else:
-                migration.perform_data_update(db_file_path)
-                compact_db()
-
-            sync_clean_untracked_files()
+        sync_clean_untracked_files()
 
     except Exception as exception:
         log.err('Failure: %s', exception)
