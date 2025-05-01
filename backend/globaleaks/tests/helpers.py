@@ -267,7 +267,7 @@ class MockDict:
             'pgp_key_public': '',
             'pgp_key_expiration': '1970-01-01 00:00:00.000000',
             'pgp_key_remove': False,
-            'profile_id': '',
+            'profile_id': 'none',
             'contexts': [],
             'send_activation_link': False,
             'can_edit_general_settings': False,
@@ -1072,6 +1072,7 @@ class TestHandler(TestGLWithPopulatedDB):
     def get_dummy_request(self):
         request = self._test_desc['model']().dict(u'en')
         if isinstance(self._test_desc['model'](), models.User):
+            request['roles'] = [request['role']]
             request['profile'] = {}
         elif isinstance(self._test_desc['model'](), models.UserProfile):
             request['role'] = 'admin'

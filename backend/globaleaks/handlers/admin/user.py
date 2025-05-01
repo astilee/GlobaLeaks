@@ -47,7 +47,7 @@ def db_create_user(session, tid, user_session, request, language):
     if not request['username']:
         request['username'] = request['id']
 
-    if not request['profile_id']:
+    if not request['profile_id'] or request['profile_id'] == 'none':
         request['profile_id'] = request['id']
 
         if 'roles' not in request:
@@ -88,7 +88,8 @@ def db_create_user(session, tid, user_session, request, language):
 
     if request.get('send_activation_link', False):
         token = db_generate_password_reset_token(session, user)
-        db_log(session, tid=tid, type='send_password_reset_email', user_id=user_session.user_id, object_id=user.id)
+        if user_session:
+            db_log(session, tid=tid, type='send_password_reset_email', user_id=user_session.user_id, object_id=user.id)
     else:
         token = None
 
@@ -167,6 +168,8 @@ def db_update_user(session, tid, user_session, user_id, request, language):
     user = db_get_user(session, tid, user_id)
 
     if user.id == request['profile_id']:
+        request['profile']['role'] = request['role']
+        request['profile']['roles'] = [request['role']]
         db_update_user_profile(session, tid, user_id, request['profile'])
     elif user.id == user.profile_id:
         # in this condition we should delete the profile since it will become unused.

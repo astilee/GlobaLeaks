@@ -20,7 +20,13 @@ from globaleaks.utils.utility import datetime_now, datetime_null, uuid4
 from sqlalchemy import or_
 
 
-def sync_roles(session, profile, roles):
+def sync_roles(session, profile, request):
+    role = request['role']
+    roles = request['roles']
+
+    if not request['roles'] or request['role'] not in request['roles']:
+        raise errors.InputValidationError("Invalid roles")
+
     current_roles = {r.role for r in profile.roles}
     roles_set = set(roles)
 
@@ -31,10 +37,15 @@ def sync_roles(session, profile, roles):
 
     # Add new roles
     for role_name in roles_set - current_roles:
-        session.add(models.UserProfileRole({'profile_id': profile.id, 'role': role_name}))
+        profile.roles.append(models.UserProfileRole({'profile_id': profile.id, 'role': role_name}))
+
+    # Sync users using this profile
+    for user in session.query(models.User).filter(models.User.profile_id == profile.id, models.User.role.notin_(roles)):
+        user.role = request['role']
 
 
-def sync_permissions(session, profile, permissions):
+def sync_permissions(session, profile, request):
+    permissions = request['permissions']
     permissions = [perm for perm, value in permissions.items() if value]
 
     current_permissions = {p.permission for p in profile.permissions}
@@ -47,7 +58,7 @@ def sync_permissions(session, profile, permissions):
 
     # Add new roles
     for permission_name in permissions_set - current_permissions:
-        session.add(models.UserProfilePermission({'profile_id': profile.id, 'permission': permission_name}))
+        profile.permissions.append(models.UserProfilePermission({'profile_id': profile.id, 'permission': permission_name}))
 
 
 def db_create_user_profile(session, tid, request):
@@ -66,8 +77,8 @@ def db_create_user_profile(session, tid, request):
     profile = models.UserProfile(request)
     profile.role = request['role']
 
-    sync_roles(session, profile, request['roles'])
-    sync_permissions(session, profile, request['permissions'])
+    sync_roles(session, profile, request)
+    sync_permissions(session, profile, request)
 
     session.add(profile)
 
@@ -117,8 +128,8 @@ def db_update_user_profile(session, tid, profile_id, request):
 
     profile.update(request)
 
-    sync_roles(session, profile, request['roles'])
-    sync_permissions(session, profile, request['permissions'])
+    sync_roles(session, profile, request)
+    sync_permissions(session, profile, request)
 
     return serialize_user_profile(session, profile)
 

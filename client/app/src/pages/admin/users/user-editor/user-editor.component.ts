@@ -166,8 +166,12 @@ export class UserEditorComponent implements OnInit {
     return this.authenticationData.session?.user_id;
   }
 
+  getProfile(profileId: string): UserProfile | undefined {
+    return this.profiles.find((p) => p.id === profileId);
+  }
+
   getProfileName(profileId: string): string {
-    return this.profiles.find((p) => p.id === profileId)!.name;
+    return this.getProfile(profileId)!.name;
   }
 
   getUserDisplayName(user:any) {
@@ -201,5 +205,12 @@ export class UserEditorComponent implements OnInit {
         user.escrow = !user.escrow;
       }
     });
+  }
+
+  onProfileSelected() {
+    let profile = this.getProfile(this.user.profile_id);
+    if (profile) {
+      this.user.role = profile.role;
+    }
   }
 }

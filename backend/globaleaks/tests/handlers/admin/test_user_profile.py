@@ -29,6 +29,7 @@ class TestUserProfileInstance(helpers.TestInstanceHandler):
 
     def get_dummy_request(self):
         data = helpers.TestInstanceHandler.get_dummy_request(self)
+        data['role'] = 'admin'
         data['roles'] = ['admin']
         data['permissions'] = user.user_permissions
         return data

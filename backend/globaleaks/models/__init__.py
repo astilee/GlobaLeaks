@@ -1285,6 +1285,10 @@ class UserProfileRole(_UserProfileRole, Base):
                 UniqueConstraint('profile_id', 'role'),
                 CheckConstraint(self.role.in_(EnumUserRole.keys())))
 
+    @declared_attr
+    def profile(cls):
+        return relationship("UserProfile", back_populates="roles")
+
 
 class _UserProfilePermission(Model):
     """

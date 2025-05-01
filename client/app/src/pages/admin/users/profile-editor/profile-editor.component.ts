@@ -103,4 +103,8 @@ export class ProfileEditorComponent implements OnInit {
   exportProfile(user:UserProfile){
     this.utilsService.saveAs(this.authenticationService, user.name + ".json", "api/admin/users/" + user.id);
   }
+
+  onRoleSelected() {
+    this.user.roles = [this.user.role];
+  }
 }
