@@ -6,6 +6,20 @@ from globaleaks.utils.utility import datetime_now, datetime_null
 
 from globaleaks.db.migrations.update import MigrationBase
 
+
+class InternalTipAnswers_v_69(Model):
+    """
+    This is the internal representation of Tip Questionnaire Answers
+    """
+    __tablename__ = 'internaltipanswers'
+
+    internaltip_id = Column(UnicodeText(36), primary_key=True)
+    questionnaire_hash = Column(UnicodeText(64), primary_key=True)
+    creation_date = Column(DateTime, default=datetime_now, nullable=False)
+    answers = Column(UnicodeText, default='{}', nullable=False)
+    stat_answers = Column(UnicodeText, default='{}', nullable=False)
+
+
 class User_v_69(Model):
     """
     This model keeps track of users.

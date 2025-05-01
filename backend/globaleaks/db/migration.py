@@ -37,7 +37,7 @@ from globaleaks.db.migrations.update_67 import \
 from globaleaks.db.migrations.update_68 import Subscriber_v_67, User_v_67
 from globaleaks.db.migrations.update_69 import Field_v_68, InternalTipAnswers_v_68, User_v_68, Tenant_v_68, \
     Subscriber_v_68, InternalFile_v_68, ReceiverFile_v_68, Mail_v_68
-from globaleaks.db.migrations.update_70 import User_v_69
+from globaleaks.db.migrations.update_70 import InternalTipAnswers_v_69, User_v_69
 from globaleaks.db.migrations.update_71 import Tenant_v_70
 
 from globaleaks.handlers.admin import tenant
@@ -69,7 +69,7 @@ migration_mapping = OrderedDict([
     ('IdentityAccessRequestCustodian', [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, models._IdentityAccessRequestCustodian, 0, 0, 0, 0, 0, 0]),
     ('InternalFile', [InternalFile_v_64, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, InternalFile_v_68, 0, 0, 0, models._InternalFile, 0, 0]),
     ('InternalTip', [InternalTip_v_52, InternalTip_v_57, 0, 0, 0, 0, InternalTip_v_59, 0, InternalTip_v_63, 0, 0, 0, InternalTip_v_64, InternalTip_v_66, 0, models._InternalTip, 0, 0, 0, 0]),
-    ('InternalTipAnswers', [InternalTipAnswers_v_68, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, models._InternalTipAnswers, 0, 0]),
+    ('InternalTipAnswers', [InternalTipAnswers_v_68, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, InternalTipAnswers_v_69, models._InternalTipAnswers, 0]),
     ('InternalTipData', [models._InternalTipData, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
     ('InternalTipForwarding', [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, models._InternalTipForwarding, 0, 0]),
     ('Mail', [Mail_v_68, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, models._Mail, 0, 0]),
