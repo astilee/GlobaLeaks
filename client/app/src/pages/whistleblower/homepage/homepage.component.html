@@ -21,7 +21,8 @@
         @if (appDataService.public.node.whistleblowing_question) {
           <markdown id="WhistleblowingQuestion" [data]="appDataService.public.node.whistleblowing_question | stripHtml"></markdown>
         }
-        <button id="WhistleblowingButton" (click)="openSubmission()" class="btn btn-primary">@if (appDataService.public.node.whistleblowing_button) {
+        <button id="WhistleblowingButton" (click)="openSubmission()" class="btn btn-primary">
+        @if (appDataService.public.node.whistleblowing_button) {
           <span>{{appDataService.public.node.whistleblowing_button|translate}}</span>
         }</button>
       </div>
