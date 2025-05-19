@@ -324,6 +324,7 @@ AdminFieldDesc = {
     'y': int,
     'width': int,
     'required': bool,
+    'statistical': bool,
     'type': field_type_regexp,
     'attrs': dict,
     'options': [AdminFieldOptionDesc],

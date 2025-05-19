@@ -12,7 +12,8 @@ from globaleaks.handlers.admin.notification import db_get_notification
 from globaleaks.handlers.base import BaseHandler
 from globaleaks.handlers.whistleblower.submission import decrypt_tip, \
     db_set_internaltip_answers, db_get_questionnaire, \
-    db_archive_questionnaire_schema, db_set_internaltip_data
+    db_archive_questionnaire_schema, db_set_internaltip_data, \
+    extract_statistical_data
 from globaleaks.handlers.user import serialize_user
 from globaleaks.models import serializers
 from globaleaks.orm import db_get, transact
@@ -135,10 +136,16 @@ def store_additional_questionnaire_answers(session, tid, user_id, answers, langu
     steps = db_get_questionnaire(session, tid, context.additional_questionnaire_id, None)['steps']
     questionnaire_hash = db_archive_questionnaire_schema(session, steps)
 
+    stat_data = extract_statistical_data(session, tid, answers)
+
     if itip.crypto_tip_pub_key:
+        if stat_data:
+            crypto_stat_pub_key = db_get(session, models.Config.value, (models.Config.tid == tid, models.Config.var_name == 'crypto_stat_pub_key'))[0]
+            stat_data = Base64Encoder.encode(GCE.asymmetric_encrypt(crypto_stat_pub_key, json.dumps(stat_data, cls=JSONEncoder).encode())).decode()
+
         answers = Base64Encoder.encode(GCE.asymmetric_encrypt(itip.crypto_tip_pub_key, json.dumps(answers).encode())).decode()
 
-    db_set_internaltip_answers(session, itip.id, questionnaire_hash, answers)
+    db_set_internaltip_answers(session, itip.id, questionnaire_hash, answers, stat_data)
 
     db_notify_recipients_of_tip_update(session, itip.id)
 

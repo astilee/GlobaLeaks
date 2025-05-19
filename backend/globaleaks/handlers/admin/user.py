@@ -101,8 +101,16 @@ def db_create_user(session, tid, user_session, request, language):
         user.crypto_prv_key = Base64Encoder.encode(GCE.symmetric_encrypt(key, cc))
         user.crypto_bkp_key, user.crypto_rec_key = GCE.generate_recovery_key(cc)
 
-        if user_session and token:
-            set_tmp_key(user_session, user, token, cc)
+        if user_session:
+            if token:
+                set_tmp_key(user_session, user, token, cc)
+
+            if any(role in user.profile.roles_list for role in ('admin', 'analyst')):
+                current_user = db_get(session, models.User, models.User.id == user_session.user_id)
+                if current_user.crypto_global_stat_prv_key:
+                    crypto_global_stat_prv_key = GCE.asymmetric_decrypt(user_session.cc, Base64Encoder.decode(current_user.crypto_global_stat_prv_key))
+                    user.crypto_global_stat_prv_key = Base64Encoder.encode(GCE.asymmetric_encrypt(user.crypto_pub_key, crypto_global_stat_prv_key))
+
 
     if not crypto_escrow_pub_key_tenant_1 and not crypto_escrow_pub_key_tenant_n:
         return user

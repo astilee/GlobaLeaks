@@ -35,6 +35,18 @@ def index_answers(answers, parent_index=''):
             index += 1
 
 
+def extract_statistical_data(session, tid:int, answers:dict):
+    # TODO: this function does not currently handle groups and subgroups of questions
+    statistical_fields = [fid[0] for fid in session.query(models.Field.id).filter(models.Field.tid == tid, models.Field.statistical == True).all()]
+
+    answers_dict = dict()
+    for k, v in answers.items():
+        if k in statistical_fields:
+            answers_dict[k] = v[0].get('value')
+
+    return answers_dict
+
+
 def decrypt_tip(user_key, tip_prv_key, tip):
     tip_key = GCE.asymmetric_decrypt(user_key, tip_prv_key)
 
@@ -83,7 +95,7 @@ def decrypt_tip(user_key, tip_prv_key, tip):
     return tip
 
 
-def db_set_internaltip_answers(session, itip_id, questionnaire_hash, answers, date=None):
+def db_set_internaltip_answers(session, itip_id, questionnaire_hash, answers, stat_answers, date=None):
     x = session.query(models.InternalTipAnswers) \
                .filter(models.InternalTipAnswers.internaltip_id == itip_id,
                        models.InternalTipAnswers.questionnaire_hash == questionnaire_hash).one_or_none()
@@ -95,6 +107,7 @@ def db_set_internaltip_answers(session, itip_id, questionnaire_hash, answers, da
     ita.internaltip_id = itip_id
     ita.questionnaire_hash = questionnaire_hash
     ita.answers = answers
+    ita.stat_answers = stat_answers
 
     if date:
         ita.creation_date = date
@@ -257,10 +270,16 @@ def db_create_submission(session, tid, request, user_session, client_using_tor, 
 
         db_set_internaltip_data(session, itip.id, 'whistleblower_identity', wbi, itip.creation_date)
 
+    stat_data = extract_statistical_data(session, tid, answers)
+
     if crypto_is_available:
+        if stat_data:
+            crypto_stat_pub_key = db_get(session, models.Config.value, (models.Config.tid == tid, models.Config.var_name == 'crypto_stat_pub_key'))[0]
+            stat_data = Base64Encoder.encode(GCE.asymmetric_encrypt(crypto_stat_pub_key, json.dumps(stat_data, cls=JSONEncoder).encode())).decode()
+
         answers = Base64Encoder.encode(GCE.asymmetric_encrypt(itip.crypto_tip_pub_key, json.dumps(answers, cls=JSONEncoder).encode())).decode()
 
-    db_set_internaltip_answers(session, itip.id, questionnaire_hash, answers, itip.creation_date)
+    db_set_internaltip_answers(session, itip.id, questionnaire_hash, answers, stat_data, itip.creation_date)
 
     for uploaded_file in user_session.files:
         if crypto_is_available:
