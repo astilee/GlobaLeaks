@@ -53,7 +53,7 @@
             </div>
           </div>
         }
-        @if (new_user.profile_id == 'none') {
+        @if (!selectable_profiles.length || new_user.profile_id == 'none') {
           <div class="form-group">
             <label>{{ 'Role' | translate }}</label>
             <span class="text-danger" ngbTooltip="{{'This field is mandatory' | translate}}">*</span>
