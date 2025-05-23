@@ -1,6 +1,7 @@
+
 from globaleaks import __version__, DATABASE_VERSION
 from globaleaks.utils.crypto import GCE
-from globaleaks.utils.utility import uuid4
+from globaleaks.utils.utility import datetime_never, uuid4
 
 
 class Item:
@@ -56,6 +57,7 @@ ConfigDescriptor = {
     'enable_developers_exception_notification': Bool(default=False),
     'enable_privacy_policy': Bool(default=False),
     'enable_scoring_system': Bool(default=False),
+    'enable_multiple_roles': Bool(default=False),
     'enable_signup': Bool(default=False),
     'encryption': Bool(default=True),
     'escrow': Bool(default=False),
@@ -170,6 +172,7 @@ ConfigFilters = {
         'enable_developers_exception_notification',
         'enable_privacy_policy',
         'enable_scoring_system',
+        'enable_multiple_roles',
         'enable_signup',
         'encryption',
         'escrow',
@@ -247,6 +250,7 @@ ConfigFilters = {
         'enable_developers_exception_notification',
         'enable_privacy_policy',
         'enable_scoring_system',
+        'enable_multiple_roles',
         'enable_signup',
         'encryption',
         'escrow',
@@ -358,6 +362,7 @@ ConfigFilters = {
         'disable_submissions',
         'enable_custom_privacy_badge',
         'enable_scoring_system',
+        'enable_multiple_roles',
         'enable_signup',
         'hostname',
         'https_whistleblower',

@@ -34,6 +34,7 @@ export class UserEditorComponent implements OnInit {
   private nodeResolver = inject(NodeResolver);
   private utilsService = inject(UtilsService);
   private cryptoService = inject(CryptoService);
+  protected preferenceResolver = inject(PreferenceResolver);
 
   @Input() user: User;
   @Input() users: User[];
@@ -52,7 +53,7 @@ export class UserEditorComponent implements OnInit {
   authenticationData: AuthenticationService;
   appServiceData: AppDataService;
   protected readonly Constants = Constants;
-
+  
   ngOnInit(): void {
     if (this.nodeResolver.dataModel) {
       this.nodeData = this.nodeResolver.dataModel;
@@ -87,9 +88,7 @@ export class UserEditorComponent implements OnInit {
   }
 
   disable2FA(user: User) {
-    this.utilsService.runAdminOperation("disable_2fa", {"value": user.id}, false).subscribe(_ => {
-      user.two_factor = false;
-    });
+    this.utilsService.runAdminOperation("disable_2fa", {"value": user.id}, true).subscribe();
   }
 
   async setPassword(setPasswordArgs: { user_id: string, password: string }) {
@@ -166,12 +165,25 @@ export class UserEditorComponent implements OnInit {
     return this.authenticationData.session?.user_id;
   }
 
-  getProfile(profileId: string): UserProfile | undefined {
-    return this.profiles.find((p) => p.id === profileId);
+  getProfileName(profileId: string): string {
+    return this.profiles.find((p) => p.id === profileId)!.name;
   }
 
-  getProfileName(profileId: string): string {
-    return this.getProfile(profileId)!.name;
+   getUserRoleLabel(user: any, badge: boolean): string {
+    const roleMap: { [key: string]: string } = {
+      'analyst': 'Analyst',
+      'custodian': 'Custodian',
+      'receiver': 'Recipient',
+      'admin': 'Admin'
+    };
+    const filter = badge
+      ? ['analyst', 'custodian', 'receiver', 'admin']
+      : ['analyst', 'custodian'];
+    const separator = badge ? ' , ' : ' | ';
+    return this.preferenceResolver.dataModel.profile.roles
+      .filter((role: string) => filter.includes(role))
+      .map((role: string) => roleMap[role] || role)
+      .join(separator);
   }
 
   getUserDisplayName(user:any) {
@@ -205,12 +217,5 @@ export class UserEditorComponent implements OnInit {
         user.escrow = !user.escrow;
       }
     });
-  }
-
-  onProfileSelected() {
-    let profile = this.getProfile(this.user.profile_id);
-    if (profile) {
-      this.user.role = profile.role;
-    }
   }
 }

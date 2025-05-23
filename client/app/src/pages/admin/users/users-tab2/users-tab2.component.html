@@ -25,17 +25,62 @@
           <div class="form-group">
             <label>{{ 'Role' | translate }}</label>
             <span class="text-danger" ngbTooltip="{{'This field is mandatory' | translate}}">*</span>
-            <div>
-              <select name="role" class="form-select-custom" [(ngModel)]="new_user.role" required>
-                <option value="admin">{{ 'Admin' | translate }}</option>
-                <option value="analyst">{{ 'Analyst' | translate }}</option>
-                <option value="custodian">{{ 'Custodian' | translate }}</option>
-                <option value="receiver">{{ 'Recipient' | translate }}</option>
-              </select>
-            </div>
+            @if (nodeResolver.dataModel.enable_multiple_roles) {
+               <div>
+                   <div id="RoleAdder" class="row">
+                     <div class="col-md-12">
+                       <ng-select [(ngModel)]="selected.value" [items]="roles | filter:'role':selected.value" bindLabel="role" [searchable]="true" [placeholder]="'Search' | translate" (ngModelChange)="assignRole($event)">
+                         <ng-template ng-option-tmp let-item="item">
+                           <span>{{item.role}}</span>
+                         </ng-template>
+                       </ng-select>
+                     </div>
+                   </div>
+                 <br />
+                @if (new_user.roles.length !== 0) {
+                 <ul class="selection-list">
+                  @for (role of new_user.roles; track role; let index = $index;) {
+                    <li>
+                      <span class="action-btns">
+                        @if (role === new_user.role) {
+                          <span class="default-role">
+                            <i class="fa-solid fa-check"></i>
+                          </span>
+                        }
+                        @if (role !== new_user.role) {
+                          <span class="non-default-role" ngbTooltip="{{'Set as default' | translate}}" (click)="setDefaultRole(role)">
+                            <i class="fa-solid fa-check"></i>
+                          </span>
+                        }
+                        @if (role !== new_user.role) {
+                          <span (click)="removeRole(index, role)" ngbTooltip="{{'Remove' | translate}}" class="remove-role-btn">
+                            <i class="fa-solid fa-times"></i>
+                          </span>
+                        }
+                        @if (role === new_user.role) {
+                          <i class="fa-solid fa-times disabled-icon"></i>
+                        }
+                      </span>
+                      <label>{{ utilsService.getRoleDisplayName(role) }}</label>
+                    </li>
+                  }
+                 </ul>
+                }
+               </div>
+            }
+            @if (!nodeResolver.dataModel.enable_multiple_roles) {
+              <div>
+                <select name="role" class="form-select-custom" [(ngModel)]="new_user.role" required>
+                  <option value="admin">{{ 'Admin' | translate }}</option>
+                  <option value="analyst">{{ 'Analyst' | translate }}</option>
+                  <option value="custodian">{{ 'Custodian' | translate }}</option>
+                  <option value="receiver">{{ 'Recipient' | translate }}</option>
+                </select>
+              </div>
+            }
           </div>
           <div class="form-group">
-            <button id="add-btn" class="btn btn-primary" [disabled]="newUser.invalid" (click)="addUser(); toggleAddUser()" type="submit">
+            <button id="add-btn" class="btn btn-primary" [disabled]="newUser.invalid || !new_user.role" (click)="addUser(); toggleAddUser()" type="submit">
               <i class="fa-solid fa-plus"></i>
               <span>{{ 'Add' | translate }}</span>
             </button>

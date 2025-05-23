@@ -39,6 +39,14 @@
           <span class="text-separator">|</span>
         </span>
       }
+      @if (appDataService.public.node.enable_multiple_roles && preferences.dataModel.profile && preferences.dataModel.profile.roles.length > 1) {
+        <span id="SupportLinkBox">
+          <a id="SupportLink" [href]="'#'+authentication.session.homepage" (click)="openSwitchUserModal()" ngbTooltip="{{'Switch User' | translate}}">
+            <i class="fa-solid fa-fw fa-users"></i>
+          </a>
+          <span class="text-separator">|</span>
+        </span>
+      }
       <span id="LogoutLinkBox">
         <i class="glyphicon glyphicon-user"></i>
       </span>

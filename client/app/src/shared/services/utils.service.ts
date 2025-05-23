@@ -781,4 +781,10 @@ export class UtilsService {
   public getFlowInstance(): Flow {
     return new Flow(this.getFlowOptions());
   }
+
+  getRoleDisplayName(role: any): any {
+    if (!role) return [];
+    if (role === 'receiver') return 'Recipient';
+    return role.charAt(0).toUpperCase() + role.slice(1);
+  }
 }

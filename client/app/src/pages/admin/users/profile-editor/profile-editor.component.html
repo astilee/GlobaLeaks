@@ -3,20 +3,7 @@
     <span class="col-md-7" (click)="toggleEditing();">
       <span>{{ user.name }}</span>
       <span class="badge bg-primary">
-        @switch (user.role) {
-          @case ('admin') {
-            <span>{{ 'Admin' | translate }}</span>
-          }
-          @case ('receiver') {
-            <span>{{ 'Recipient' | translate }}</span>
-          }
-          @case ('custodian') {
-            <span>{{ 'Custodian' | translate }}</span>
-          }
-          @case ('analyst') {
-            <span>{{ 'Analyst' | translate }}</span>
-          }
-        }
+        <span> (&nbsp;{{ getUserRoleLabel(user,true) }}&nbsp;) </span>
       </span>
     </span>
     <span class="col-md-5 clearfix">
@@ -54,22 +41,64 @@
             </div>
           </div>
           <div class="form-group">
-            <label>{{ 'Role' | translate }}</label>
-            <div>
-              <select name="role" class="form-select-custom" [(ngModel)]="user.role" (change)="onRoleSelected()" required>
-                <option value="admin">{{ 'Admin' | translate }}</option>
-                <option value="analyst">{{ 'Analyst' | translate }}</option>
-                <option value="custodian">{{ 'Custodian' | translate }}</option>
-                <option value="receiver">{{ 'Recipient' | translate }}</option>
-              </select>
-            </div>
+              <label>{{ 'Role' | translate }}</label>
+              <span class="text-danger" ngbTooltip="{{'This field is mandatory' | translate}}">*</span>
+                <div>
+                     <div id="RoleAdder" class="row">
+                       <div class="col-md-12">
+                        <ng-select
+                          [(ngModel)]="userRole"
+                          [items]="roles"
+                          bindLabel="role"
+                          bindValue="value"
+                          [searchable]="true"
+                          [placeholder]="'Search' | translate"
+                          (ngModelChange)="assignRole($event)">
+                          <ng-template ng-option-tmp let-item="item">
+                            <span>{{ item.role }}</span>
+                          </ng-template>
+                        </ng-select>
+                       </div>
+                     </div>
+                   <br />
+                   <ul class="selection-list">
+                  @for (role of user.roles; track role; let index = $index;) {
+                    <li>
+                      <span class="action-btns">
+                        @if (role === user.role) {
+                          <span class="default-role">
+                            <i class="fa-solid fa-check"></i>
+                          </span>
+                        }
+                        @if (role !== user.role) {
+                          <span class="non-default-role" ngbTooltip="{{'Set as default' | translate}}" (click)="setDefaultRole(role)">
+                            <i class="fa-solid fa-check"></i>
+                          </span>
+                        }
+                        @if (role !== user.role) {
+                          <span (click)="removeRole(index, role)" ngbTooltip="{{'Remove' | translate}}" class="remove-role-btn">
+                            <i class="fa-solid fa-times"></i>
+                          </span>
+                        }
+                        @if (role === user.role) {
+                          <i class="fa-solid fa-times disabled-icon"></i>
+                        }
+                      </span>
+                      <label>{{ utilsService.getRoleDisplayName(role) }}</label>
+                    </li>
+                  }
+                   </ul>
+              </div>
           </div>
         </div>
       </div>
-      @if (user.role === 'receiver') {
+      @if (user.roles.includes('receiver')) {
         <div class="row">
           <div class="col-md-12">
-            <div class="form-group">
+              <label class="mb-2">
+                <span class="fw-bold">Recipient</span>
+              </label>
+              <div class="form-group">
               <input class="form-check-input" name="can_mask_information" [(ngModel)]="user.permissions.can_mask_information" type="checkbox" [disabled]="nodeData.tid !== user.tid" />
               <span [ngClass]="{'text-gray': nodeData.tid !== user.tid}">{{ 'Give this user ability to mask information' | translate }}</span>
             </div>
@@ -98,9 +127,15 @@
           </div>
         </div>
       }
-      @if (user.role !== 'admin') {
+      @if (hasSpecificRole(user)) {
         <div class="row">
           <div class="col-md-12">
+            @if (user.roles.includes('analyst') || user.roles.includes('custodian')) {
+              <label class="mb-2">
+                <span class="fw-bold">{{ getUserRoleLabel(user,false) }}</span>
+              </label>
+              <br>
+            }
             <label>{{ 'Give the user administrative access to the following features:' | translate }}</label>
             <div class="form-group">
               <input class="form-check-input" name="can_edit_general_settings" [(ngModel)]="user.permissions.can_edit_general_settings" type="checkbox" [disabled]="nodeData.tid !== user.tid" />

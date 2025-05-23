@@ -166,6 +166,7 @@ UserUserDesc = {
     'pgp_key_expiration': str,
     'pgp_key_public': str,
     'language': str,
+    'profile': dict,
     'notification': bool
 }
 
@@ -216,6 +217,7 @@ AdminNodeDesc = {
     'disable_submissions': bool,
     'simplified_login': bool,
     'enable_scoring_system': bool,
+    'enable_multiple_roles': bool,
     'enable_signup': bool,
     'mode': str,
     'signup_tos1_enable': bool,
@@ -416,6 +418,7 @@ NodeDesc = {
     'disclaimer_text': str,
     'enable_custom_privacy_badge': bool,
     'enable_scoring_system': bool,
+    'enable_multiple_roles': bool,
     'enable_signup': bool,
     'footer': str,
     'footer_privacy_policy': str,

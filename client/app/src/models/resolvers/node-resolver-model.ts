@@ -12,6 +12,7 @@ export class nodeResolverModel {
   enable_custom_privacy_badge: boolean;
   enable_developers_exception_notification: boolean;
   enable_scoring_system: boolean;
+  enable_multiple_roles: boolean;
   enable_signup: boolean;
   encryption: boolean;
   escrow: boolean;

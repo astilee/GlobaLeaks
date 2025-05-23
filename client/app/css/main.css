@@ -864,6 +864,15 @@ text.axis-worktime {
   opacity: 1;
 }
 
+.non-default-role,
+.disabled-icon {
+  opacity: 0.2;
+}
+
+.non-default-role:hover {
+  opacity: 1;
+}
+
 .tip-action-open {
   cursor: pointer;
 }
