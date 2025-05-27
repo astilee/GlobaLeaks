@@ -37,7 +37,7 @@ def serialize_user_profile(session, profile):
         'tid': profile.tid,
         'name': profile.name,
         'role': profile.role,
-        'roles': profile.roles_list,
+        'roles': sorted(profile.roles_list),
         'permissions': {}
     }
 

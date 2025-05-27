@@ -21,13 +21,13 @@ import {
 import {NgClass, DatePipe} from "@angular/common";
 import {FormsModule} from "@angular/forms";
 import {TranslatorPipe} from "@app/shared/pipes/translate";
-import {NgSelectComponent, NgOptionTemplateDirective} from "@ng-select/ng-select";
+import {NgSelectComponent} from "@ng-select/ng-select";
 
 @Component({
     selector: "src-preference-tab1",
     templateUrl: "./preference-tab1.component.html",
     standalone: true,
-    imports: [FormsModule,NgSelectComponent, NgOptionTemplateDirective, NgClass, DatePipe, TranslateModule, TranslatorPipe]
+    imports: [FormsModule,NgSelectComponent, NgClass, DatePipe, TranslateModule, TranslatorPipe]
 })
 export class PreferenceTab1Component implements OnInit {
   private translationService = inject(TranslationService);

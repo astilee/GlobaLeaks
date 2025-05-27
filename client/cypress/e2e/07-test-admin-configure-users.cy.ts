@@ -64,16 +64,16 @@ describe("admin add, configure, and delete users", () => {
     cy.visit("/#/admin/users");
     cy.get('[data-cy="profiles"]').click();
 
-    const make_profile = (user:any) => {
+    const make_profile = (profile:any) => {
       cy.get(".show-add-profile-btn").click();
-      cy.get('select[name="role"]').select(user.value);
-      cy.get('input[name="name"]').clear().type(user.name);
+      cy.get('select[name="role"]').select(profile.value);
+      cy.get('input[name="name"]').clear().type(profile.name);
       cy.get("#add-btn").click();
     };
 
     for (let i = 0; i < new_profiles.length; i++) {
       make_profile(new_profiles[i]);
-      cy.get(".userList").should('have.length', i+1);
+      cy.get(".profileList").should('have.length', i+1);
     }
 
     cy.get('[data-cy="users"]').click();
@@ -98,7 +98,7 @@ describe("admin add, configure, and delete users", () => {
     cy.visit("/#/admin/users");
     cy.get('[data-cy="profiles"]').click().should("be.visible").click();
 
-    cy.get(".userList").contains("Profile1").parents(".config-item").within(() => {
+    cy.get(".profileList").contains("Profile1").parents(".config-item").within(() => {
       cy.get('button[name="edit_profile"]').click();
 
       cy.get('input[name="can_mask_information"]').click();
@@ -107,7 +107,7 @@ describe("admin add, configure, and delete users", () => {
       cy.get('input[name="can_transfer_access_to_reports"]').click();
       cy.get('input[name="can_delete_submission"]').click();
       cy.get('input[name="can_edit_general_settings"]').click();
-      cy.get("#save_user").click();
+      cy.get("#save_profile").click();
     });
   });
 

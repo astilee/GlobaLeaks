@@ -30,10 +30,10 @@ export class ProfileEditorComponent implements OnInit {
   private nodeResolver = inject(NodeResolver);
   protected utilsService = inject(UtilsService);
 
-  @Input() user: UserProfile;
-  @Input() users: UserProfile[];
+  @Input() profile: UserProfile;
+  @Input() profiles: UserProfile[];
   @Input() index: number;
-  @Input() editUser: NgForm;
+  @Input() editProfile: NgForm;
   @Output() dataToParent = new EventEmitter<string>();
   editing = false;
   nodeData: nodeResolverModel;
@@ -46,8 +46,7 @@ export class ProfileEditorComponent implements OnInit {
        { value: 'custodian', role: 'Custodian' },
        { value: 'receiver', role: 'Recipient' }
      ];
-  userRole: string;
-  defaultUsersArr = ['Admin', 'Analyst', 'Custodian', 'Receiver'];
+
   protected readonly Constants = Constants;
 
   ngOnInit(): void {
@@ -63,24 +62,26 @@ export class ProfileEditorComponent implements OnInit {
     if (this.appDataService) {
       this.appServiceData = this.appDataService;
     }
-    if (!this.user || !this.user || !Array.isArray(this.user.roles)) {
+
+    this.profile.roles.sort();
+
+    if (!this.profile || !this.profile || !Array.isArray(this.profile.roles)) {
       this.roles;
     } else {
-       this.roles = this.roles.filter(r => !this.user.roles.includes(r.value));
+       this.roles = this.roles.filter(r => !this.profile.roles.includes(r.value));
     }
-    if (this.user.role === 'receiver') {
+    if (this.profile.role === 'receiver') {
       this.roles.push({ value: 'receiver', role: 'Recipient' });
     } else {
-      this.roles.push({ value: this.user.role, role: this.user.role.charAt(0).toUpperCase() + this.user.role.slice(1) });
+      this.roles.push({ value: this.profile.role, role: this.profile.role.charAt(0).toUpperCase() + this.profile.role.slice(1) });
     }
-    this.userRole = this.user.role;
   }
 
   toggleEditing() {
     this.editing = !this.editing;
   }
 
-  saveUser(userData: UserProfile ) {
+  saveProfile(userData: UserProfile ) {
     const user = userData;
     return this.utilsService.updateAdminUserProfile(userData.id, userData).subscribe({
       next:()=>{
@@ -95,8 +96,8 @@ export class ProfileEditorComponent implements OnInit {
     this.dataToParent.emit();
   }
 
-  deleteUser(user:UserProfile) {
-    this.openConfirmableModalDialog(user, "").subscribe();
+  deleteProfile(profile: UserProfile) {
+    this.openConfirmableModalDialog(profile, "").subscribe();
   }
 
   openConfirmableModalDialog(arg: UserProfile, scope: any): Observable<string> {
@@ -109,7 +110,7 @@ export class ProfileEditorComponent implements OnInit {
       modalRef.componentInstance.confirmFunction = () => {
         observer.complete()
         return this.utilsService.deleteAdminUserProfile(arg.id).subscribe(_ => {
-          this.utilsService.deleteResource(this.users, arg);
+          this.utilsService.deleteResource(this.profiles, arg);
         });
       };
     });
@@ -119,53 +120,41 @@ export class ProfileEditorComponent implements OnInit {
     return this.authenticationData.session?.user_id;
   }
 
-  exportProfile(user:UserProfile){
-    this.utilsService.saveAs(this.authenticationService, user.name + ".json", "api/admin/users/" + user.id);
+  exportProfile(profile:UserProfile){
+    this.utilsService.saveAs(this.authenticationService, profile.name + ".json", "api/admin/profiles/" + profile.id);
   }
 
-  hasSpecificRole(user: any): boolean {
-    return user.roles && user.roles.some((role: string) => ['analyst', 'custodian', 'receiver'].includes(role));
+  userIsNotAdmin(profile: any): boolean {
+    return !profile.roles.includes('admin');
   }
 
- getUserRoleLabel(user: any, badge: boolean): string {
-    const roleMap: { [key: string]: string } = {
-      'analyst': 'Analyst',
-      'custodian': 'Custodian',
-      'receiver': 'Recipient',
-      'admin': 'Admin'
-    };
-    const filter = badge
-      ? ['analyst', 'custodian', 'receiver', 'admin']
-      : ['analyst', 'custodian'];
-    const separator = badge ? ' , ' : ' | ';
-    return user.roles
-      .filter((role: string) => filter.includes(role))
-      .map((role: string) => roleMap[role] || role)
-      .join(separator);
+  hasSpecificRole(profile: any): boolean {
+    return profile.roles && profile.roles.some((role: string) => ['analyst', 'custodian', 'receiver'].includes(role));
   }
 
   assignRole(role: string) {
-    if (role && !this.user.roles.includes(role)) {
-      this.user.roles.push(role);
+    if (role && !this.profile.roles.includes(role)) {
+      this.profile.roles.push(role);
+      this.profile.roles.sort();
       this.roles = this.roles.filter(r => r.value !== role);
-      if (!this.user.role) {
-        this.user.role = role;
+      if (!this.profile.role) {
+        this.profile.role = role;
       }
     }
   }
   
   removeRole(index: number, role: string) {
-    this.user.roles.splice(index, 1);
+    this.profile.roles.splice(index, 1);
     if (!this.roles.some(r => r.value === role)) {
       const displayName = role === 'receiver' ? 'Recipient' : role.charAt(0).toUpperCase() + role.slice(1);
       this.roles = [...this.roles, { value: role, role: displayName }];
     }
-    if (this.user.role === role) {
-      this.user.role = this.user.roles[0] || '';
+    if (this.profile.role === role) {
+      this.profile.role = this.profile.roles[0] || '';
     }
   }
   
   setDefaultRole(role: string) {
-    this.user.role = role;
+    this.profile.role = role;
   }
 }

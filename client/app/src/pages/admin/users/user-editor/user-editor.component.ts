@@ -16,7 +16,6 @@ import {NgClass, DatePipe, CommonModule} from "@angular/common";
 import {ImageUploadDirective} from "@app/shared/directive/image-upload.directive";
 import {PasswordStrengthValidatorDirective} from "@app/shared/directive/password-strength-validator.directive";
 import {PasswordMeterComponent} from "@app/shared/components/password-meter/password-meter.component";
-import {FilterPipe} from "@app/shared/pipes/filter.pipe";
 import {TranslatorPipe} from "@app/shared/pipes/translate";
 import {CryptoService} from "@app/shared/services/crypto.service";
 
@@ -24,7 +23,7 @@ import {CryptoService} from "@app/shared/services/crypto.service";
     selector: "src-user-editor",
     templateUrl: "./user-editor.component.html",
     standalone: true,
-    imports: [CommonModule, ImageUploadDirective, FormsModule, PasswordStrengthValidatorDirective, NgbTooltipModule, NgClass, PasswordMeterComponent, DatePipe, TranslatorPipe, FilterPipe]
+    imports: [CommonModule, ImageUploadDirective, FormsModule, PasswordStrengthValidatorDirective, NgbTooltipModule, NgClass, PasswordMeterComponent, DatePipe, TranslatorPipe]
 })
 export class UserEditorComponent implements OnInit {
   private modalService = inject(NgbModal);
@@ -32,7 +31,7 @@ export class UserEditorComponent implements OnInit {
   private preference = inject(PreferenceResolver);
   private authenticationService = inject(AuthenticationService);
   private nodeResolver = inject(NodeResolver);
-  private utilsService = inject(UtilsService);
+  protected utilsService = inject(UtilsService);
   private cryptoService = inject(CryptoService);
   protected preferenceResolver = inject(PreferenceResolver);
 
@@ -151,7 +150,7 @@ export class UserEditorComponent implements OnInit {
     this.utilsService.runAdminOperation("send_password_reset_email", {"value": user.id}, true).subscribe();
   }
 
-  loadPublicKeyFile(files: FileList | null,user:User) {
+  loadPublicKeyFile(files: FileList | null, user:User) {
     if (files && files.length > 0) {
       this.utilsService.readFileAsText(files[0])
         .subscribe((txt: string) => {
@@ -165,29 +164,27 @@ export class UserEditorComponent implements OnInit {
     return this.authenticationData.session?.user_id;
   }
 
-  getProfileName(profileId: string): string {
-    return this.profiles.find((p) => p.id === profileId)!.name;
+  getUserProfile(profileId: string): UserProfile | undefined {
+    return this.profiles.find((p) => p.id === profileId);
   }
 
-   getUserRoleLabel(user: any, badge: boolean): string {
+  getUserRoleOrProfileLabel(user: any): string {
     const roleMap: { [key: string]: string } = {
+      'admin': 'Admin',
       'analyst': 'Analyst',
       'custodian': 'Custodian',
-      'receiver': 'Recipient',
-      'admin': 'Admin'
+      'receiver': 'Recipient'
     };
-    const filter = badge
-      ? ['analyst', 'custodian', 'receiver', 'admin']
-      : ['analyst', 'custodian'];
-    const separator = badge ? ' , ' : ' | ';
-    return this.preferenceResolver.dataModel.profile.roles
-      .filter((role: string) => filter.includes(role))
-      .map((role: string) => roleMap[role] || role)
-      .join(separator);
+
+    if (user.id == user.profile_id) {
+      return roleMap[user.role];
+    } else {
+      return this.getUserProfile(user.profile_id)!.name;
+    }
   }
 
   getUserDisplayName(user:any) {
-    const profileName = this.getProfileName(user.profile_id);
+    const profileName = this.getUserProfile(user.profile_id)!.name;
 
     let roleDisplay = '';
     switch (user.role) {
@@ -208,6 +205,19 @@ export class UserEditorComponent implements OnInit {
     }
 
     return user.id !== user.profile_id ? `${profileName} (${roleDisplay})` : roleDisplay;
+  }
+
+  setDefaultRole(role: string) {
+    this.user.role = role;
+  }
+
+  onUserProfileChange() {
+    const profile = this.getUserProfile(this.user.profile_id);
+
+    if (profile) {
+        this.user.profile = profile;
+        this.user.role = profile.role;
+    }
   }
 
   toggleUserEscrow(user: User) {

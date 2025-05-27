@@ -1,7 +1,7 @@
 <div class="config-section">
     <div>
       <span>{{ 'Profiles' | translate }}</span>
-      <button class="btn btn-sm btn-primary show-add-profile-btn" (click)="toggleAddUser()">
+      <button class="btn btn-sm btn-primary show-add-profile-btn" (click)="toggleAddProfile()">
         <i class="fa-solid fa-plus"></i>
         <span>{{ 'Add' | translate }}</span>
       </button>
@@ -12,75 +12,30 @@
         </label>
       </span>
     </div>
-    @if (showAddUser) {
+    @if (showAddProfile) {
       <div class="row">
-        <div ngForm="newUser" #newUser="ngForm" class="addUser col-md-6">
+        <div ngForm="newProfile" #newProfile="ngForm" class="addUser col-md-6">
           <div class="form-group">
             <label>{{ 'Name' | translate }}</label>
             <span class="text-danger" ngbTooltip="{{'This field is mandatory' | translate}}">*</span>
             <div>
-              <input class="form-control" name="name" [(ngModel)]="new_user.name" type="text" required />
+              <input class="form-control" name="name" [(ngModel)]="new_profile.name" type="text" required />
             </div>
           </div>
           <div class="form-group">
             <label>{{ 'Role' | translate }}</label>
             <span class="text-danger" ngbTooltip="{{'This field is mandatory' | translate}}">*</span>
-            @if (nodeResolver.dataModel.enable_multiple_roles) {
-               <div>
-                   <div id="RoleAdder" class="row">
-                     <div class="col-md-12">
-                       <ng-select [(ngModel)]="selected.value" [items]="roles | filter:'role':selected.value" bindLabel="role" [searchable]="true" [placeholder]="'Search' | translate" (ngModelChange)="assignRole($event)">
-                         <ng-template ng-option-tmp let-item="item">
-                           <span>{{item.role}}</span>
-                         </ng-template>
-                       </ng-select>
-                     </div>
-                   </div>
-                 <br />
-                @if (new_user.roles.length !== 0) {
-                 <ul class="selection-list">
-                  @for (role of new_user.roles; track role; let index = $index;) {
-                    <li>
-                      <span class="action-btns">
-                        @if (role === new_user.role) {
-                          <span class="default-role">
-                            <i class="fa-solid fa-check"></i>
-                          </span>
-                        }
-                        @if (role !== new_user.role) {
-                          <span class="non-default-role" ngbTooltip="{{'Set as default' | translate}}" (click)="setDefaultRole(role)">
-                            <i class="fa-solid fa-check"></i>
-                          </span>
-                        }
-                        @if (role !== new_user.role) {
-                          <span (click)="removeRole(index, role)" ngbTooltip="{{'Remove' | translate}}" class="remove-role-btn">
-                            <i class="fa-solid fa-times"></i>
-                          </span>
-                        }
-                        @if (role === new_user.role) {
-                          <i class="fa-solid fa-times disabled-icon"></i>
-                        }
-                      </span>
-                      <label>{{ utilsService.getRoleDisplayName(role) }}</label>
-                    </li>
-                  }
-                 </ul>
-                }
-               </div>
-            }
-            @if (!nodeResolver.dataModel.enable_multiple_roles) {
-              <div>
-                <select name="role" class="form-select-custom" [(ngModel)]="new_user.role" required>
-                  <option value="admin">{{ 'Admin' | translate }}</option>
-                  <option value="analyst">{{ 'Analyst' | translate }}</option>
-                  <option value="custodian">{{ 'Custodian' | translate }}</option>
-                  <option value="receiver">{{ 'Recipient' | translate }}</option>
-                </select>
-              </div>
-            }
+            <div>
+              <select name="role" class="form-select-custom" [(ngModel)]="new_profile.role" required>
+                <option value="admin">{{ 'Admin' | translate }}</option>
+                <option value="analyst">{{ 'Analyst' | translate }}</option>
+                <option value="custodian">{{ 'Custodian' | translate }}</option>
+                <option value="receiver">{{ 'Recipient' | translate }}</option>
+              </select>
+            </div>
           </div>
           <div class="form-group">
-            <button id="add-btn" class="btn btn-primary" [disabled]="newUser.invalid || !new_user.role" (click)="addUser(); toggleAddUser()" type="submit">
+            <button id="add-btn" class="btn btn-primary" [disabled]="newProfile.invalid || !new_profile.role" (click)="addProfile(); toggleAddProfile()" type="submit">
               <i class="fa-solid fa-plus"></i>
               <span>{{ 'Add' | translate }}</span>
             </button>
@@ -89,12 +44,12 @@
       </div>
     }
   </div>
-  @if (usersData.length > 0) {
-    @for (user of usersData | orderBy:'name'; track user; let index = $index) {
-      @if (!user.custom) {
-        <div class="userList">
-          <form id="user-{{index}}" name="editUser" #editUser="ngForm" novalidate>
-            <src-profile-editor [user]="user" [editUser]="editUser" [index]="index" [users]="usersData"></src-profile-editor>
+  @if (profilesData.length) {
+    @for (profile of profilesData | orderBy:'name'; track profile; let index = $index) {
+      @if (!profile.custom) {
+        <div class="profileList">
+          <form id="profile-{{index}}" name="editProfile" #editProfile="ngForm" novalidate>
+            <src-profile-editor [profile]="profile" [editProfile]="editProfile" [index]="index" [profiles]="profilesData"></src-profile-editor>
           </form>
         </div>
       }

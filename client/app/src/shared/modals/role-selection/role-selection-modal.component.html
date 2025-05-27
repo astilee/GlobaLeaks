@@ -1,20 +1,19 @@
 <div class="modal-header">
-    <div class="modal-title">{{ 'Switch User Role' | translate }}</div>
+    <div class="modal-title">{{ 'Switch role' | translate }}</div>
 </div>
 
 <div class="modal-body">
     <div class="form-group">
-        <label>{{ 'please select role:' | translate }}</label>
-
-        <ng-select name="role" [(ngModel)]="selectedRole.value" [items]="roles" bindValue="value" [clearable]="false">
+        <ng-select name="role" [(ngModel)]="selectedRole.value" [items]="roles" bindValue="value" [clearable]="false" [searchable]="false">
             <ng-template ng-label-tmp let-item="item">
+              @if (item.value !== preferenceResolver.dataModel.role) {
                 &nbsp;{{ item.role }}
-            </ng-template>
-
+              }
+	    </ng-template>
             <ng-template ng-option-tmp let-item="item">
-                @if (item.value !== preferenceResolver.dataModel.role) {
-                    Switch role to {{ item.role }}
-                }
+              @if (item.value !== preferenceResolver.dataModel.role) {
+                {{ item.role }}
+              }
             </ng-template>
         </ng-select>
     </div>

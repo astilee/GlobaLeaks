@@ -9,7 +9,6 @@ import { FormsModule } from "@angular/forms";
 import { TranslateModule } from "@ngx-translate/core";
 import { TranslatorPipe } from "@app/shared/pipes/translate";
 import { PreferenceResolver } from "@app/shared/resolvers/preference.resolver";
-import { NgIf } from "@angular/common";
 
 @Component({
   selector: "src-role-selection",
@@ -21,8 +20,7 @@ import { NgIf } from "@angular/common";
     NgLabelTemplateDirective,
     TranslateModule,
     TranslatorPipe,
-    NgOptionTemplateDirective,
-    NgIf
+    NgOptionTemplateDirective
   ]
 })
 export class RoleSelectionModalComponent {

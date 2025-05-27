@@ -30,10 +30,10 @@ export class UsersTab2Component implements OnInit {
   private http = inject(HttpClient);
   @ViewChild('keyUploadInput') keyUploadInput: ElementRef<HTMLInputElement>;
 
-  showAddUser = false;
+  showAddProfile = false;
   tenantData: tenantResolverModel;
-  usersData: UserProfile[]=[];
-  new_user: { name: string, role: string, roles: string [], permissions: []} = { name: "", role: "", roles: [], permissions: []};
+  profilesData: UserProfile[]=[];
+  new_profile: { name: string, role: string, roles: string [], permissions: []} = { name: "", role: "", roles: [], permissions: []};
   editing = false;
   selected = {value: []};
   roles: {value: string, role: string}[] = [];
@@ -46,14 +46,14 @@ export class UsersTab2Component implements OnInit {
     }
   }
 
-  addUser(): void {
-    const user: NewUserProfile = new NewUserProfile();
-    user.name = this.new_user.name;
-    user.role = this.new_user.role;
-    user.roles = this.nodeResolver.dataModel.enable_multiple_roles ? this.new_user.roles : [this.new_user.role];
-    this.utilsService.addAdminUserProfile(user).subscribe(_ => {
+  addProfile(): void {
+    const profile: NewUserProfile = new NewUserProfile();
+    profile.name = this.new_profile.name;
+    profile.role = this.new_profile.role;
+    profile.roles = [this.new_profile.role];
+    this.utilsService.addAdminUserProfile(profile).subscribe(_ => {
       this.getResolver();
-      this.new_user = {name: "", role: "", roles: [], permissions: []};
+      this.new_profile = {name: "", role: "", roles: [], permissions: []};
     });
   }
 
@@ -76,7 +76,7 @@ export class UsersTab2Component implements OnInit {
 
   getResolver() {
     return this.httpService.requestUserProfilesResource().subscribe((response: UserProfile[]) => {
-      this.usersData = response;
+      this.profilesData = response;
        this.roles = [
         {value:'admin', role: 'Admin'},
         {value:'analyst', role: 'Analyst'},
@@ -87,10 +87,10 @@ export class UsersTab2Component implements OnInit {
   }
 
   assignRole(role: {value: string, role: string}) {
-    if (role && !this.new_user.roles.includes(role.value)) {
-      this.new_user.roles.push(role.value)
-      if (!this.new_user.role) {
-        this.new_user.role = role.value;
+    if (role && !this.new_profile.roles.includes(role.value)) {
+      this.new_profile.roles.push(role.value)
+      if (!this.new_profile.role) {
+        this.new_profile.role = role.value;
       }
       this.roles = this.roles.filter(r => r.value !== role.value);
     }
@@ -98,17 +98,17 @@ export class UsersTab2Component implements OnInit {
   }
   
   setDefaultRole(role: string) {
-    this.new_user.role = role;
+    this.new_profile.role = role;
   }
 
   removeRole(index: number, role: string) {
-     this.new_user.roles.splice(index, 1);
+     this.new_profile.roles.splice(index, 1);
      const displayRole = role === 'receiver' ? 'Recipient' : role.charAt(0).toUpperCase() + role.slice(1);
      if (!this.roles.some(r => r.value === role)) {
        this.roles = [...this.roles, { value: role, role: displayRole }];
      }
-     if (this.new_user.role === role) {
-       this.new_user.role = "";
+     if (this.new_profile.role === role) {
+       this.new_profile.role = "";
      }
   }
 
@@ -118,7 +118,7 @@ export class UsersTab2Component implements OnInit {
     return role.charAt(0).toUpperCase() + role.slice(1);
   }
 
-  toggleAddUser(): void {
-    this.showAddUser = !this.showAddUser;
+  toggleAddProfile(): void {
+    this.showAddProfile = !this.showAddProfile;
   }
 }

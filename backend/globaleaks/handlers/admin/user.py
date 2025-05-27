@@ -50,12 +50,14 @@ def db_create_user(session, tid, user_session, request, language):
     if not request['profile_id'] or request['profile_id'] == 'none':
         request['profile_id'] = request['id']
 
-        if 'roles' not in request:
-            request['roles'] = [request['role']]
+        profile = {
+          'id': request['id'],
+          'role': request['role'],
+          'roles':  [request['role']],
+          'permissions':  copy.deepcopy(user_permissions)
+        }
 
-        request['permissions'] = copy.deepcopy(user_permissions)
-
-        db_create_user_profile(session, tid, request)
+        db_create_user_profile(session, tid, profile)
 
     if not request['public_name']:
         request['public_name'] = request['name']
@@ -175,13 +177,24 @@ def db_update_user(session, tid, user_session, user_id, request, language):
 
     user = db_get_user(session, tid, user_id)
 
-    if user.id == request['profile_id']:
-        request['profile']['role'] = request['role']
-        request['profile']['roles'] = [request['role']]
-        db_update_user_profile(session, tid, user_id, request['profile'])
-    elif user.id == user.profile_id:
-        # in this condition we should delete the profile since it will become unused.
+    if ((user.id == user.profile_id and request['profile_id'] != user.id) or (user.role != request['role'])):
+        # Delete profiles when:
+        # - the user configuration passes from using a standard role to a custom profile
+        # - the user uses a standard role but the role changes
         db_del(session, models.UserProfile, models.UserProfile.id == user.id)
+
+    if ((user.id != user.profile_id and request['profile_id'] == user.id) or (user.role != request['role'])):
+        # Recreate the profile when:
+        # - the user configuration passes from using a custom profile to using a standard role
+        # - the user user changes from a standard role to one other
+        profile = {
+          'id': user.id,
+          'role': request['role'],
+          'roles':  [request['role']],
+          'permissions':  copy.deepcopy(user_permissions)
+        }
+
+        db_create_user_profile(session, tid, profile)
 
     if request['mail_address'] != user.mail_address:
         user.change_email_token = None

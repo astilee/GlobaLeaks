@@ -43,15 +43,16 @@ export class UserComponent {
   }
 
   canSwitchUser() {
-    if (this.appDataService.public.node.enable_multiple_roles && this.preferences.dataModel && this.preferences.dataModel.profile &&
-      Array.isArray(this.preferences.dataModel.profile.roles) &&
-      this.preferences.dataModel.profile.roles.length > 1
-    ) {
-     return true;
+    if (this.preferences.dataModel &&
+	this.preferences.dataModel.profile &&
+        Array.isArray(this.preferences.dataModel.profile.roles) &&
+        this.preferences.dataModel.profile.roles.length > 1) {
+      return true;
     } else {
       return false;
     }
   }
+
   onQueryParameterChangeListener() {
     this.activatedRoute.queryParams.subscribe(params => {
       const currentLang = params['lang'];
