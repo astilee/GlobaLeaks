@@ -11,7 +11,7 @@ from globaleaks import models
 from globaleaks.db import compact_db, db_get_tracked_attachments, db_get_tracked_files, db_refresh_tenant_cache
 from globaleaks.handlers.admin.node import db_admin_serialize_node
 from globaleaks.handlers.admin.notification import db_get_notification
-from globaleaks.handlers.user import serialize_user
+from globaleaks.handlers.user import user_serialize_user
 from globaleaks.jobs.job import DailyJob
 from globaleaks.orm import db_del, db_log, transact, tw
 from globaleaks.utils.fs import srm
@@ -60,7 +60,7 @@ class Cleaning(DailyJob):
             expiring_submission_count = x[1]
             earliest_expiration_date = x[2]
 
-            user_desc = serialize_user(session, user, user.language)
+            user_desc = user_serialize_user(session, user, user.language)
 
             data = {
                 'type': 'tip_expiration_summary',
@@ -97,23 +97,20 @@ class Cleaning(DailyJob):
         db_del(session, models.Mail, models.Mail.creation_date < datetime_now() - timedelta(14))
 
         # delete archived questionnaire schemas not used by any existing submission
-        hashes = [h for (h,) in session.query(models.InternalTipAnswers.questionnaire_hash).all()]
-        db_del(session, models.ArchivedSchema, not_(models.ArchivedSchema.hash.in_(hashes)))
+        subquery = session.query(models.InternalTipAnswers.questionnaire_hash).subquery()
+        db_del(session, models.ArchivedSchema, not_(models.ArchivedSchema.hash.in_(subquery)))
 
         # delete the tenants created via signup that has not been completed in 24h
-        tids = [tid for (tid,) in session.query(models.Subscriber.tid).filter(
-            models.Subscriber.activation_token != '',
-            models.Subscriber.tid == models.Tenant.id,
-            models.Subscriber.registration_date < datetime_now() - timedelta(days=1)
-        ).all()]
-        db_del(session, models.Tenant, models.Tenant.id.in_(tids))
+        subquery = session.query(models.Subscriber.tid).filter(models.Subscriber.activation_token != '',
+                                                               models.Subscriber.tid == models.Tenant.id,
+                                                               models.Subscriber.registration_date < datetime_now() - timedelta(days=1)) \
+                                                       .subquery()
+        db_del(session, models.Tenant, models.Tenant.id.in_(subquery))
 
         # delete expired audit logs older than 5 years and not pertaining any report
-        itip_ids = [itip_id for (itip_id,) in session.query(models.InternalTip.id).all()]
-        db_del(session, models.AuditLog, (
-            models.AuditLog.date <= datetime_now() - timedelta(days=5 * 365),
-            not_(models.AuditLog.object_id.in_(itip_ids))
-        ))
+        subquery = session.query(models.InternalTip.id).subquery()
+        db_del(session, models.AuditLog, (models.AuditLog.date <= datetime_now() - timedelta(days=5 * 365),
+                                          not_(models.AuditLog.object_id.in_(subquery))))
 
         # delete expired change email tokens
         session.query(models.User) \

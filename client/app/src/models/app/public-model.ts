@@ -89,6 +89,12 @@ export interface Status {
   label: string;
 }
 
+export interface Error {
+  message: string,
+  code: number,
+  arguments: []
+}
+
 export interface Context {
   id: string;
   hidden: boolean;

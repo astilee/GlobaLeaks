@@ -83,8 +83,7 @@ AdminTenantDesc = {
     'name': str,
     'mode': str,
     'active': bool,
-    'subdomain': subdomain_regexp_or_empty,
-    'profile': str,
+    'subdomain': subdomain_regexp_or_empty
 }
 
 FileDesc = {
@@ -125,13 +124,6 @@ SubmissionDesc = {
     'receipt': str
 }
 
-AdminUserProfileDesc = {
-    'name': str,
-    'role': user_role_regexp,
-    'roles': [user_role_regexp],
-    'permissions': [str],
-}
-
 AdminUserDesc = {
     'username': str,
     'name': str,
@@ -147,9 +139,14 @@ AdminUserDesc = {
     'pgp_key_public': str,
     'language': str,
     'notification': bool,
+    'can_edit_general_settings': bool,
+    'can_delete_submission': bool,
+    'can_postpone_expiration': bool,
+    'can_grant_access_to_reports': bool,
+    'can_redact_information': bool,
+    'can_mask_information': bool,
+    'can_transfer_access_to_reports': bool,
     'forcefully_selected': bool,
-    'profile_id': str,
-    'profile': dict,
     'send_activation_link': bool
 }
 
@@ -324,7 +321,6 @@ AdminFieldDesc = {
     'y': int,
     'width': int,
     'required': bool,
-    'statistical': bool,
     'type': field_type_regexp,
     'attrs': dict,
     'options': [AdminFieldOptionDesc],

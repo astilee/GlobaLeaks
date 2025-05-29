@@ -290,6 +290,7 @@ export class FieldUtilitiesService {
   }
 
   parseFields(fields: any, parsedFields: any) {
+
     fields.forEach((field: any) =>{
       parsedFields = this.parseField(field, parsedFields);
     });

@@ -7,7 +7,7 @@ from globaleaks.handlers.admin.context import admin_serialize_context
 from globaleaks.handlers.admin.node import db_admin_serialize_node
 from globaleaks.handlers.admin.notification import db_get_notification
 from globaleaks.handlers.base import BaseHandler
-from globaleaks.handlers.user import serialize_user
+from globaleaks.handlers.user import user_serialize_user
 from globaleaks.models import serializers
 from globaleaks.orm import transact
 from globaleaks.rest import requests
@@ -47,6 +47,7 @@ def db_create_identity_access_reply_notifications(session, itip, iar):
     Transaction for the creation of notifications related to identity access replies
     :param session: An ORM session
     :param itip: A itip ID of the tip involved in the request
+    :param rtip: A rtip ID of the rtip involved in the request
     :param iar: A identity access request model
     """
     for user, rtip in session.query(models.User, models.ReceiverTip) \
@@ -59,7 +60,7 @@ def db_create_identity_access_reply_notifications(session, itip, iar):
             'type': 'identity_access_authorized' if iar.reply == 'authorized' else 'identity_access_denied'
         }
 
-        data['user'] = serialize_user(session, user, user.language)
+        data['user'] = user_serialize_user(session, user, user.language)
         data['tip'] = serializers.serialize_rtip(session, itip, rtip, user.language)
         data['context'] = admin_serialize_context(session, context, user.language)
         data['iar'] = serializers.serialize_identityaccessrequest(session, iar)

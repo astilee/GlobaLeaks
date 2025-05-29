@@ -19,8 +19,6 @@ class TestAdminCollection(helpers.TestCollectionHandler):
 
     def get_dummy_request(self):
         data = helpers.TestCollectionHandler.get_dummy_request(self)
-        data['role'] = self._test_desc['data']['role']
-        data['roles'] = [self._test_desc['data']['role']]
         data['pgp_key_remove'] = False
         return data
 
@@ -40,8 +38,6 @@ class TestAdminInstance(helpers.TestInstanceHandler):
 
     def get_dummy_request(self):
         data = helpers.TestInstanceHandler.get_dummy_request(self)
-        data['role'] = self._test_desc['data']['role']
-        data['roles'] = [self._test_desc['data']['role']]
         data['pgp_key_remove'] = False
         return data
 

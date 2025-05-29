@@ -101,7 +101,6 @@ def enable_2fa(session, tid, user_id, obj_id, secret, token):
     :param session: An ORM session
     :param tid: A tenant ID
     :param user_id: A user ID
-    :param obj_id: A user ID
     :param secret: A two factor secret
     :param token: The current two factor token
     """
@@ -122,10 +121,9 @@ def disable_2fa(session, tid, user_id, obj_id):
     """
     Transaction for disabling the two factor authentication
 
-    :param session: An ORM session
-    :param tid: A tenant ID
-    :param user_id: A user ID
-    :param obj_id: A user ID
+    :param session:
+    :param tid:
+    :param user_id:
     """
     user = db_get_user(session, tid, obj_id)
 

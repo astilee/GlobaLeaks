@@ -513,7 +513,7 @@ msgstr ""
 msgid "Footer"
 msgstr "அடிக்குறிப்பு"
 
-msgid "For security reasons, the code needs to be changed."
+msgid "For security reasons the code needs to be changed."
 msgstr ""
 
 msgid ""
@@ -1809,7 +1809,7 @@ msgid "Registration data:"
 msgstr "பதிவுத் தரவு:"
 
 msgid "Site: {Url}"
-msgstr "தள: {Url}"
+msgstr ""
 
 msgid "Name: {Name}"
 msgstr "பெயர்: {Name}"
@@ -1849,7 +1849,7 @@ msgid "Email change request"
 msgstr "மின்னஞ்சல் மாற்ற கோரிக்கை"
 
 msgid "From: {Author}"
-msgstr "இருந்து: {Author}"
+msgstr ""
 
 msgid "Date: {EventTime}"
 msgstr "தேதி: {EventTime}"

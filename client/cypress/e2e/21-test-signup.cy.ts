@@ -4,11 +4,8 @@ describe("Admin Enable Signup", function() {
 
     cy.visit("/#/admin/sites");
     cy.get('[data-cy="options"]').should('be.visible').click();
-    cy.get('input[name="rootdomain"]').type("domain.tld");
-    cy.get('input[name="enable_signup"]').click();
-    cy.get('input[name="signup_tos1_enable"]').click();
-    cy.get('input[name="signup_tos1_title"]').type("Terms and Conditions");
-    cy.get('input[name="signup_tos1_checkbox_label"]').type("I've ready and I accept the [Terms and Conditions](https://www.globaleaks.org)");
+    cy.get('input[name="nodeResolver.dataModel.rootdomain"]').type("domain.tld");
+    cy.get('input[name="nodeResolver.dataModel.enable_signup"]').click();
     cy.takeScreenshot("admin/signup_configuration");
     cy.get('i.fa-solid.fa-check').click();
 
@@ -39,7 +36,7 @@ describe("Admin Disable Signup", function() {
 
     cy.visit("/#/admin/sites");
     cy.get('[data-cy="options"]').click();
-    cy.get('input[name="enable_signup"]').click();
+    cy.get('input[name="nodeResolver.dataModel.enable_signup"]').click();
     cy.get('i.fa-solid.fa-check').click();
 
     cy.logout();

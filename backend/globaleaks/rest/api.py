@@ -42,9 +42,8 @@ from globaleaks.utils.json import JSONEncoder
 from globaleaks.utils.sock import isIPAddress
 
 tid_regexp = r'([0-9]+)'
-role_regexp = r'(admin|analyst|custodian|recipient)'
-uuid_regexp = r'([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})'
-uuid_regexp_or_closed = r'([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}|closed)'
+uuid_regexp = r'([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}|closed)'
+uuid_regexp_or_closed = r'([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})'
 key_regexp = r'([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}|[a-z_]{0,100})'
 
 api_spec = [
@@ -62,7 +61,6 @@ api_spec = [
     ('/api/auth/receiptauth', auth.ReceiptAuthHandler),
     ('/api/auth/session', auth.SessionHandler),
     ('/api/auth/tenantauthswitch/', auth.TenantAuthSwitchHandler, r'/api/auth/tenantauthswitch/' + tid_regexp),
-    ('/api/auth/roleauthswitch/', auth.RoleAuthSwitchHandler, r'/api/auth/roleauthswitch/' + role_regexp),
     ('/api/auth/operatorauthswitch', auth.OperatorAuthSwitchHandler),
 
     # User Preferences Handler
@@ -109,8 +107,6 @@ api_spec = [
     ('/api/admin/network', admin.network.NetworkInstance),
     ('/api/admin/users', admin.user.UsersCollection),
     ('/api/admin/users', admin.user.UserInstance, r'/api/admin/users/' + uuid_regexp),
-    ('/api/admin/users/profiles', admin.user_profile.UserProfilesCollection),
-    ('/api/admin/users/profiles', admin.user_profile.UserProfileInstance, r'/api/admin/users/profiles/' + uuid_regexp),
     ('/api/admin/contexts', admin.context.ContextsCollection),
     ('/api/admin/contexts', admin.context.ContextInstance, r'/api/admin/contexts/' + uuid_regexp),
     ('/api/admin/questionnaires', admin.questionnaire.QuestionnairesCollection),
@@ -659,6 +655,7 @@ class APIResourceWrapper(Resource):
                                                  b"screen-wake-lock=(),"
                                                  b"serial=(),"
                                                  b"speaker-selection=(),"
+                                                 b"storage-access=(),"
                                                  b"usb=(),"
                                                  b"web-share=(),"
                                                  b"xr-spatial-tracking=()")

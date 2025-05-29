@@ -1,6 +1,6 @@
 <div id="HomePageBox">
   @if (appDataService.public.node.presentation) {
-    <span id="Presentation" class="mb-4"><markdown [data]="appDataService.public.node.presentation | stripHtml"></markdown></span>
+    <markdown id="Presentation" class="mb-4" [data]="appDataService.public.node.presentation | stripHtml"></markdown>
   }
   <div id="WhistleblowerBox" class="d-block mx-auto">
     @if (appDataService.public.node.disable_submissions || (!appDataService.public.node.https_whistleblower && !appDataService.connection.tor)) {
@@ -19,10 +19,9 @@
     @if (!appDataService.public.node.disable_submissions && (appDataService.public.node.https_whistleblower || appDataService.connection.tor)) {
       <div id="WhistleblowerSubmitBox" class="mt-4">
         @if (appDataService.public.node.whistleblowing_question) {
-          <span id="WhistleblowingQuestion"><markdown [data]="appDataService.public.node.whistleblowing_question | stripHtml"></markdown></span>
+          <markdown id="WhistleblowingQuestion" [data]="appDataService.public.node.whistleblowing_question | stripHtml"></markdown>
         }
-        <button id="WhistleblowingButton" (click)="openSubmission()" class="btn btn-primary">
-        @if (appDataService.public.node.whistleblowing_button) {
+        <button id="WhistleblowingButton" (click)="openSubmission()" class="btn btn-primary">@if (appDataService.public.node.whistleblowing_button) {
           <span>{{appDataService.public.node.whistleblowing_button|translate}}</span>
         }</button>
       </div>

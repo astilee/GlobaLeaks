@@ -21,7 +21,6 @@ from globaleaks.settings import Settings
 from globaleaks.transactions import db_schedule_email
 from globaleaks.utils.agent import get_tor_agent, get_web_agent
 from globaleaks.utils.crypto import sha256, totpVerify
-from globaleaks.utils.fs import read_json_file
 from globaleaks.utils.log import log, openLogFile
 from globaleaks.utils.mail import sendmail
 from globaleaks.utils.objectdict import ObjectDict
@@ -137,8 +136,7 @@ class StateClass(ObjectDict, metaclass=Singleton):
         os.umask(0o77)
         self.settings.eval_paths()
         self.create_directories()
-        self.field_attrs = read_json_file(self.settings.field_attrs_file)
-        self.csp_report_log = openLogFile(Settings.csp_report_file, self.settings.log_file_size, self.settings.num_log_files)
+        self.csp_report_log = openLogFile(Settings.csp_report_file, Settings.log_file_size, Settings.num_log_files)
 
     def set_orm_tp(self, orm_tp):
         self.orm_tp = orm_tp
@@ -358,7 +356,8 @@ def mail_exception_handler(etype, value, tback):
     This would be enabled only in the testing phase and testing release,
     not in production release.
     """
-    if isinstance(value, silenced_exceptions):
+    if isinstance(value, silenced_exceptions) or \
+        (etype == AssertionError and value.message == "Request closed"):
         # we need to bypass email notification for some exception that:
         # 1) raise frequently or lie in a twisted bug;
         # 2) lack of useful stacktraces;

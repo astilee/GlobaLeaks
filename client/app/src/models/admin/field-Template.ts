@@ -8,7 +8,6 @@ export class FieldTemplate {
   hint = "";
   multi_entry = false;
   required = false;
-  statistical = false;
   preview = false;
   attrs = {};
   options = [];

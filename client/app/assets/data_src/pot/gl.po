@@ -515,7 +515,7 @@ msgstr ""
 msgid "Footer"
 msgstr "Pé de páxina"
 
-msgid "For security reasons, the code needs to be changed."
+msgid "For security reasons the code needs to be changed."
 msgstr ""
 
 msgid ""
@@ -1811,7 +1811,7 @@ msgid "Registration data:"
 msgstr "Datos de rexistro:"
 
 msgid "Site: {Url}"
-msgstr "Sitio: {Url}"
+msgstr ""
 
 msgid "Name: {Name}"
 msgstr "Nome: {Name}"
@@ -1851,7 +1851,7 @@ msgid "Email change request"
 msgstr "Solicitude de cambio de enderezo electrónico "
 
 msgid "From: {Author}"
-msgstr "De: {Author}"
+msgstr ""
 
 msgid "Date: {EventTime}"
 msgstr "Data: {EventTime}"

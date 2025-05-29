@@ -205,6 +205,9 @@ module.exports = function(grunt) {
             cwd: './build'
           }
         }
+      },
+      serve: {
+        command: "ng serve --proxy-config proxy.conf.json"
       }
     },
   });

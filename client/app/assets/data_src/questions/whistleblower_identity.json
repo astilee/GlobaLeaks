@@ -146,6 +146,10 @@
       },
       "multi_entry":false,
       "attrs":{
+        "layout_orientation":{
+          "type":"unicode",
+          "value":"vertical"
+        },
         "display_alphabetically":{
           "type":"bool",
           "value":false

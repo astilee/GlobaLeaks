@@ -12,12 +12,11 @@
 # Ricky Tigg, 2022
 # Ricky Tigg, 2022
 # Sami Kuusisto <sami@6sto.com>, 2015
-# Tiina Salmi, 2025
 msgid ""
 msgstr ""
 "Project-Id-Version: GlobaLeaks\n"
 "PO-Revision-Date: 2013-05-29 17:59+0000\n"
-"Last-Translator: Tiina Salmi, 2025\n"
+"Last-Translator: Eva Simonsson, 2020-2021,2023-2024\n"
 "Language-Team: Finnish (http://app.transifex.com/otf/globaleaks/language/fi/)\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -41,7 +40,7 @@ msgid "Access control"
 msgstr "Sisäänpääsyn valvonta"
 
 msgid "Access date"
-msgstr "Pääsypäivämäärä"
+msgstr ""
 
 msgid "Access requested"
 msgstr "Sisäänpääsy pyydetty"
@@ -120,7 +119,7 @@ msgid "An update is available:"
 msgstr "Uusi ohjelmistoversio saatavilla:"
 
 msgid "Analyst"
-msgstr "Analyytikko"
+msgstr ""
 
 msgid "Anomalies"
 msgstr "Poikkeamat"
@@ -522,7 +521,7 @@ msgstr "Verotunnus"
 msgid "Footer"
 msgstr "Alatunniste"
 
-msgid "For security reasons, the code needs to be changed."
+msgid "For security reasons the code needs to be changed."
 msgstr "Turvallisuussyistä koodi on vaihdettava."
 
 msgid ""
@@ -639,7 +638,7 @@ msgid ""
 msgstr "Tämän vaiheen vastaukset seuraaviin kysymyksiin joko puuttuvat tai ovat virheellisiä:"
 
 msgid "Initially anonymous"
-msgstr "Aluksi anonyymi"
+msgstr ""
 
 msgid "Input validation"
 msgstr "Syötteen validointi"
@@ -1252,10 +1251,10 @@ msgid "Submit"
 msgstr "Lähetä"
 
 msgid "Subscribed"
-msgstr "Tilattu"
+msgstr ""
 
 msgid "Subscription date"
-msgstr "Tilauspäivämäärä"
+msgstr ""
 
 msgid "Substatuses"
 msgstr "Välivaiheet"
@@ -1557,7 +1556,7 @@ msgid "Whistleblower's last access"
 msgstr "Vihjeenantajan viimeisin kirjautumisajankohta"
 
 msgid "Whistleblowing Policy"
-msgstr "Ilmoituspolitiikka"
+msgstr ""
 
 msgid "Whistleblowing button"
 msgstr "Whistleblowing-painike"

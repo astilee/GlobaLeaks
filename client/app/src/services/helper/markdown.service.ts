@@ -17,14 +17,28 @@ export class MarkdownRendererService {
     const customRenderer = new Renderer();
 
     customRenderer.link = ({ href, title, tokens }: Link): string => {
-      const text = tokens?.[0]?.raw || href;
+      // Safely extract text from tokens array (assuming it's available)
+      let text = '';
+      if (tokens && tokens[0] && tokens[0].text) {
+        text = tokens[0].text; // Extract the text from the first token
+      }
 
-      // Detect if the markdown code includes images
-      const match = text.match(/!\[(.*?)\]\((.*?)\)/);
+      // Check if the text contains an image tag (Markdown image syntax is wrapped in `![](...)`)
+      const isImage = text.startsWith('![') && text.includes('](');
 
-      return match
-        ? `<a target="_blank" rel="noopener noreferrer" href="${href}"><img src="${match[2]}" alt="${match[1]}" /></a>`
-        : `<a target="_blank" rel="noopener noreferrer" href="${href}"${title ? ` title="${title}"` : ''}>${text}</a>`;
+      if (isImage) {
+        // Extract the image Markdown (e.g., ![Alt](src))
+        const match = text.match(/!\[(.*?)\]\((.*?)\)/);
+        if (match) {
+          const alt = match[1]; // Alt text
+          const src = match[2]; // Image URL
+          // Render clickable image
+          return `<a target="_blank" href="${href}"><img src="${src}" alt="${alt}" /></a>`;
+        }
+      }
+
+      // Fallback to standard link rendering for non-image links
+      return `<a target="_blank" href="${href}" ${title ? ` title="${title}"` : ""}>${text}</a>`;
     };
 
     return customRenderer;

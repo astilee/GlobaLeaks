@@ -10,7 +10,7 @@ import {UtilsService} from "@app/shared/services/utils.service";
 import {Observable} from "rxjs";
 import {contextResolverModel} from "@app/models/resolvers/context-resolver-model";
 import {questionnaireResolverModel} from "@app/models/resolvers/questionnaire-model";
-import {User} from "@app/models/resolvers/user-resolver-model";
+import {userResolverModel} from "@app/models/resolvers/user-resolver-model";
 import {nodeResolverModel} from "@app/models/resolvers/node-resolver-model";
 import {NgClass} from "@angular/common";
 import {ImageUploadDirective} from "@app/shared/directive/image-upload.directive";
@@ -41,13 +41,14 @@ export class ContextEditorComponent implements OnInit {
   showAdvancedSettings: boolean = false;
   showSelect: boolean = false;
   questionnairesData: questionnaireResolverModel[] = [];
-  usersData: User[] = [];
+  usersData: userResolverModel[] = [];
   nodeData: nodeResolverModel;
   selected = {value: []};
-  adminReceiversById: { [userId: string]: User } = {};
+  adminReceiversById: { [userId: string]: userResolverModel } = {};
 
   ngOnInit(): void {
     this.questionnairesData = this.questionnairesResolver.dataModel;
+
     this.usersData = this.usersResolver.dataModel;
     this.nodeData = this.nodeResolver.dataModel;
     this.adminReceiversById = this.utilsService.array_to_map(this.usersResolver.dataModel);
@@ -91,7 +92,7 @@ export class ContextEditorComponent implements OnInit {
     }
   }
 
-  receiverNotSelectedFilter(item: User): boolean {
+  receiverNotSelectedFilter(item: userResolverModel): boolean {
     return this.contextResolver.receivers.indexOf(item.id) === -1;
   }
 
@@ -107,7 +108,7 @@ export class ContextEditorComponent implements OnInit {
     this.showSelect = true;
   }
 
-  moveReceiver(rec: User): void {
+  moveReceiver(rec: userResolverModel): void {
     if (rec && this.contextResolver.receivers.indexOf(rec.id) === -1) {
       this.contextResolver.receivers.push(rec.id);
       this.showSelect = false;

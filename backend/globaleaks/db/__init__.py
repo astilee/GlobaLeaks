@@ -2,10 +2,8 @@ import os
 import sys
 import traceback
 import warnings
-from collections import defaultdict
-from operator import or_
 
-from globaleaks.rest.cache import Cache
+from sqlalchemy.exc import SAWarning
 
 from globaleaks import models, DATABASE_VERSION
 from globaleaks.handlers.admin.https import db_load_tls_configs
@@ -69,8 +67,7 @@ def initialize_db(session):
     :param session: An ORM session
     """
     from globaleaks.handlers.admin import tenant
-    tenant.db_create(session, {'active': True, 'mode': 'default', 'profile': 'default', 'name': 'GLOBALEAKS', 'subdomain': ''})
-    tenant.db_create(session, {'active': True, 'mode': 'default', 'profile': 'default', 'name': 'GLOBALEAKS', 'subdomain': ''}, False)
+    tenant.db_create(session, {'active': True, 'mode': 'default', 'name': 'GLOBALEAKS', 'subdomain': ''})
 
 
 def update_db():
@@ -83,19 +80,22 @@ def update_db():
         return 0
 
     try:
-        from globaleaks.db import migration
-        log.err('Found an already initialized database version: %d', db_version)
+        with warnings.catch_warnings():
+            from globaleaks.db import migration
+            warnings.simplefilter("ignore", category=SAWarning)
 
-        if db_version != DATABASE_VERSION:
-            log.err('Performing schema migration from version %d to version %d',
-                    db_version, DATABASE_VERSION)
+            log.err('Found an already initialized database version: %d', db_version)
 
-            migration.perform_migration(db_version)
-        else:
-            migration.perform_data_update(db_file_path)
-            compact_db()
+            if db_version != DATABASE_VERSION:
+                log.err('Performing schema migration from version %d to version %d',
+                        db_version, DATABASE_VERSION)
 
-        sync_clean_untracked_files()
+                migration.perform_migration(db_version)
+            else:
+                migration.perform_data_update(db_file_path)
+                compact_db()
+
+            sync_clean_untracked_files()
 
     except Exception as exception:
         log.err('Failure: %s', exception)
@@ -156,18 +156,8 @@ def sync_initialize_snimap(session):
         State.snimap.load(cfg['tid'], cfg)
 
 
-def update_cache(tid, cfg):
-    tenant_cache = State.tenants[tid].cache
-    if cfg.var_name in ['https_cert', 'tor_onion_key'] or cfg.var_name in ConfigFilters['node']:
-        tenant_cache[cfg.var_name] = cfg.value
-    elif cfg.var_name in ConfigFilters['notification']:
-        tenant_cache.setdefault('notification', {})[cfg.var_name] = cfg.value
-    elif cfg.var_name in ConfigFilters['node']:
-        tenant_cache[cfg.var_name] = cfg.value
-
-
 def db_refresh_tenant_cache(session, to_refresh=None):
-    active_tids = set([tid[0] for tid in session.query(models.Tenant.id)])#.filter(models.Tenant.active.is_(True))])
+    active_tids = set([tid[0] for tid in session.query(models.Tenant.id).filter(models.Tenant.active.is_(True))])
 
     cached_tids = set(State.tenants.keys())
 
@@ -196,22 +186,7 @@ def db_refresh_tenant_cache(session, to_refresh=None):
     if to_refresh is None or to_refresh == 1:
         tids = active_tids
     else:
-        if to_refresh in active_tids:
-            tids = [to_refresh]
-            if to_refresh < 1000001:
-                profile_exists = session.query(Config).filter_by(tid=to_refresh, var_name='profile').first()
-                if profile_exists:
-                    tids.append(profile_exists.tid)
-
-            elif to_refresh >= 1000001:
-                matching_tids = [tid[0] for tid in session.query(Config.tid).filter_by(var_name='profile', value=str(to_refresh)).all()]
-                tids.extend(matching_tids)
-
-                # Invalidate every tenant using the updated profile
-                for tid in matching_tids:
-                    Cache.invalidate(tid)
-        else:
-            tids = []
+        tids = [to_refresh] if to_refresh in active_tids else []
 
     if not tids:
         return
@@ -223,11 +198,6 @@ def db_refresh_tenant_cache(session, to_refresh=None):
             State.tenants[tid] = TenantState()
 
         tenant_cache = State.tenants[tid].cache
-        profile = session.query(Config.value).filter(Config.tid == tid, Config.var_name == 'profile').scalar()
-        if profile is not None and profile != 1000001:
-            tenant_cache['ptid'] = profile
-        else:
-            tenant_cache['ptid'] = tid
 
         tenant_cache['redirects'] = {}
         tenant_cache['custodian'] = False
@@ -243,24 +213,21 @@ def db_refresh_tenant_cache(session, to_refresh=None):
                             .filter(models.EnabledLanguage.tid.in_(tids)):
         State.tenants[tid].cache['languages_enabled'].append(lang)
 
-    configs = defaultdict(dict)
+    for cfg in session.query(Config).filter(Config.tid.in_(tids)):
+        tenant_cache = State.tenants[cfg.tid].cache
 
-    for cfg in session.query(Config).filter(or_(Config.tid.in_(tids), Config.tid == 1000001)):
-        configs[cfg.tid][cfg.var_name] = cfg
+        if cfg.var_name in ['https_cert', 'tor_onion_key']:
+            tenant_cache[cfg.var_name] = cfg.value
+        elif cfg.var_name in ConfigFilters['node']:
+            tenant_cache[cfg.var_name] = cfg.value
+        elif cfg.var_name in ConfigFilters['notification']:
+            tenant_cache['notification'][cfg.var_name] = cfg.value
 
-    for var_name, default_cfg in configs[1000001].items():
-        for tid, tenant in list(configs.items()):
-            # TODO: get value from tenant or profile
-            if var_name in tenant:
-                update_cache(tid, tenant[var_name])
-            else:
-                update_cache(tid, default_cfg)
-
-    query = (session.query(models.User.tid,models.User.mail_address,models.User.pgp_key_public)
-            .filter(models.User.role == 'admin', models.User.enabled.is_(True), models.User.notification.is_(True), models.User.tid.in_(tids)))
-    results = query.all()
-
-    for tid, mail, pub_key in results:
+    for tid, mail, pub_key in session.query(models.User.tid, models.User.mail_address, models.User.pgp_key_public) \
+                                     .filter(models.User.role == 'admin',
+                                             models.User.enabled.is_(True),
+                                             models.User.notification.is_(True),
+                                             models.User.tid.in_(tids)):
         State.tenants[tid].cache.notification.admin_list.extend([(mail, pub_key)])
 
     for custodian in session.query(models.User) \
@@ -283,11 +250,11 @@ def db_refresh_tenant_cache(session, to_refresh=None):
         if tenant_cache.onionservice:
             tenant_cache.onionnames.append(tenant_cache.onionservice.encode())
 
+        if not tenant_cache.onionservice and root_tenant_cache.onionservice:
+            tenant_cache.onionservice = tenant_cache.subdomain + '.' + root_tenant_cache.onionservice
+
         if tenant_cache.subdomain:
             State.tenant_subdomain_id_map[tenant_cache.subdomain] = tid
-
-            if not tenant_cache.onionservice and root_tenant_cache.onionservice:
-                tenant_cache.onionservice = tenant_cache.subdomain + '.' + root_tenant_cache.onionservice
 
             if root_tenant_cache.rootdomain and tenant_cache.reachable_via_web:
                 tenant_cache.hostnames.append('{}.{}'.format(tenant_cache.subdomain, root_tenant_cache.rootdomain).encode())

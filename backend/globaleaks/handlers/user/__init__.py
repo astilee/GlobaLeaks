@@ -7,47 +7,34 @@ from globaleaks.rest import errors, requests
 from globaleaks.state import State
 from globaleaks.transactions import db_get_user
 from globaleaks.utils.crypto import generateRandomKey
-from globaleaks.utils.objectdict import ObjectDict
 from globaleaks.utils.pgp import PGPContext
 from globaleaks.utils.utility import datetime_now, datetime_null
 
 import globaleaks.handlers.user.validate_email
 
 
-user_permissions = ObjectDict({
-    'can_edit_general_settings': False,
-    'can_delete_submission': False,
-    'can_postpone_expiration': True,
-    'can_grant_access_to_reports': False,
-    'can_mask_information': True,
-    'can_redact_information': False,
-    'can_transfer_access_to_reports': False
-})
-
-
-def serialize_user_profile(session, profile):
+def parse_pgp_options(user, request):
     """
-    Serialize a user profile object into a dictionary format.
+    Used for parsing PGP key infos and fill related user configurations.
 
-    :param user: The user profile object to serialize.
-    :return: A dictionary containing user profile data.
+    :param user: A user model
+    :param request: A request to be parsed
     """
-    user_profile = {
-        'id': profile.id,
-        'tid': profile.tid,
-        'name': profile.name,
-        'role': profile.role,
-        'roles': profile.roles_list,
-        'permissions': {}
-    }
+    pgp_key_public = request['pgp_key_public']
+    remove_key = request['pgp_key_remove']
 
-    for r in user_permissions:
-        user_profile['permissions'][r] = r in profile.permissions_list
+    if not remove_key and pgp_key_public:
+        pgpctx = PGPContext(pgp_key_public)
+        user.pgp_key_public = pgp_key_public
+        user.pgp_key_fingerprint = pgpctx.fingerprint
+        user.pgp_key_expiration = pgpctx.expiration
+    else:
+        user.pgp_key_public = ''
+        user.pgp_key_fingerprint = ''
+        user.pgp_key_expiration = datetime_null()
 
-    return user_profile
 
-
-def serialize_user(session, user, language):
+def user_serialize_user(session, user, language):
     """
     Serialize user model
 
@@ -61,9 +48,6 @@ def serialize_user(session, user, language):
     # take only contexts for the current tenant
     contexts = [x[0] for x in session.query(models.ReceiverContext.context_id)
                                      .filter(models.ReceiverContext.receiver_id == user.id)]
-
-    profile = session.query(models.UserProfile).filter(models.UserProfile.id == user.profile_id).first()
-
     ret = {
         'id': user.id,
         'creation_date': user.creation_date,
@@ -90,13 +74,19 @@ def serialize_user(session, user, language):
         'salt': user.salt,
         'escrow': user.crypto_escrow_prv_key != '',
         'two_factor': user.two_factor_secret != '',
+        'forcefully_selected': user.forcefully_selected,
+        'can_postpone_expiration': user.can_postpone_expiration,
+        'can_delete_submission': user.can_delete_submission,
+        'can_grant_access_to_reports': user.can_grant_access_to_reports,
+        'can_redact_information': user.can_redact_information,
+        'can_mask_information': user.can_mask_information,
+        'can_transfer_access_to_reports': user.can_transfer_access_to_reports,
+        'can_edit_general_settings': user.can_edit_general_settings,
         'clicked_recovery_key': user.clicked_recovery_key,
         'accepted_privacy_policy': user.accepted_privacy_policy,
         'contexts': contexts,
-        'send_activation_link': False,
-        'forcefully_selected': False,
-        'profile_id': user.profile_id,
-        'profile': serialize_user_profile(session, profile)
+        'send_activation_link': False
+
     }
 
     if State.tenants[user.tid].cache.two_factor and \
@@ -104,28 +94,6 @@ def serialize_user(session, user, language):
         ret['require_two_factor'] = True
 
     return get_localized_values(ret, user, user.localized_keys, language)
-
-
-
-def parse_pgp_options(user, request):
-    """
-    Used for parsing PGP key infos and fill related user configurations.
-
-    :param user: A user model
-    :param request: A request to be parsed
-    """
-    pgp_key_public = request['pgp_key_public']
-    remove_key = request['pgp_key_remove']
-
-    if not remove_key and pgp_key_public:
-        pgpctx = PGPContext(pgp_key_public)
-        user.pgp_key_public = pgp_key_public
-        user.pgp_key_fingerprint = pgpctx.fingerprint
-        user.pgp_key_expiration = pgpctx.expiration
-    else:
-        user.pgp_key_public = ''
-        user.pgp_key_fingerprint = ''
-        user.pgp_key_expiration = datetime_null()
 
 
 @transact
@@ -141,7 +109,7 @@ def get_user(session, tid, user_id, language):
     """
     user = db_get_user(session, tid, user_id)
 
-    return serialize_user(session, user, language)
+    return user_serialize_user(session, user, language)
 
 
 def db_user_update_user(session, tid, user_session, request):
@@ -172,7 +140,7 @@ def db_user_update_user(session, tid, user_session, request):
         user.change_email_date = datetime_now()
         user.change_email_token = generateRandomKey()
 
-        user_desc = serialize_user(session, user, user.language)
+        user_desc = user_serialize_user(session, user, user.language)
 
         user_desc['mail_address'] = request['mail_address']
 
@@ -206,7 +174,7 @@ def update_user_settings(session, tid, user_session, request, language):
     """
     user = db_user_update_user(session, tid, user_session, request)
 
-    return serialize_user(session, user, language)
+    return user_serialize_user(session, user, language)
 
 
 class UserInstance(BaseHandler):

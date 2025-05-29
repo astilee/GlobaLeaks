@@ -13,7 +13,6 @@ def get_dummy_tenant_desc():
         'name': 'GlobaLeaks',
         'mode': 'default',
         'subdomain': 'subdomain',
-        'profile': 'default'
     }
 
 
@@ -53,7 +52,6 @@ class TestTenantInstance(helpers.TestHandlerWithPopulatedDB):
     def setUp(self):
         yield helpers.TestHandlerWithPopulatedDB.setUp(self)
         t = yield tenant.create(get_dummy_tenant_desc())
-        t['profile'] = 'default'
         self.handler = self.request(t, role='admin')
 
     def test_get(self):

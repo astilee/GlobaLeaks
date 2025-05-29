@@ -1,7 +1,7 @@
 import {Injectable, inject} from "@angular/core";
 import {Observable, of, BehaviorSubject, switchMap, map} from "rxjs";
 import {HttpService} from "@app/shared/services/http.service";
-import {User} from "@app/models/resolvers/user-resolver-model";
+import {userResolverModel} from "@app/models/resolvers/user-resolver-model";
 import {AuthenticationService} from "@app/services/helper/authentication.service";
 
 @Injectable({
@@ -13,7 +13,7 @@ export class UsersResolver {
 
   private refreshTrigger = new BehaviorSubject<boolean>(true);
 
-  dataModel: User[];
+  dataModel: userResolverModel[];
 
   constructor() {
     this.refreshTrigger.pipe(
@@ -29,7 +29,7 @@ export class UsersResolver {
 
   private fetchUsers(): Observable<boolean> {
     return this.httpService.requestUsersResource().pipe(
-      map((response: User[]) => {
+      map((response: userResolverModel[]) => {
         this.dataModel = response;
         return true;
       })

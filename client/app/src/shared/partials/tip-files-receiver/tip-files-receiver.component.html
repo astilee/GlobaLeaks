@@ -43,7 +43,7 @@
                         </button>
                         @if (redactMode) {
                           <span>
-                            @if (preferenceResolver.dataModel.profile.permissions.can_mask_information && !maskService.isMasked(file.ifile_id,tipService.tip)) {
+                            @if (preferenceResolver.dataModel.can_mask_information && !maskService.isMasked(file.ifile_id,tipService.tip)) {
                               <span>
                                 <button class="btn btn-sm btn-outline-secondary"
  [ngbTooltip]="'Mask' | translate"
@@ -54,7 +54,7 @@
                             }
                             @if (maskService.isMasked(file.ifile_id,tipService.tip)) {
                               <span>
-                                @if (preferenceResolver.dataModel.profile.permissions.can_mask_information) {
+                                @if (preferenceResolver.dataModel.can_mask_information) {
                                   <button class="btn btn-sm btn-outline-secondary"
                                     [ngClass]="{ 'active': redactMode }"
  [ngbTooltip]="'Mask' | translate"
@@ -63,7 +63,7 @@
                                     <i class="fa-solid fa-eraser"></i>
                                   </button>
                                 }
-                                @if (preferenceResolver.dataModel.profile.permissions.can_redact_information) {
+                                @if (preferenceResolver.dataModel.can_redact_information) {
                                   <button class="btn btn-sm btn-danger tip-action-delete-file"
  [ngbTooltip]="'Redact' | translate"
                                     [attr.disabled]="!redactMode ? true : null"

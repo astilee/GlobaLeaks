@@ -31,6 +31,8 @@ SQLITE_UPDATE=23
 THREAD_LOCAL = threading.local()
 
 
+warnings.filterwarnings('ignore', '.', SAWarning)
+
 
 def make_db_uri(db_file):
     return 'sqlite:////' + db_file

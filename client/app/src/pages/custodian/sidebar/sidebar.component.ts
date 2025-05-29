@@ -2,7 +2,7 @@ import {Component, inject} from "@angular/core";
 import {Router, RouterLink, RouterLinkActive} from "@angular/router";
 import {TranslateModule} from "@ngx-translate/core";
 import {TranslatorPipe} from "@app/shared/pipes/translate";
-import {NodeResolver} from "@app/shared/resolvers/node.resolver";
+
 @Component({
     selector: "src-custodian-sidebar",
     templateUrl: "./sidebar.component.html",
@@ -11,7 +11,6 @@ import {NodeResolver} from "@app/shared/resolvers/node.resolver";
 })
 export class CustodianSidebarComponent {
   private router = inject(Router);
-  protected nodeResolver = inject(NodeResolver);
 
   isActive(route: string): boolean {
     return this.router.isActive(route, {
