@@ -30,6 +30,11 @@ describe("admin add, configure, and delete users", () => {
       value:"Profile6",
       address: "globaleaks-analyst1@mailinator.com",
     },
+    {
+      name: "Multi_Role_User",
+      value:"Multi_Role_Profile",
+      address: "globaleaks-multi-role-user@mailinator.com",
+    },
   ];
 
   const new_profiles = [
@@ -56,6 +61,10 @@ describe("admin add, configure, and delete users", () => {
     {
       name: "Profile6",
       value:"analyst",
+    },
+    {
+      name: "Multi_Role_Profile",
+      value:"admin",
     },
   ];
 
@@ -133,3 +142,45 @@ describe("admin add, configure, and delete users", () => {
   });
 
 });
+
+describe("Multiple role user", () => {
+
+  it("should add multiple role to the profile", () => {
+    cy.login_admin();
+    cy.visit("/#/admin/users");
+    cy.get('[data-cy="profiles"]').click().should("be.visible").click();
+    cy.get(".profileList").contains("Multi_Role_Profile").parents(".config-item").within(() => {
+      cy.get('button[name="edit_profile"]').click();
+      cy.get('ng-select').click();
+      cy.get('.ng-dropdown-panel .ng-option').contains('Recipient').click();
+      cy.get("#save_profile").click();
+    });
+  });
+
+  it("should require password change upon successful authentication", () => {
+    cy.login_receiver("Multi_Role_User", Cypress.env("init_password"), "#/login", true);
+    cy.get('[name="changePasswordArgs.password"]').should('be.visible').type(Cypress.env("user_password"));
+    cy.get('[name="changePasswordArgs.confirm"]').type(Cypress.env("user_password"));
+    cy.get('button[name="submit"]').click();
+    cy.url().should("include", "/admin/home");
+    cy.logout();
+  });
+
+  it("should switch role from admin to recipient", () => {
+    cy.login_admin('Multi_Role_User');
+    cy.window().then((win) => {
+      cy.stub(win, 'open').callsFake((url) => {
+        win.location.href = url;
+      });
+    });
+  
+    cy.get("#SwitchRoleLink").click();
+    cy.get('.modal-title').should('contain', 'Switch role');
+    cy.get('ng-select').click();
+    cy.get('.ng-dropdown-panel .ng-option').contains('Recipient').click();
+    cy.get('#modal-action-ok').click();
+  
+    cy.url().should('include', '/recipient/home');
+    cy.logout();
+  });
+})
