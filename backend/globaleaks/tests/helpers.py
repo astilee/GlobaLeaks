@@ -1,6 +1,7 @@
 """
 Utilities and basic TestCases.
 """
+import copy
 import json
 import mimetypes
 import os
@@ -28,15 +29,16 @@ from globaleaks.db.appdata import load_appdata
 from globaleaks.orm import transact, tw
 from globaleaks.handlers.base import BaseHandler
 from globaleaks.handlers.admin.context import create_context, get_context
-from globaleaks.handlers.admin.field import db_create_field
-from globaleaks.handlers.admin.questionnaire import db_get_questionnaire
+from globaleaks.handlers.admin.field import create_field, db_create_field
+from globaleaks.handlers.admin.questionnaire import db_get_questionnaire, create_questionnaire
 from globaleaks.handlers.admin.step import db_create_step
 from globaleaks.handlers.admin.tenant import create as create_tenant, db_wizard
 from globaleaks.handlers.admin.user import create_user
+from globaleaks.handlers.admin.user_profile import user_permissions
 from globaleaks.handlers.recipient import rtip
 from globaleaks.handlers.whistleblower import wbtip
 from globaleaks.handlers.whistleblower.submission import create_submission
-from globaleaks.models import serializers
+from globaleaks.models import UserProfile, serializers
 from globaleaks.models.config import db_set_config_variable
 from globaleaks.rest import decorators
 from globaleaks.rest.api import JSONEncoder
@@ -45,6 +47,7 @@ from globaleaks.settings import Settings
 from globaleaks.state import State, TenantState
 from globaleaks.utils import tempdict, token
 from globaleaks.utils.crypto import GCE, generateRandomKey, sha256
+from globaleaks.utils.objectdict import ObjectDict
 from globaleaks.utils.securetempfile import SecureTemporaryFile
 from globaleaks.utils.utility import datetime_now, datetime_never, uuid4
 from globaleaks.utils.log import log
@@ -61,6 +64,7 @@ VALID_BASE64_IMG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVQYV2Ng
 INVALID_PASSWORD = 'antani'
 
 ESCROW_PRV_KEY, ESCROW_PUB_KEY = GCE.generate_keypair()
+STAT_PRV_KEY, STAT_PUB_KEY = GCE.generate_keypair()
 
 KEY = GCE.generate_key()
 USER_KEY = Base64Encoder.decode(GCE.derive_key(VALID_PASSWORD, VALID_SALT).encode())
@@ -184,7 +188,7 @@ def get_dummy_step():
     }
 
 
-def get_dummy_field():
+def get_dummy_field(type='checkbox'):
     return {
         'id': '',
         'instance': 'template',
@@ -194,11 +198,12 @@ def get_dummy_field():
         'fieldgroup_id': '',
         'label': 'antani',
         'placeholder': '',
-        'type': 'checkbox',
+        'type': type,
         'description': 'field description',
         'hint': 'field hint',
         'multi_entry': False,
         'required': False,
+        'statistical': False,
         'attrs': {},
         'options': get_dummy_fieldoption_list(),
         'children': [],
@@ -257,14 +262,15 @@ class MockDict:
             'description': 'King MockDummy',
             'last_login': '1970-01-01 00:00:00.000000',
             'language': 'en',
+            'notification': True,
             'password_change_needed': False,
             'password_change_date': '1970-01-01 00:00:00.000000',
             'pgp_key_fingerprint': '',
             'pgp_key_public': '',
             'pgp_key_expiration': '1970-01-01 00:00:00.000000',
             'pgp_key_remove': False,
-            'notification': True,
-            'forcefully_selected': True,
+            'profile_id': 'none',
+            'contexts': [],
             'send_activation_link': False,
             'can_edit_general_settings': False,
             'can_grant_access_to_reports': True,
@@ -272,8 +278,12 @@ class MockDict:
             'can_delete_submission': True,
             'can_postpone_expiration': True,
             'can_mask_information': True,
-            'can_redact_information': True,
-            'contexts': []
+            'can_redact_information': True
+        }
+
+        self.dummyQuestionnaire = {
+            'id': 'test',
+            'name': 'test'
         }
 
         self.dummyContext = {
@@ -282,7 +292,7 @@ class MockDict:
             'description': 'Already localized desc',
             'order': 0,
             'receivers': [],
-            'questionnaire_id': 'default',
+            'questionnaire_id': 'test',
             'additional_questionnaire_id': '',
             'select_all_receivers': True,
             'tip_timetolive': 20,
@@ -297,7 +307,6 @@ class MockDict:
             'context_id': '',
             'answers': {},
             'receivers': [],
-            'removed_files': [],
             'mobile': False
         }
 
@@ -539,9 +548,6 @@ def forge_request(uri=b'https://www.globaleaks.org/', tid=1,
 
             return ret
 
-        def close(self):
-            pass
-
     request.content = fakeBody()
 
     return request
@@ -574,7 +580,7 @@ class TestGL(unittest.TestCase):
             yield db.create_db()
             yield db.initialize_db()
 
-        yield self.set_hostnames(0)
+        yield self.set_hostnames(1)
 
         yield db.refresh_tenant_cache()
 
@@ -601,6 +607,7 @@ class TestGL(unittest.TestCase):
         self.dummyWizard = dummyStuff.dummyWizard
         self.dummySignup = dummyStuff.dummySignup
         self.dummyNetwork = dummyStuff.dummyNetwork
+        self.dummyQuestionnaire = dummyStuff.dummyQuestionnaire
         self.dummyContext = dummyStuff.dummyContext
         self.dummySubmission = dummyStuff.dummySubmission
         self.dummyAdmin = self.get_dummy_user('admin', 'admin')
@@ -626,7 +633,14 @@ class TestGL(unittest.TestCase):
 
     def get_dummy_user(self, role, username):
         new_u = dict(MockDict().dummyUser)
+        new_u['id'] = username
         new_u['role'] = role
+
+        if role == 'admin':
+            new_u['roles'] = [role, 'custodian']
+        else:
+            new_u['roles'] = [role]
+
         new_u['username'] = username
         new_u['name'] = new_u['public_name'] = new_u['mail_address'] = "%s@%s.xxx" % (username, username)
         new_u['description'] = ''
@@ -643,18 +657,23 @@ class TestGL(unittest.TestCase):
         return {**new_r, **new_u}
 
     def fill_random_field_recursively(self, answers, field):
-        field_type = field['type']
+        value = {'value': ''}
 
+        field_type = field['type']
         if field_type == 'checkbox':
             value = {}
             for option in field['options']:
                 value[option['id']] = 'True'
-        elif field_type == 'selectbox':
+        elif field_type == 'selectbox' or field_type == 'multichoice':
             value = {'value': field['options'][0]['id']}
         elif field_type == 'date':
             value = {'value': datetime_now()}
+        elif field_type == 'daterange':
+            value = {'value': '1741734000000:1742425200000'}
         elif field_type == 'tos':
             value = {'value': 'True'}
+        elif field_type == 'fileupload' or field_type == 'voice':
+            pass
         elif field_type == 'fieldgroup':
             value = {}
             for child in field['children']:
@@ -699,7 +718,6 @@ class TestGL(unittest.TestCase):
         returnValue({
             'context_id': context_id,
             'receivers': context['receivers'],
-            'removed_files': [],
             'identity_provided': False,
             'score': 0,
             'answers': answers,
@@ -781,7 +799,6 @@ class TestGL(unittest.TestCase):
 
 
 class TestGLWithPopulatedDB(TestGL):
-    complex_field_population = False
     population_of_recipients = 2
     population_of_submissions = 2
     population_of_attachments = 2
@@ -798,12 +815,14 @@ class TestGLWithPopulatedDB(TestGL):
         OLD_USER_KEY, OLD_USER_KEY_HASH = GCE.calculate_key_and_hash(VALID_PASSWORD, VALID_SALT)
         OLD_USER_PRV_KEY_ENC = Base64Encoder.encode(GCE.symmetric_encrypt(OLD_USER_KEY, USER_PRV_KEY))
 
-        session.query(models.Config).filter(models.Config.tid == 1, models.Config.var_name == 'receipt_salt').one().value = VALID_SALT
-        session.query(models.Config).filter(models.Config.tid == 1, models.Config.var_name == 'crypto_escrow_pub_key').one().value = ESCROW_PUB_KEY
+        db_set_config_variable(session, 1, 'receipt_salt', VALID_SALT)
+        db_set_config_variable(session, 1, 'crypto_escrow_pub_key', ESCROW_PUB_KEY)
+        db_set_config_variable(session, 1, 'crypto_stat_pub_key', STAT_PUB_KEY)
 
         for user in session.query(models.User):
             if user.id == self.dummyAdmin['id']:
                 user.crypto_escrow_prv_key = Base64Encoder.encode(GCE.asymmetric_encrypt(USER_PUB_KEY, ESCROW_PRV_KEY))
+                user.crypto_global_stat_prv_key = Base64Encoder.encode(GCE.asymmetric_encrypt(USER_PUB_KEY, STAT_PRV_KEY))
 
             if self.clientside_hashing:
                 user.salt = VALID_SALT
@@ -825,7 +844,7 @@ class TestGLWithPopulatedDB(TestGL):
         # fill_data/create_admin
         self.dummyAdmin = yield create_user(1, None, self.dummyAdmin, 'en')
 
-        # fill_data/create_custodian
+        # fill_data/create_analyst
         self.dummyAnalyst = yield create_user(1, None, self.dummyAnalyst, 'en')
 
         # fill_data/create_custodian
@@ -837,24 +856,41 @@ class TestGLWithPopulatedDB(TestGL):
 
         yield self.mock_users_keys()
 
+        # fill_data/create 'test' questionnaire'
+        self.dummyQuestionnaire = yield create_questionnaire(1, None, self.dummyQuestionnaire, 'en')
+
+        # create a first step including every type of question
+        step = get_dummy_step()
+        step['questionnaire_id'] = self.dummyQuestionnaire['id']
+        step = yield tw(db_create_step, 1, step, 'en')
+        fieldgroup_id = ''
+        for t in models.field_types:
+            field = get_dummy_field(t)
+            field['step_id'] = step['id']
+            field = yield create_field(1, field, 'en')
+            if t == 'fieldgroup':
+                fieldgroup_id = field['id']
+
+        # create children fields for the fieldgroup created
+        for t in models.field_types:
+            field = get_dummy_field(t)
+            field['fieldgroup_id'] = fieldgroup_id
+            field = yield create_field(1, field, 'en')
+
+        # create a second step including the whistleblower identity question
+        step = get_dummy_step()
+        step['questionnaire_id'] = self.dummyQuestionnaire['id']
+        step = yield tw(db_create_step, 1, step, 'en')
+        yield self.add_whistleblower_identity_field_to_step(step['id'])
+
         # fill_data/create_context
         self.dummyContext['receivers'] = [self.dummyReceiver_1['id'], self.dummyReceiver_2['id']]
         self.dummyContext = yield create_context(1, None, self.dummyContext, 'en')
 
-        self.dummyQuestionnaire = yield tw(db_get_questionnaire, 1, self.dummyContext['questionnaire_id'], 'en')
-
-        self.dummyQuestionnaire['steps'].append(get_dummy_step())
-        self.dummyQuestionnaire['steps'][1]['questionnaire_id'] = self.dummyContext['questionnaire_id']
-        self.dummyQuestionnaire['steps'][1]['label'] = 'Whistleblower identity'
-        self.dummyQuestionnaire['steps'][1]['order'] = 1
-        self.dummyQuestionnaire['steps'][1] = yield tw(db_create_step, 1, self.dummyQuestionnaire['steps'][1], 'en')
-
-        if self.complex_field_population:
-            yield self.add_whistleblower_identity_field_to_step(self.dummyQuestionnaire['steps'][1]['id'])
-
+        # fill_data create_tenant
         for i in range(1, self.population_of_tenants):
             name = 'tenant-' + str(i+1)
-            t = yield create_tenant({'mode': 'default', 'name': name, 'active': True, 'subdomain': name})
+            t = yield create_tenant({'mode': 'default', 'name': name, 'active': True, 'subdomain': name, 'profile': '1000001'})
             yield tw(db_wizard, t['id'], '127.0.0.1', self.dummyWizard)
             yield self.set_hostnames(i)
 
@@ -888,7 +924,6 @@ class TestGLWithPopulatedDB(TestGL):
         self.dummySubmission['identity_provided'] = False
         self.dummySubmission['answers'] = yield self.fill_random_answers(self.dummyContext['questionnaire_id'])
         self.dummySubmission['score'] = 0
-        self.dummySubmission['removed_files'] = []
         self.dummySubmission['receipt'] = receipt
 
         itip_id = yield create_submission(1, self.dummySubmission, session, True, False)
@@ -989,10 +1024,17 @@ class TestHandler(TestGLWithPopulatedDB):
             if role == 'whistlebower':
                 session = initialize_submission_session(1)
             else:
-                session = Sessions.new(tid, user_id, 1, role, USER_PRV_KEY, USER_ESCROW_PRV_KEY if role == 'admin' else '')
+                session = Sessions.new(tid, user_id, 1, role, USER_PRV_KEY, USER_ESCROW_PRV_KEY if role == 'admin' else '', [role], permissions)
 
             if permissions:
-                session.permissions = permissions
+                for p in user_permissions:
+                    if p not in permissions:
+                        permissions[p] = user_permissions[p]
+
+            session.permissions = copy.deepcopy(user_permissions)
+            if permissions:
+                for p in permissions:
+                    session.permissions[p] = permissions[p]
 
             if properties:
                 session.properties.update(properties)
@@ -1032,7 +1074,19 @@ class TestHandler(TestGLWithPopulatedDB):
         return handler
 
     def get_dummy_request(self):
-        return self._test_desc['model']().dict(u'en')
+        request = self._test_desc['model']().dict(u'en')
+        if isinstance(self._test_desc['model'](), models.User):
+            request['roles'] = [request['role']]
+            request['profile'] = {}
+        elif isinstance(self._test_desc['model'](), models.UserProfile):
+            request['role'] = 'admin'
+            request['roles'] = ['admin', 'recipient']
+            request['permissions'] = {}
+            for p in user_permissions:
+                request['permissions'][p] = False
+
+
+        return request
 
 
 class TestCollectionHandler(TestHandler):
@@ -1048,10 +1102,10 @@ class TestCollectionHandler(TestHandler):
 
     @inlineCallbacks
     def test_get(self):
-        if not self._test_desc:
-            return
-
         data = self.get_dummy_request()
+
+        for k, v in self._test_desc['data'].items():
+            data[k] = v
 
         yield self._test_desc['create'](1, self.session, data, 'en')
 
@@ -1062,9 +1116,6 @@ class TestCollectionHandler(TestHandler):
 
     @inlineCallbacks
     def test_post(self):
-        if not self._test_desc:
-            return
-
         data = self.get_dummy_request()
 
         for k, v in self._test_desc['data'].items():
@@ -1093,10 +1144,10 @@ class TestInstanceHandler(TestHandler):
 
     @inlineCallbacks
     def test_get(self):
-        if not self._test_desc:
-            return
-
         data = self.get_dummy_request()
+
+        for k, v in self._test_desc['data'].items():
+            data[k] = v
 
         data = yield self._test_desc['create'](1, self.session, data, 'en')
 
@@ -1107,9 +1158,6 @@ class TestInstanceHandler(TestHandler):
 
     @inlineCallbacks
     def test_put(self):
-        if not self._test_desc:
-            return
-
         data = self.get_dummy_request()
 
         data = yield self._test_desc['create'](1, self.session, data, 'en')
@@ -1128,9 +1176,6 @@ class TestInstanceHandler(TestHandler):
 
     @inlineCallbacks
     def test_delete(self):
-        if not self._test_desc:
-            return
-
         data = self.get_dummy_request()
 
         data = yield self._test_desc['create'](1, self.session, data, 'en')

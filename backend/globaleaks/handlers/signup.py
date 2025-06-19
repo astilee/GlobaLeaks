@@ -41,18 +41,19 @@ def signup(session, request, language):
 
     # Delete the tenants created for the same subdomain that have still not been activated
     # Ticket reference: https://github.com/globaleaks/globaleaks-whistleblowing-software/issues/2640
-    subquery = session.query(models.Tenant.id) \
-                      .filter(models.Subscriber.subdomain == request['subdomain'],
-                              not_(models.Subscriber.activation_token.is_(None)),
-                              models.Tenant.id == models.Subscriber.tid) \
-                      .subquery()
+    tids = [tid for (tid,) in session.query(models.Tenant.id).filter(
+        models.Subscriber.subdomain == request['subdomain'],
+        models.Subscriber.activation_token.isnot(None),
+        models.Tenant.id == models.Subscriber.tid
+    ).all()]
 
-    db_del(session, models.Tenant, models.Tenant.id.in_(subquery))
+    db_del(session, models.Tenant, models.Tenant.id.in_(tids))
 
     tenant = db_create_tenant(session, {'active': False,
                                         'name': request['subdomain'],
                                         'subdomain': request['subdomain'],
-                                        'mode': config.get_val('mode')})
+                                        'mode': config.get_val('mode'),
+                                        'profile': 'default'})
 
     signup = models.Subscriber(request)
 

@@ -5,7 +5,6 @@ import {ActivatedRoute, Router} from "@angular/router";
 import {NgbModal} from "@ng-bootstrap/ng-bootstrap";
 import {RequestSupportComponent} from "@app/shared/modals/request-support/request-support.component";
 import {HttpService} from "@app/shared/services/http.service";
-import {TokenResource} from "@app/shared/services/token-resource.service";
 import {HttpClient, HttpHeaders} from "@angular/common/http";
 import {Observable, from, map, switchMap} from "rxjs";
 import {ConfirmationWithPasswordComponent} from "@app/shared/modals/confirmation-with-password/confirmation-with-password.component";
@@ -15,8 +14,8 @@ import {DeleteConfirmationComponent} from "@app/shared/modals/delete-confirmatio
 import {ClipboardService} from "ngx-clipboard";
 import {TlsConfig} from "@app/models/component-model/tls-confiq";
 import {nodeResolverModel} from "@app/models/resolvers/node-resolver-model";
-import {NewUser} from "@app/models/admin/new-user";
-import {userResolverModel} from "@app/models/resolvers/user-resolver-model";
+import {NewUser, NewUserProfile} from "@app/models/admin/new-user";
+import {User,UserProfile } from "@app/models/resolvers/user-resolver-model";
 import {NewContext} from "@app/models/admin/new-context";
 import {contextResolverModel} from "@app/models/resolvers/context-resolver-model";
 import {notificationResolverModel} from "@app/models/resolvers/notification-resolver-model";
@@ -40,7 +39,6 @@ export class UtilsService {
   private activatedRoute = inject(ActivatedRoute);
   private appDataService = inject(AppDataService);
   private cryptoService = inject(CryptoService);
-  private tokenResource = inject(TokenResource);
   private translateService = inject(TranslateService);
   private clipboardService = inject(ClipboardService);
   private http = inject(HttpClient);
@@ -86,17 +84,6 @@ export class UtilsService {
     return ret;
   }
 
-  download(url: string): Observable<void> {
-    return from(this.tokenResource.getWithProofOfWork()).pipe(
-      switchMap((token: any) => {
-        window.open(`${url}?token=${token.id}:${token.answer}`);
-        return new Observable<void>((observer) => {
-          observer.complete();
-        });
-      })
-    );
-  }
-
   isUploading(uploads?: any) {
     if (uploads) {
       for (const key in uploads) {
@@ -107,14 +94,6 @@ export class UtilsService {
     }
     return false;
   }
-
-  removeStyles(renderer: Renderer2, document:Document, link:string){
-    const defaultBootstrapLink = document.head.querySelector(`link[href="${link}"]`);
-    if (defaultBootstrapLink) {
-      renderer.removeChild(document.head, defaultBootstrapLink);
-    }
-  }
-
 
   resumeFileUploads(uploads: any) {
     if (uploads) {
@@ -241,7 +220,7 @@ export class UtilsService {
   }
 
   showWBLoginBox() {
-    return this.appDataService.page === "submissionpage";
+    return this.router.url.startsWith("/submission");
   }
 
   showUserStatusBox() {
@@ -252,8 +231,8 @@ export class UtilsService {
   }
 
   isWhistleblowerPage() {
-    const currentUrl = this.router.url;
-    return this.appDataService.public.node.wizard_done && (!this.authenticationService.session || (location.hash==="#/" || location.hash.startsWith("#/submission"))) && ((currentUrl === "/" && !this.appDataService.public.node.enable_signup) || currentUrl === "/submission" || currentUrl === "/blank");
+    const currentHash = location.hash;
+    return currentHash === "#/" || currentHash === "#/submission";
   }
 
   stopPropagation(event: Event) {
@@ -602,6 +581,10 @@ export class UtilsService {
     return this.httpService.requestDeleteAdminUser(user_id);
   }
 
+  deleteAdminUserProfile(user_profile_id: string) {
+    return this.httpService.requestDeleteAdminUserProfile(user_profile_id);
+  }
+
   deleteAdminContext(user_id: string) {
     return this.httpService.requestDeleteAdminContext(user_id);
   }
@@ -618,8 +601,16 @@ export class UtilsService {
     return this.httpService.requestAddAdminUser(user);
   }
 
-  updateAdminUser(id: string, user: userResolverModel) {
+  updateAdminUser(id: string, user: User) {
     return this.httpService.requestUpdateAdminUser(id, user);
+  }
+
+  addAdminUserProfile(user_profile: NewUserProfile) {
+    return this.httpService.requestAddAdminUserProfile(user_profile);
+  }
+
+  updateAdminUserProfile(id: string, user_profile: UserProfile) {
+    return this.httpService.requestUpdateAdminUserProfile(id, user_profile);
   }
 
   addAdminContext(context: NewContext) {

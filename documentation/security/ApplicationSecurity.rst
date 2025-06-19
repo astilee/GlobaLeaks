@@ -168,7 +168,7 @@ Permissions-Policy
 The backend implements the following Permissions-Policy header configuration to limit the possible de-anonymization of the user by disabling dangerous browser features:
 ::
 
-  Permissions-Policy: accelerometer=(),ambient-light-sensor=(),bluetooth=(),camera=(),clipboard-read=(),clipboard-write=(),document-domain=(),display-capture=(),fullscreen=(),geolocation=(),gyroscope=(),idle-detection=(),keyboard-map=(),local-fonts=(),magnetometer=(),microphone=(),midi=(),notifications=(),payment=(),push=(),screen-wake-lock=(),serial=(),speaker-selection=(),storage-access=(),usb=(),web-share=(),xr-spatial-tracking=()
+  Permissions-Policy: accelerometer=(),ambient-light-sensor=(),bluetooth=(),camera=(),clipboard-read=(),clipboard-write=(),document-domain=(),display-capture=(),fullscreen=(),geolocation=(),gyroscope=(),idle-detection=(),keyboard-map=(),local-fonts=(),magnetometer=(),microphone=(),midi=(),notifications=(),payment=(),push=(),screen-wake-lock=(),serial=(),speaker-selection=(),usb=(),web-share=(),xr-spatial-tracking=()
 
 X-Frame-Options
 +++++++++++++++
@@ -399,7 +399,7 @@ Any attachment uploaded by anonymous whistleblowers might contain malware, eithe
 
 Safe file opening
 +++++++++++++++++
-For scenarios where the whistleblower's trustworthiness has been validated or in projects with a low-risk threat model, the application offers an integrated file viewer. This viewer, leveraging modern browser sandboxing capabilities, allows the safe opening of a limited set of file types considered more secure than accessing files directly through the operating system. This feature is disabled by default. Administrators should enable it only after thorough evaluation and ensure that recipients' browsers are kept up-to-date.
+For scenarios where the whistleblower's trustworthiness has been validated or in projects with a low-risk threat model, the application offers an integrated file viewer. This viewer, leveraging modern browser sandboxing capabilities, allows the safe opening of a limited set of file types considered more secure than accessing files directly through the operating system.
 
 The supported file formats are:
 
@@ -409,8 +409,6 @@ The supported file formats are:
 * PDF
 * VIDEO
 * TXT
-
-The default configuration has this feature disabled.
 
 PGP encryption
 ++++++++++++++

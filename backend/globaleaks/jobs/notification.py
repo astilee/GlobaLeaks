@@ -8,7 +8,7 @@ from twisted.internet import defer
 from globaleaks import models
 from globaleaks.handlers.admin.node import db_admin_serialize_node
 from globaleaks.handlers.admin.notification import db_get_notification
-from globaleaks.handlers.user import user_serialize_user
+from globaleaks.handlers.user import serialize_user
 from globaleaks.jobs.job import LoopingJob
 from globaleaks.models import serializers
 from globaleaks.models.config import ConfigFactory
@@ -127,7 +127,7 @@ class MailGenerator(object):
                 else:
                     data = {'type': 'tip_update'}
 
-                data['user'] = user_serialize_user(session, user, user.language)
+                data['user'] = serialize_user(session, user, user.language)
                 data['tip'] = serializers.serialize_rtip(session, itip, rtip, user.language)
 
                 self.process_mail_creation(session, tid, data)
@@ -149,7 +149,7 @@ class MailGenerator(object):
             data = {'type': 'unread_tips'}
 
             try:
-                data['user'] = user_serialize_user(session, user, user.language)
+                data['user'] = serialize_user(session, user, user.language)
                 self.process_mail_creation(session, user.tid, data)
             except:
                 pass
@@ -162,7 +162,7 @@ class MailGenerator(object):
             data = {'type': 'tip_reminder'}
 
             try:
-                data['user'] = user_serialize_user(session, user, user.language)
+                data['user'] = serialize_user(session, user, user.language)
                 self.process_mail_creation(session, user.tid, data)
             except:
                 pass

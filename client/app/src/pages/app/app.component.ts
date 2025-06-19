@@ -30,6 +30,8 @@ import {CryptoService} from "@app/shared/services/crypto.service";
 import {HttpService} from "@app/shared/services/http.service";
 import {BodyDomObserverService} from "@app/shared/services/body-dom-observer.service";
 import {Keepalive} from "@ng-idle/keepalive";
+import DOMPurify from 'dompurify';
+
 registerLocales();
 
 export function createTranslateLoader(http: HttpClient) {
@@ -102,8 +104,8 @@ export class AppComponent implements AfterViewInit, OnInit, OnDestroy{
     elem = document.createElement("script");
     elem.type = "module";
     let scriptURL = "/s/script";
-    if (window.trustedTypes?.defaultPolicy) {
-        const safeURL = window.trustedTypes.defaultPolicy.createScriptURL(scriptURL);
+    if ((window as any).trustedTypes?.defaultPolicy) {
+        const safeURL = (window as any).trustedTypes.defaultPolicy.createScriptURL(scriptURL);
         if (typeof safeURL === "string") {
             scriptURL = safeURL;
         }
@@ -135,15 +137,20 @@ export class AppComponent implements AfterViewInit, OnInit, OnDestroy{
   }
 
   ngOnInit() {
+    DOMPurify.addHook('afterSanitizeAttributes', function (node) {
+      const href = node.getAttribute('href') || '';
+      const url = new URL(href, window.location.origin);
+
+      // Ensure only external links are modified
+      if (url.origin !== window.location.origin) {
+        node.setAttribute('target', '_blank');
+      }
+    });
+
     this.appConfig.routeChangeListener();
     this.checkToShowSidebar();
   }
 
-  isWhistleblowerPage(): boolean {
-    const currentHash = location.hash;
-    return currentHash === "#/" || currentHash === "#/submission";
-  }
-  
   public ngAfterViewInit(): void {
     this.appDataService.showLoadingPanel$.subscribe((value:any) => {
       this.showLoadingPanel = value;

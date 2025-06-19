@@ -148,7 +148,7 @@ class TestRTipInstance(helpers.TestHandlerWithPopulatedDB):
                     }
                 }
 
-                handler = self.request(operation, role='receiver', user_id=rtip_desc['receiver_id'])
+                handler = self.request(operation, role='receiver', user_id=rtip_desc['receiver_id'], permissions={'can_grant_access_to_reports': True})
                 yield handler.put(rtip_desc['id'])
                 self.assertEqual(handler.request.code, 200)
                 yield self.test_model_count(models.ReceiverTip, count)
@@ -167,7 +167,7 @@ class TestRTipInstance(helpers.TestHandlerWithPopulatedDB):
                     }
                 }
 
-                handler = self.request(operation, role='receiver', user_id=rtip_desc['receiver_id'])
+                handler = self.request(operation, role='receiver', user_id=rtip_desc['receiver_id'], permissions={'can_grant_access_to_reports': True})
                 yield handler.put(rtip_desc['id'])
                 self.assertEqual(handler.request.code, 200)
                 yield self.test_model_count(models.ReceiverTip, count)
@@ -184,7 +184,7 @@ class TestRTipInstance(helpers.TestHandlerWithPopulatedDB):
               }
             }
 
-            handler = self.request(operation, role='receiver', user_id=rtip_desc['receiver_id'])
+            handler = self.request(operation, role='receiver', user_id=rtip_desc['receiver_id'], permissions={'can_grant_access_to_reports': True})
             yield handler.put(rtip_desc['id'])
             self.assertEqual(handler.request.code, 200)
 
@@ -199,7 +199,7 @@ class TestRTipInstance(helpers.TestHandlerWithPopulatedDB):
               }
             }
 
-            handler = self.request(operation, role='receiver', user_id=rtip_desc['receiver_id'])
+            handler = self.request(operation, role='receiver', user_id=rtip_desc['receiver_id'], permissions={'can_transfer_access_to_reports': True})
             yield handler.put(rtip_desc['id'])
             self.assertEqual(handler.request.code, 200)
             yield self.test_model_count(models.ReceiverTip, count)
@@ -360,8 +360,8 @@ class TestRTipInstance(helpers.TestHandlerWithPopulatedDB):
         self.assertEqual(len(rtip_descs) * 2, self.population_of_submissions * self.population_of_recipients)
 
         # we delete the first and then we verify that the second does not exist anymore
-        handler = self.request(role='receiver', user_id=rtip_descs[0]['receiver_id'])
-        yield handler.delete(rtip_descs[0]['id'])
+        handler = self.request(role='receiver', user_id=rtip_descs[0]['receiver_id'], permissions={'can_delete_submission': True})
+        yield handler.delete(rtip_descs[0]['id'],)
 
         rtip_descs = yield self.get_rtips()
 

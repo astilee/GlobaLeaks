@@ -16,12 +16,12 @@
       }
       @if (selectedTips.length) {
         <span>
-          @if (preference.dataModel.can_grant_access_to_reports) {
+          @if (preference.dataModel.profile.permissions.can_grant_access_to_reports) {
             <span id="tip-action-grant-access-selected" (click)="openGrantAccessModal()" ngbTooltip="{{'Grant access' | translate}}" class="btn btn-outline-secondary">
               <i class="fa-solid fa-user-plus"></i>
             </span>
           }
-          @if (preference.dataModel.can_grant_access_to_reports) {
+          @if (preference.dataModel.profile.permissions.can_grant_access_to_reports) {
             <span id="tip-action-revoke-access-selected" (click)="openRevokeAccessModal()" ngbTooltip="{{'Revoke access' | translate}}" class="btn btn-outline-secondary">
               <i class="fa-solid fa-user-minus"></i>
             </span>

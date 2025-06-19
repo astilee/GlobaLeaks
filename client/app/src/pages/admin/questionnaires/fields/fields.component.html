@@ -215,6 +215,12 @@
                   <label>{{ 'Preview' | translate }}</label>
                 </div>
               }
+              @if (['inputbox', 'selectbox', 'checkbox', 'multichoice'].indexOf(field.type) !== -1) {
+                <div class="form-group">
+                  <input [(ngModel)]="field.statistical" type="checkbox">
+                  <label>{{ 'Enable statistical analysys' | translate }}</label>
+                </div>
+              }
               <div class="form-group">
                 <label>
                   <span>{{ 'Width' | translate }}</span>
@@ -575,7 +581,7 @@
                     <div>
                       <div id="field-{{index}}" class="fieldBox">
                         <form #editField="ngForm">
-                          <src-fields (dataToParent)="listenToFields()" [editField]="editField" [field]="childField" [fields]="children" [type]="'field'"></src-fields>
+                          <src-fields (dataToParent)="listenToFields()" [editField]="editField" type="'field'" [field]="childField" [fields]="children" [parsedFields]="parsedFields"></src-fields>
                         </form>
                       </div>
                     </div>

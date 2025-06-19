@@ -11,8 +11,8 @@ import {TlsConfig} from "@app/models/component-model/tls-confiq";
 import {Answers} from "@app/models/receiver/receiver-tip-data";
 import {NewQuestionare} from "@app/models/admin/new-questionare";
 import {Step, questionnaireResolverModel} from "@app/models/resolvers/questionnaire-model";
-import {NewUser} from "@app/models/admin/new-user";
-import {userResolverModel} from "@app/models/resolvers/user-resolver-model";
+import {NewUser, NewUserProfile} from "@app/models/admin/new-user";
+import {User, UserProfile } from "@app/models/resolvers/user-resolver-model";
 import {NewContext} from "@app/models/admin/new-context";
 import {NewStep} from "@app/models/admin/new-step";
 import {NewField} from "@app/models/admin/new-field";
@@ -167,8 +167,12 @@ export class HttpService {
     return this.httpClient.put<nodeResolverModel>("api/admin/node", data);
   }
 
-  requestUsersResource(): Observable<userResolverModel[]> {
-    return this.httpClient.get<userResolverModel[]>("api/admin/users");
+  requestUsersResource(): Observable<User[]> {
+    return this.httpClient.get<User[]>("api/admin/users");
+  }
+
+  requestUserProfilesResource(): Observable<UserProfile[]> {
+    return this.httpClient.get<UserProfile[]>("api/admin/users/profiles");
   }
 
   requestContextsResource(): Observable<contextResolverModel> {
@@ -358,16 +362,28 @@ export class HttpService {
     return this.httpClient.post<void>(`api/recipient/rtips/${id}/iars`, {"request_motivation": ""});
   }
 
-  requestAddAdminUser(param: NewUser): Observable<userResolverModel> {
-    return this.httpClient.post<userResolverModel>("api/admin/users", param);
+  requestAddAdminUser(param: NewUser): Observable<User> {
+    return this.httpClient.post<User>("api/admin/users", param);
   }
 
-  requestUpdateAdminUser(id: string, param: userResolverModel): Observable<userResolverModel> {
-    return this.httpClient.put<userResolverModel>("api/admin/users/" + id, param);
+  requestUpdateAdminUser(id: string, param: User): Observable<User> {
+    return this.httpClient.put<User>("api/admin/users/" + id, param);
   }
 
-  requestDeleteAdminUser(id: string): Observable<userResolverModel> {
-    return this.httpClient.delete<userResolverModel>("api/admin/users/" + id);
+  requestDeleteAdminUser(id: string): Observable<User> {
+    return this.httpClient.delete<User>("api/admin/users/" + id);
+  }
+
+  requestAddAdminUserProfile(param: NewUserProfile): Observable<UserProfile> {
+    return this.httpClient.post<UserProfile>("api/admin/users/profiles", param);
+  }
+
+  requestUpdateAdminUserProfile(id: string, param: UserProfile): Observable<UserProfile> {
+    return this.httpClient.put<UserProfile>("api/admin/users/profiles/" + id, param);
+  }
+
+  requestDeleteAdminUserProfile(id: string): Observable<UserProfile> {
+    return this.httpClient.delete<UserProfile>("api/admin/users/profiles/" + id);
   }
 
   requestAddAdminContext(param: NewContext): Observable<contextResolverModel> {
