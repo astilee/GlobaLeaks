@@ -12,6 +12,8 @@ from twisted.internet.threads import deferToThread
 from twisted.internet.defer import inlineCallbacks, returnValue
 
 from globaleaks import models
+from globaleaks.handlers.admin.auditlog import serialize_log
+
 from globaleaks.handlers.admin.context import admin_serialize_context
 from globaleaks.handlers.admin.node import db_admin_serialize_node
 from globaleaks.handlers.admin.notification import db_get_notification
@@ -21,7 +23,7 @@ from globaleaks.handlers.whistleblower.submission import db_create_receivertip, 
 from globaleaks.handlers.whistleblower.wbtip import db_notify_report_update
 from globaleaks.handlers.user import serialize_user
 from globaleaks.models import UserProfile, serializers
-from globaleaks.orm import db_get, db_del, db_log, transact
+from globaleaks.orm import db_get, db_del, db_log, transact, tw
 from globaleaks.rest import errors, requests
 from globaleaks.state import State
 from globaleaks.utils.crypto import GCE
@@ -30,6 +32,18 @@ from globaleaks.utils.log import log
 from globaleaks.utils.templating import Templating
 from globaleaks.utils.utility import datetime_now, datetime_null, datetime_never, get_expiration
 from globaleaks.utils.json import JSONEncoder
+
+
+@transact
+def get_report_audit_log(session, tid, user_id, itip_id):
+    _, _, _ = db_access_rtip(session, tid, user_id, itip_id)
+
+    logs = session.query(models.AuditLog) \
+                  .filter(models.AuditLog.tid == tid,
+                          models.AuditLog.object_id) \
+                  .order_by(models.AuditLog.date.desc())
+
+    return [serialize_log(log) for log in logs]
 
 
 def db_notify_grant_access(session, user):
@@ -1392,3 +1406,12 @@ class IdentityAccessRequestsCollection(BaseHandler):
                                             self.session,
                                             itip_id,
                                             request)
+
+class ReportAuditLog(BaseHandler):
+    """
+    Handler that provide access to the report audit log
+    """
+    check_roles = 'receiver'
+
+    def get(self, tip_id):
+        return get_report_audit_log(self.session.tid, self.session.user_id, tip_id)

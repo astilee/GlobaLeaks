@@ -7,6 +7,7 @@ from twisted.internet.threads import deferToThread
 from twisted.internet.defer import inlineCallbacks, returnValue
 
 from globaleaks import models
+from globaleaks.handlers.admin.auditlog import serialize_log
 from globaleaks.handlers.admin.node import db_admin_serialize_node
 from globaleaks.handlers.admin.notification import db_get_notification
 from globaleaks.handlers.base import BaseHandler
@@ -24,6 +25,18 @@ from globaleaks.utils.fs import directory_traversal_check
 from globaleaks.utils.log import log
 from globaleaks.utils.templating import Templating
 from globaleaks.utils.utility import datetime_now, datetime_null
+
+
+@transact
+def get_report_audit_log(session, tid, user_id):
+    _ = db_get(session, models.InternalTip, models.InternalTip.id == user_id)
+
+    logs = session.query(models.AuditLog) \
+                  .filter(models.AuditLog.tid == tid,
+                          models.AuditLog.object_id == user_id) \
+                  .order_by(models.AuditLog.date.desc())
+
+    return [serialize_log(log) for log in logs]
 
 
 def db_notify_report_update(session, user, rtip, itip):
@@ -320,3 +333,12 @@ class WBTipAdditionalQuestionnaire(BaseHandler):
                                                       self.session.user_id,
                                                       request['answers'],
                                                       self.request.language)
+
+class ReportAuditLog(BaseHandler):
+    """
+    Handler that provide access to the report audit log
+    """
+    check_roles = 'whistleblower'
+
+    def get(self, tip_id):
+        return get_report_audit_log(self.session.tid, self.session.user_id)

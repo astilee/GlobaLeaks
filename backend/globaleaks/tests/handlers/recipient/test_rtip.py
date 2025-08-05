@@ -553,3 +553,20 @@ class TestIdentityAccessRequestsCollection(helpers.TestHandlerWithPopulatedDB):
         for rtip_desc in rtip_descs:
             handler = self.request(body, role='receiver', user_id=rtip_desc['receiver_id'])
             yield handler.post(rtip_desc['id'])
+
+
+class TestReportAuditLog(helpers.TestHandlerWithPopulatedDB):
+    _handler = rtip.ReportAuditLog
+
+    @inlineCallbacks
+    def setUp(self):
+        yield helpers.TestHandlerWithPopulatedDB.setUp(self)
+        yield self.perform_full_submission_actions()
+        yield Delivery().run()
+
+    @inlineCallbacks
+    def test_get(self):
+        rtip_descs = yield self.get_rtips()
+        for rtip_desc in rtip_descs:
+            handler = self.request(role='receiver', user_id=rtip_desc['receiver_id'])
+            yield handler.get(rtip_desc['id'])
