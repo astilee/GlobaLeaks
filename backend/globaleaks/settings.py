@@ -1,5 +1,4 @@
 import os
-import sys
 
 from globaleaks.orm import make_db_uri, set_db_uri, enable_orm_debug
 from globaleaks.utils.singleton import Singleton
@@ -79,6 +78,7 @@ class SettingsClass(object, metaclass=Singleton):
         self.acme_directory_url = 'https://acme-v02.api.letsencrypt.org/directory'
 
         self.enable_api_cache = True
+        self.enable_rate_limiting = True
 
     def eval_paths(self):
         self.pidfile_path = os.path.join(self.ramdisk_path, 'globaleaks.pid')

@@ -1,5 +1,5 @@
 <a routerLink="/recipient/home" routerLinkActive="active" id="recipient_home" [ngClass]="{'active': isActive('/recipient/home')}" [attr.aria-current]="isActive('/recipient/home') ? 'page' : 'false'">
-  <i class="fa fa-home me-2"></i>
+  <i class="fa fa-house me-2"></i>
   <span>{{'Home' | translate}}</span>
 </a>
 @if (!nodeResolver.dataModel.is_profile) {
@@ -10,7 +10,7 @@
 }
 @if (preferenceResolver.dataModel.profile.permissions.can_edit_general_settings) {
   <a routerLink="/recipient/settings" routerLinkActive="active" id="recipient_settings" [ngClass]="{'active': isActive('/recipient/settings')}" [attr.aria-current]="isActive('/recipient/settings') ? 'page' : 'false'">
-    <i class="fa-solid fa-sliders me-2"></i>
+    <i class="fas fa-sliders me-2"></i>
     <span>{{'Settings' | translate}}</span>
   </a>
 }

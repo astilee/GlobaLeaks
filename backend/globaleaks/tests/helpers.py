@@ -1,10 +1,12 @@
 """
 Utilities and basic TestCases.
 """
+import base64
 import copy
 import json
 import mimetypes
 import os
+import secrets
 import shutil
 
 from datetime import timedelta
@@ -13,7 +15,6 @@ from nacl.encoding import Base32Encoder, Base64Encoder
 
 from urllib.parse import urlsplit  # pylint: disable=import-error
 
-from sqlalchemy import exists, func
 
 from twisted.internet.address import IPv4Address
 from twisted.internet.defer import inlineCallbacks, returnValue, Deferred
@@ -24,7 +25,7 @@ from twisted.web.test.requesthelper import DummyRequest
 
 from . import TEST_DIR
 
-from globaleaks import db, models, orm, event, jobs, __version__, DATABASE_VERSION
+from globaleaks import db, models, orm, jobs, __version__, DATABASE_VERSION
 from globaleaks.db.appdata import load_appdata
 from globaleaks.orm import transact, tw
 from globaleaks.handlers.base import BaseHandler
@@ -45,11 +46,11 @@ from globaleaks.rest.api import JSONEncoder
 from globaleaks.sessions import initialize_submission_session, Sessions
 from globaleaks.settings import Settings
 from globaleaks.state import State, TenantState
-from globaleaks.utils import tempdict, token
+from globaleaks.utils import tempdict
 from globaleaks.utils.crypto import GCE, generateRandomKey, sha256
 from globaleaks.utils.objectdict import ObjectDict
 from globaleaks.utils.securetempfile import SecureTemporaryFile
-from globaleaks.utils.utility import datetime_now, datetime_never, uuid4
+from globaleaks.utils.utility import datetime_now, uuid4
 from globaleaks.utils.log import log
 
 GCE.options['OPSLIMIT'] = 1
@@ -82,7 +83,6 @@ GCE_orig_generate_keypair = GCE.generate_keypair
 TOKEN = b"61af2d7fb2796730c9fb9e357ed4c0f9c87d8c6f6976c4ca3731238db43e87b0"
 TOKEN_SALT = b"eed1d4c5a8e97f4f953d4bddd62957ac5f9e94af6a025c6b95300d72ba41b57e"
 TOKEN_ANSWER = b"61af2d7fb2796730c9fb9e357ed4c0f9c87d8c6f6976c4ca3731238db43e87b0:142"
-
 
 def mock_nullfunction(*args, **kwargs):
     return
@@ -157,6 +157,8 @@ def init_state():
     orm.set_thread_pool(FakeThreadPool())
 
     State.settings.enable_api_cache = False
+    State.settings.enable_rate_limiting = False
+
     State.tenants[1] = TenantState()
     State.tenants[1].cache.hostname = 'www.globaleaks.org'
     State.tenants[1].cache.encryption = True
@@ -332,7 +334,6 @@ class MockDict:
             'allow_indexing': False,
             'disable_submissions': False,
             'disable_privacy_badge': False,
-            'timezone': 0,
             'default_language': 'en',
             'default_questionnaire': 'default',
             'admin_language': 'en',
@@ -495,12 +496,13 @@ def forge_request(uri=b'https://www.globaleaks.org/', tid=1,
     request.uri = uri
     request.path = path
     request.args = args
+    request.nonce = base64.b64encode(secrets.token_bytes(16))
     request._serverName = host
 
     request.code = 200
     request.hostname = b''
     request.headers = None
-    request.client_ip = client_addr
+    request.client_ip = client_addr.decode()
     request.client_ua = b''
     request.client_using_mobile = False
     request.client_using_tor = False
@@ -583,9 +585,6 @@ class TestGL(unittest.TestCase):
         yield self.set_hostnames(1)
 
         yield db.refresh_tenant_cache()
-
-        self.state.reset_minutely()
-        self.state.reset_hourly()
 
         self.internationalized_text = load_appdata()['node']['whistleblowing_button']
 
@@ -739,14 +738,6 @@ class TestGL(unittest.TestCase):
         """
         for _ in range(n):
             session.files.append(self.get_dummy_attachment())
-
-    def pollute_events(self, number_of_times=10):
-        for _ in range(number_of_times):
-            for event_obj in event.events_monitored:
-                for x in range(2):
-                    e = event.Event(event_obj, timedelta(seconds=1.0 * x))
-                    self.state.tenants[1].RecentEventQ.append(e)
-                    self.state.tenants[1].EventQ.append(e)
 
     @transact
     def get_rtips(self, session):
@@ -1021,7 +1012,7 @@ class TestHandler(TestGLWithPopulatedDB):
                 user_id = self.dummyCustodian['id']
 
         if role is not None:
-            if role == 'whistlebower':
+            if role == 'whistleblower' and user_id == None:
                 session = initialize_submission_session(1)
             else:
                 session = Sessions.new(tid, user_id, 1, role, USER_PRV_KEY, USER_ESCROW_PRV_KEY if role == 'admin' else '', [role], permissions)

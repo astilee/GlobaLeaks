@@ -25,7 +25,7 @@ export class preferenceResolverModel {
   orm: string;
   role: string;
   enabled: boolean;
-  require_two_factor: boolean = false;
+  require_two_factor = false;
   last_login: string;
   name: string;
   description: string;
@@ -44,7 +44,7 @@ export class preferenceResolverModel {
   notification: boolean;
   encryption: boolean;
   escrow: boolean;
-  two_factor: boolean = false;
+  two_factor = false;
   forcefully_selected: boolean;
   clicked_recovery_key: boolean;
   accepted_privacy_policy: string;

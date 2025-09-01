@@ -95,7 +95,7 @@ export class TipComponent implements OnInit {
   showEditLabelInput: boolean;
   active: string;
   loading = true;
-  redactMode:boolean = false;
+  redactMode = false;
   redactOperationTitle: string;
   tabs: Tab[];
 
@@ -116,7 +116,7 @@ export class TipComponent implements OnInit {
           this.loading = false;
           this.RTipService.initialize(response);
           this.tip = this.RTipService.tip;
-          this.activatedRoute.queryParams.subscribe((params: { [x: string]: string; }) => {
+          this.activatedRoute.queryParams.subscribe((params: Record<string, string>) => {
             this.tip.tip_id = params["tip_id"];
           });
 
@@ -160,7 +160,7 @@ export class TipComponent implements OnInit {
         const names = response as Record<string, string>;
         const selectableRecipients: Receiver[] = [];
         this.appDataService.public.receivers.forEach(async (receiver: Receiver) => {
-          if (receiver.id !== this.authenticationService.session.user_id && !this.tip.receivers_by_id[receiver.id]) {
+          if (receiver.id !== this.authenticationService.session.user_id && (!this.tip.receivers_by_id[receiver.id] || !this.tip.receivers_by_id[receiver.id].active)) {
             receiver.name = names[receiver.id];
             selectableRecipients.push(receiver);
           }
@@ -191,7 +191,7 @@ export class TipComponent implements OnInit {
           const names = response as Record<string, string>;
           const selectableRecipients: Receiver[] = [];
           this.appDataService.public.receivers.forEach(async (receiver: Receiver) => {
-            if (receiver.id !== this.authenticationService.session.user_id && this.tip.receivers_by_id[receiver.id]) {
+            if (receiver.id !== this.authenticationService.session.user_id && (this.tip.receivers_by_id[receiver.id] && this.tip.receivers_by_id[receiver.id].active)) {
               receiver.name = names[receiver.id];
               selectableRecipients.push(receiver);
             }

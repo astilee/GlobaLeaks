@@ -45,7 +45,7 @@ export class SubmissionComponent implements OnInit {
   private appConfigService = inject(AppConfigService);
   private whistleblowerLoginResolver = inject(WhistleblowerLoginResolver);
   protected authenticationService = inject(AuthenticationService);
-  private appDataService = inject(AppDataService);
+  protected appDataService = inject(AppDataService);
   private utilsService = inject(UtilsService);
   private fieldUtilitiesService = inject(FieldUtilitiesService);
   private httpService = inject(HttpService);
@@ -58,13 +58,12 @@ export class SubmissionComponent implements OnInit {
   _navigation = -1;
   answers: Answers = {};
   identity_provided = false;
-  context_id = "";
   context: Context | undefined = undefined;
   receiversOrderPredicate: string;
   validate: boolean[] = [];
   score = 0;
   done: boolean;
-  uploads: { [key: string]: any } = {};
+  uploads: Record<string, any> = {};
   questionnaire: Questionnaire;
   contextsOrderPredicate: string = this.appDataService.public.node.show_contexts_in_alphabetical_order ? "name" : "order";
   selectable_contexts: Context[];

@@ -2,7 +2,6 @@
 
 export DEBIAN_FRONTEND=noninteractive
 
-# User Permission Check
 if [ ! $(id -u) = 0 ]; then
   echo "Error: GlobaLeaks install script must be run by root"
   exit 1
@@ -25,9 +24,7 @@ function DO () {
   last_command $CMD
   last_status $STATUS
 
-  if [ "$STATUS" -eq "$EXPECTED_RET" ]; then
-    echo "SUCCESS"
-  else
+  if [ "$STATUS" -ne "$EXPECTED_RET" ]; then
     echo "FAIL"
     echo "Ouch! The installation failed."
     echo "COMBINED STDOUT/STDERR OUTPUT OF FAILED COMMAND:"
@@ -36,9 +33,13 @@ function DO () {
   fi
 }
 
+HAS_SYSTEMD() {
+  command -v systemctl >/dev/null 2>&1 && [ "$(ps -p 1 -o comm=)" = "systemd" ]
+}
+
+
 LOGFILE="./install.log"
 ASSUMEYES=0
-DISABLEAUTOSTART=0
 
 DISTRO="unknown"
 DISTRO_CODENAME="unknown"
@@ -47,7 +48,6 @@ if which lsb_release >/dev/null; then
   DISTRO_CODENAME="$(lsb_release -cs)"
 fi
 
-# Report last executed command and its status
 TMPDIR=$(mktemp -d)
 echo '' > $TMPDIR/last_command
 echo '' > $TMPDIR/last_status
@@ -61,16 +61,18 @@ function last_status () {
 }
 
 function prompt_for_continuation () {
-  if [ $ASSUMEYES -eq 0 ]; then
-    while true; do
-      read -p "Do you wish to continue anyway? [y|n]?" yn
-      case $yn in
-        [Yy]*) break;;
-        [Nn]*) exit 1;;
-        *) echo $yn; echo "Please answer y/n.";  continue;;
-      esac
-    done
+  if [ $ASSUMEYES -eq 1 ]; then
+    return 0
   fi
+
+  while true; do
+    read -p "Do you wish to continue anyway? [y|n]?" yn
+    case $yn in
+      [Yy]*) break;;
+      [Nn]*) exit 1;;
+      *) echo $yn; echo "Please answer y/n.";  continue;;
+    esac
+  done
 }
 
 usage() {
@@ -85,8 +87,6 @@ usage() {
 while getopts "ynv:h" opt; do
   case $opt in
     y) ASSUMEYES=1
-    ;;
-    n) DISABLEAUTOSTART=1
     ;;
     v) VERSION="$OPTARG"
     ;;
@@ -106,15 +106,11 @@ echo "Detected OS: $DISTRO - $DISTRO_CODENAME"
 
 last_command "check_distro"
 
-if echo "$DISTRO_CODENAME" | grep -vqE "^(bookworm)|(noble)$" ; then
-  echo "WARNING: The recommended up-to-date platforms are Debian 12 (Bookworm) and Ubuntu 24.04 (Noble)"
+if echo "$DISTRO_CODENAME" | grep -vqE "^(trixie)|(noble)$" ; then
+  echo "WARNING: The recommended up-to-date platforms are Debian 13 (Trixie) and Ubuntu 24.04 (Noble)"
   echo "WARNING: Use one of these platforms to ensure best stability and security"
 
   prompt_for_continuation
-fi
-
-if [ -f /etc/systemd/system/globaleaks.service ]; then
-  DO "systemctl stop globaleaks"
 fi
 
 # align apt-get cache to up-to-date state on configured repositories
@@ -124,55 +120,49 @@ if [ ! -f /etc/timezone ]; then
   echo "Etc/UTC" > /etc/timezone
 fi
 
-apt-get install -y tzdata
-dpkg-reconfigure -f noninteractive tzdata
+DO "apt-get install -y tzdata"
+DO "dpkg-reconfigure -f noninteractive tzdata"
+DO "apt-get -y install gnupg net-tools wget"
 
-DO "apt-get -y install gnupg net-tools software-properties-common wget"
+if [[ "$DISTRO_CODENAME" != "trixie" ]]; then
+  DO "apt-get -y install software-properties-common"
+fi
 
 # The supported platforms are experimentally more than only Ubuntu as
 # publicly communicated to users.
 #
 # Depending on the intention of the user to proceed anyhow installing on
 # a not supported distro we using the experimental package if it exists
-# or bookworm as fallback.
-if echo "$DISTRO_CODENAME" | grep -vqE "^(bionic|bookworm|bullseye|buster|focal|jammy|noble)$"; then
-  # In case of unsupported platforms we fallback on bookworm
-  echo "No packages available for the current distribution; the install script will use the bookworm repository."
+# or trixie as fallback.
+if echo "$DISTRO_CODENAME" | grep -vqE "^(bionic|bookworm|bullseye|buster|focal|jammy|noble|trixie)$"; then
+  # In case of unsupported platforms we fallback on trixie
+  echo "No packages available for the current distribution; the install script will use the trixie repository."
   DISTRO="Debian"
-  DISTRO_CODENAME="bookworm"
+  DISTRO_CODENAME="trixie"
 fi
 
-echo "Adding GlobaLeaks PGP key to trusted APT keys"
-wget -qO- https://deb.globaleaks.org/globaleaks.asc | gpg --dearmor > /etc/apt/trusted.gpg.d/globaleaks.gpg
-
-echo "Updating GlobaLeaks apt source.list in /etc/apt/sources.list.d/globaleaks.list ..."
-echo "deb [signed-by=/etc/apt/trusted.gpg.d/globaleaks.gpg] http://deb.globaleaks.org $DISTRO_CODENAME/" > /etc/apt/sources.list.d/globaleaks.list
-
-if [ $DISABLEAUTOSTART -eq 1 ]; then
-  systemctl mask globaleaks
-fi
-
-if [ -d /globaleaks/deb ]; then
-  DO "apt-get -y update"
-  DO "apt-get -y install dpkg-dev"
-  echo "Installing from locally provided debian package"
-  cd /globaleaks/deb/ && dpkg-scanpackages . /dev/null | gzip -c -9 > /globaleaks/deb/Packages.gz
-  if [ ! -f /etc/apt/sources.list.d/globaleaks.local.list ]; then
-    echo "deb file:///globaleaks/deb/ /" >> /etc/apt/sources.list.d/globaleaks.local.list
-  fi
-  DO "apt -o Acquire::AllowInsecureRepositories=true -o Acquire::AllowDowngradeToInsecureRepositories=true update"
-  DO "apt-get -y --allow-unauthenticated install globaleaks"
-  DO "/etc/init.d/globaleaks restart"
+if [ -f /tmp/globaleaks-setup-files/globaleaks.deb ]; then
+  dpkg -i /tmp/globaleaks-setup-files/globaleaks.deb || apt --fix-broken install -y
 else
+  echo "Adding GlobaLeaks PGP key to trusted APT keys"
+  wget -qO- https://deb.globaleaks.org/globaleaks.asc | gpg --dearmor > /etc/apt/trusted.gpg.d/globaleaks.gpg
+
+  echo "Updating GlobaLeaks apt source.list in /etc/apt/sources.list.d/globaleaks.list ..."
+  echo "deb [signed-by=/etc/apt/trusted.gpg.d/globaleaks.gpg] http://deb.globaleaks.org $DISTRO_CODENAME/" > /etc/apt/sources.list.d/globaleaks.list
+
   DO "apt-get update -y"
+
   if [[ $VERSION ]]; then
-    DO "apt-get install globaleaks=$VERSION -y"
+    DO "apt-get install -y globaleaks=$VERSION"
   else
-    DO "apt-get install globaleaks -y"
+    DO "apt-get install -y globaleaks"
   fi
 fi
 
-if [ $DISABLEAUTOSTART -eq 1 ]; then
+echo "GlobaLeaks installation completed successfully."
+
+if ! HAS_SYSTEMD; then
+  echo "Skipping service start check (systemd not available or running in Docker)"
   exit 0
 fi
 
@@ -188,7 +178,7 @@ do
   X=$(netstat -tln | grep ":8443")
   if [ $? -eq 0 ]; then
     #SUCCESS
-    echo "GlobaLeaks setup completed."
+    echo "GlobaLeaks startup completed."
     TOR=$(gl-admin getvar onionservice)
     echo "To proceed with the configuration you could now access the platform wizard at:"
     echo "+ http://$TOR (via the Tor Browser)"

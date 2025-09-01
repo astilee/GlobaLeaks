@@ -26,6 +26,7 @@ from globaleaks.utils.log import log, openLogFile
 from globaleaks.utils.mail import sendmail
 from globaleaks.utils.objectdict import ObjectDict
 from globaleaks.utils.pgp import PGPContext
+from globaleaks.utils.ratelimit import RateLimit
 from globaleaks.utils.singleton import Singleton
 from globaleaks.utils.sni import SNIMap
 from globaleaks.utils.sock import reserve_tcp_socket
@@ -33,7 +34,7 @@ from globaleaks.utils.tempdict import TempDict
 from globaleaks.utils.templating import Templating
 from globaleaks.utils.token import TokenList
 from globaleaks.utils.tor_exit_set import TorExitSet
-from globaleaks.utils.utility import datetime_now, datetime_null
+from globaleaks.utils.utility import datetime_now
 
 
 silenced_exceptions = (
@@ -53,43 +54,12 @@ silenced_exceptions = (
 )
 
 
-class RateLimitingStatus(object):
-    def __init__(self):
-        self.counter = 0
-
-
-class RateLimitingDict(TempDict):
-    def check(self, key, limit):
-        if key not in self:
-            self[key] = RateLimitingStatus()
-
-        status = self[key]
-
-        if status.counter >= limit:
-            raise errors.ForbiddenOperation()
-
-        status.counter += 1
-
-
-RateLimitingTable = RateLimitingDict(3600)
-
-
 class TenantState(object):
     def __init__(self):
         self.cache = ObjectDict()
 
         # An ACME challenge will have 5 minutes to resolve
         self.acme_tmp_chall_dict = TempDict(300)
-
-        self.reset_events()
-
-    def reset_events(self):
-        from globaleaks.anomaly import Alarm
-
-        self.RecentEventQ = []
-        self.EventQ = []
-        self.AnomaliesQ = []
-        self.Alarm = Alarm()
 
 
 class StateClass(ObjectDict, metaclass=Singleton):
@@ -112,7 +82,6 @@ class StateClass(ObjectDict, metaclass=Singleton):
 
         self.exceptions = {}
         self.exceptions_email_count = 0
-        self.stats_collection_start_time = datetime_now()
 
         self.accept_submissions = True
 
@@ -129,7 +98,7 @@ class StateClass(ObjectDict, metaclass=Singleton):
         self.TempKeys = TempDict(3600 * 72)
         self.TwoFactorTokens = TempDict(120)
         self.TempUploadFiles = TempDict(3600)
-        self.RateLimitingTable = RateLimitingDict(3600)
+        self.RateLimit = RateLimit(10000)
 
         self.shutdown = False
 
@@ -226,12 +195,6 @@ class StateClass(ObjectDict, metaclass=Singleton):
     def reset_minutely(self):
         self.exceptions.clear()
         self.exceptions_email_count = 0
-
-    def reset_hourly(self):
-        for tid in self.tenants:
-            self.tenants[tid].reset_events()
-
-        self.stats_collection_start_time = datetime_now()
 
     def sendmail(self, tid, to_address, subject, body):
         if self.settings.disable_notifications:

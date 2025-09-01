@@ -1,4 +1,3 @@
-from twisted.internet.address import IPv4Address
 from twisted.internet.defer import inlineCallbacks
 
 from globaleaks.handlers import auth
@@ -6,7 +5,6 @@ from globaleaks.handlers.user import UserInstance
 from globaleaks.handlers.whistleblower.wbtip import WBTipInstance
 from globaleaks.rest import errors
 from globaleaks.sessions import Sessions
-from globaleaks.settings import Settings
 from globaleaks.state import State
 from globaleaks.tests import helpers
 
@@ -175,21 +173,6 @@ class TestAuthentication(helpers.TestHandlerWithPopulatedDB):
         })
 
         yield self.assertFailure(handler.post(), errors.InvalidAuthentication)
-
-    @inlineCallbacks
-    def test_failed_login_counter(self):
-        failed_login = 5
-        for _ in range(0, failed_login):
-            handler = self.request({
-                'tid': 1,
-                'username': 'admin',
-                'password': 'INVALIDPASSWORD',
-                'authcode': '',
-            })
-
-            yield self.assertFailure(handler.post(), errors.InvalidAuthentication)
-
-        self.assertEqual(Settings.failed_login_attempts[1], failed_login)
 
     @inlineCallbacks
     def test_single_session_per_user(self):

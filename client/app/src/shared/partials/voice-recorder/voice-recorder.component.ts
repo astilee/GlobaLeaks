@@ -31,9 +31,9 @@ export class VoiceRecorderComponent implements OnInit {
   @Input() entry: any;
   _fakeModel: string;
   fileInput: string;
-  seconds: number = 0;
+  seconds = 0;
   activeButton: string | null = null;
-  isRecording: boolean = false;
+  isRecording = false;
   audioPlayer: boolean | string | null = null;
   mediaRecorder: MediaRecorder | null = null;
   recording_blob: any = null;
@@ -62,9 +62,9 @@ export class VoiceRecorderComponent implements OnInit {
   }
 
   triggerRecording(fileId: string): void {
-    this.activeButton = "record";
-
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      this.activeButton = "record";
+
       navigator.mediaDevices.getUserMedia({audio: true})
         .then((stream) => {
           this.startRecording(fileId, stream).then();
@@ -292,7 +292,7 @@ export class VoiceRecorderComponent implements OnInit {
       modulatorBandFilter.frequency.value = vocoderBands[i].freq;
       modulatorBandFilter.Q.value = vocoderBands[i].Q;
       const rectifier: WaveShaperNode = audioContext.createWaveShaper();
-      rectifier.curve = this.generateRectifierCurve();
+      rectifier.curve = this.generateRectifierCurve() as Float32Array<ArrayBuffer>;
       const postRectifierBandFilter: BiquadFilterNode = audioContext.createBiquadFilter();
       postRectifierBandFilter.type = 'lowpass';
       postRectifierBandFilter.frequency.value = 20;

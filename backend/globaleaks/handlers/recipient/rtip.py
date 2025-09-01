@@ -5,7 +5,7 @@ import os
 import re
 import time
 
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from nacl.encoding import Base64Encoder
 from twisted.internet.threads import deferToThread
@@ -636,7 +636,6 @@ def register_rfile_on_db(session, tid, user_id, itip_id, uploaded_file):
                         .filter(models.InternalTip.id == itip_id,
                                 models.ReceiverTip.receiver_id == user_id,
                                 models.ReceiverTip.internaltip_id == models.InternalTip.id,
-                                models.InternalTip.status != 'closed',
                                 models.InternalTip.tid == tid).one()
 
     rtip.last_access = datetime_now()

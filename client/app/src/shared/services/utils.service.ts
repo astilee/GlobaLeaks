@@ -324,7 +324,7 @@ export class UtilsService {
     return date.getTime() >= 32503680000000;
   }
 
-  deleteFromList(list:  { [key: string]: Field}[], elem: { [key: string]: Field}) {
+  deleteFromList(list:  Record<string, Field>[], elem: Record<string, Field>) {
     const idx = list.indexOf(elem);
     if (idx !== -1) {
       list.splice(idx, 1);
@@ -442,7 +442,7 @@ export class UtilsService {
 
   getMinPostponeDate(currentExpirationDate: string) {
     const currDate = new Date(currentExpirationDate);
-    var minDate = new Date();
+    const minDate = new Date();
     minDate.setDate(minDate.getDate() + 91);
     return currDate > minDate ? minDate : currDate;
   }
@@ -462,7 +462,7 @@ export class UtilsService {
     return this.httpService.requestAdminL10NResource(lang);
   }
 
-  updateAdminL10NResource(data: {[key: string]: string}, lang: string) {
+  updateAdminL10NResource(data: Record<string, string>, lang: string) {
     return this.httpService.requestUpdateAdminL10NResource(data, lang);
   }
 
@@ -708,17 +708,35 @@ export class UtilsService {
       };
     });
   }
-  generateCSV(dataString: string, fileName: string, headerx: string[]): void {
-    const data = JSON.parse(dataString);
 
+  generateCSV(fileName: string, data: Record<string, any>[], headerx?: string[]): void {
     if (!Array.isArray(data)) {
       console.error('Invalid data format');
       return;
     }
 
-    const headers = Object.keys(data[0] || {});
-    const newHeader = headerx.join(',');
-    const csvContent = `${newHeader ? `${newHeader}\n` : ""}${data.map(row => headers.map(header => row[header]).join(',')).join('\n')}`;
+    const headers = headerx ?? Object.keys(data[0] || {});
+    const headerLine = headers.join(',');
+
+    const csvRows = data.map(row =>
+      headers.map(header => {
+        let cell = row[header];
+
+        // If it's an object or array, stringify it
+        if (typeof cell === 'object' && cell !== null) {
+          cell = JSON.stringify(cell);
+        }
+
+        // Escape commas, quotes, and newlines
+        if (typeof cell === 'string' && (cell.includes(',') || cell.includes('"') || cell.includes('\n'))) {
+          return `"${cell.replace(/"/g, '""')}"`;
+        }
+
+        return cell ?? ''; // Fallback to empty string
+      }).join(',')
+    );
+
+    const csvContent = `${headerLine}\n${csvRows.join('\n')}`;
 
     if (!csvContent.trim()) {
       console.warn('No data to export');

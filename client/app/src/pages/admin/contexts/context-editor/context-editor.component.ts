@@ -37,9 +37,9 @@ export class ContextEditorComponent implements OnInit {
   @Input() index: number;
   @Input() editContext: NgForm;
   @Output() dataToParent = new EventEmitter<string>();
-  editing: boolean = false;
-  showAdvancedSettings: boolean = false;
-  showSelect: boolean = false;
+  editing = false;
+  showAdvancedSettings = false;
+  showSelect = false;
   questionnairesData: questionnaireResolverModel[] = [];
   usersData: User[] = [];
   nodeData: nodeResolverModel;
