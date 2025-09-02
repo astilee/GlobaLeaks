@@ -33,21 +33,21 @@ export class AuditLogTab1Component implements OnInit {
   pageSize = 20;
   auditLog: auditlogResolverModel[] = [];
   users: User[] = [];
-  
+
   searchTerm = '';
   sortField: string = '';
   sortDirection: 'asc' | 'desc' = 'asc';
-  
+
   // Date filtering properties
   dateFilter: [number, number] | null = null;
   dateModel: { fromDate: NgbDate | null; toDate: NgbDate | null; } | null = null;
   datePicker: boolean = false;
-  
+
   // Type filtering properties
   dropdownTypeModel: { id: number; label: string; color?: string; }[] = [];
   dropdownTypeData: { id: number; label: string; color?: string; }[] = [];
   typeDropdownVisible: boolean = false;
-  
+
   // Dropdown settings
   dropdownSettings: IDropdownSettings = {
     idField: "id",
@@ -80,7 +80,7 @@ export class AuditLogTab1Component implements OnInit {
   initializeTypeFilterData() {
     this.dropdownTypeData = [
       { id: 1, label: 'Access', color: 'info' },
-      { id: 2, label: 'Update', color: 'warning' }, 
+      { id: 2, label: 'Update', color: 'warning' },
       { id: 3, label: 'Delete', color: 'danger' }
     ];
   }
@@ -89,13 +89,13 @@ export class AuditLogTab1Component implements OnInit {
     if (!userId) {
       return this.translateService.instant('Whistleblower');
     }
-    
+
     const user = this.users.find(u => u.id === userId);
     if (user) {
       // Return name with username in parentheses for better identification
       return user.name ? `${user.name} (${user.username})` : user.username;
     }
-    
+
     // Return the ID if user not found (might be deleted user)
     return userId;
   }
@@ -132,21 +132,21 @@ export class AuditLogTab1Component implements OnInit {
 
   getAuditLogCategory(type: string): string {
     // Categorize audit log types into Access, Update, Delete
-    
+
     // Access category: authentication and data access
-    if (type === 'login' || type === 'whistleblower_login' || 
+    if (type === 'login' || type === 'whistleblower_login' ||
         type === 'logout' || type === 'whistleblower_logout' ||
         type === 'login_failure' || type === 'whistleblower_login_failure' ||
-        type === 'access_report' || type === 'grant_access' || type === 'revoke_access' || 
+        type === 'access_report' || type === 'grant_access' || type === 'revoke_access' ||
         type === 'transfer_access' || type === 'whistleblower_new_report') {
       return 'Access';
     }
-    
+
     // Delete category: destructive actions
     if (type === 'delete_report' || type === 'delete_user' || type === 'reset_reports') {
       return 'Delete';
     }
-    
+
     // Update category: modifications and administrative actions (default)
     return 'Update';
   }
@@ -235,7 +235,7 @@ export class AuditLogTab1Component implements OnInit {
 
   getTypeDotColor(type: string): string {
     const category = this.getAuditLogCategory(type);
-    
+
     switch(category) {
       case 'Access':
         return 'text-info';
@@ -258,7 +258,7 @@ export class AuditLogTab1Component implements OnInit {
       Object: item.object_id || '',
       Data: item.data ? JSON.stringify(item.data) : ''
     }));
-    
+
     this.utilsService.generateCSV(JSON.stringify(exportData), 'auditlog', ["Date", "Type", "User", "User ID", "Object", "Data"]);
   }
 }
