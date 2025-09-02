@@ -130,24 +130,43 @@ export class AuditLogTab1Component implements OnInit {
     return model && model.length > 0;
   }
 
-  getAuditLogCategory(type: string): string {
-    // Categorize audit log types into Access, Update, Delete
+function getAuditLogCategory(type: string): string {
+  const accessTypes = [
+      'access_report',
+      'login',
+      'login_failure',
+      'logout',
+      'whistleblower_login',
+      'whistleblower_login_failure',
+      'whistleblower_logout',
+    ];
 
-    // Access category: authentication and data access
-    if (type === 'login' || type === 'whistleblower_login' ||
-        type === 'logout' || type === 'whistleblower_logout' ||
-        type === 'login_failure' || type === 'whistleblower_login_failure' ||
-        type === 'access_report' || type === 'grant_access' || type === 'revoke_access' ||
-        type === 'transfer_access' || type === 'whistleblower_new_report') {
+    const deleteTypes = [
+      'delete_report',
+      'delete_user',
+      'reset_reports',
+    ];
+
+    const updateTypes = [
+      'grant_access',
+      'revoke_access',
+      'transfer_access',
+      'whistleblower_new_report',
+    ];
+
+    if (accessTypes.includes(type)) {
       return 'Access';
     }
 
-    // Delete category: destructive actions
-    if (type === 'delete_report' || type === 'delete_user' || type === 'reset_reports') {
+    if (deleteTypes.includes(type)) {
       return 'Delete';
     }
 
-    // Update category: modifications and administrative actions (default)
+    if (updateTypes.includes(type)) {
+      return 'Update';
+    }
+
+    // default
     return 'Update';
   }
 
