@@ -14,14 +14,13 @@ import {FormsModule} from "@angular/forms";
 import {UserEditorComponent} from "../user-editor/user-editor.component";
 import {TranslatorPipe} from "@app/shared/pipes/translate";
 import {OrderByPipe} from "@app/shared/pipes/order-by.pipe";
-import {FilterPipe} from "@app/shared/pipes/filter.pipe";
 import {switchMap} from 'rxjs/operators';
 
 @Component({
     selector: "src-users-tab1",
     templateUrl: "./users-tab1.component.html",
     standalone: true,
-    imports: [FormsModule, NgbTooltipModule, NgClass, UserEditorComponent, TranslatorPipe, OrderByPipe, FilterPipe]
+    imports: [FormsModule, NgbTooltipModule, NgClass, UserEditorComponent, TranslatorPipe, OrderByPipe]
 })
 export class UsersTab1Component implements OnInit {
   private httpService = inject(HttpService);
