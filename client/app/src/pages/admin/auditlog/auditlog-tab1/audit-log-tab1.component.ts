@@ -129,46 +129,6 @@ export class AuditLogTab1Component implements OnInit {
     return model && model.length > 0;
   }
 
-function getAuditLogCategory(type: string): string {
-  const accessTypes = [
-      'access_report',
-      'login',
-      'login_failure',
-      'logout',
-      'whistleblower_login',
-      'whistleblower_login_failure',
-      'whistleblower_logout',
-    ];
-
-    const deleteTypes = [
-      'delete_report',
-      'delete_user',
-      'reset_reports',
-    ];
-
-    const updateTypes = [
-      'grant_access',
-      'revoke_access',
-      'transfer_access',
-      'whistleblower_new_report',
-    ];
-
-    if (accessTypes.includes(type)) {
-      return 'Access';
-    }
-
-    if (deleteTypes.includes(type)) {
-      return 'Delete';
-    }
-
-    if (updateTypes.includes(type)) {
-      return 'Update';
-    }
-
-    // default
-    return 'Update';
-  }
-
   toggleSort(field: string) {
     if (this.sortField === field) {
       this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
@@ -207,7 +167,7 @@ function getAuditLogCategory(type: string): string {
     if (this.dropdownTypeModel && this.dropdownTypeModel.length > 0) {
       const selectedCategories = this.dropdownTypeModel.map(item => item.label);
       filtered = filtered.filter(item => {
-        const category = this.getAuditLogCategory(item.type);
+        const category = this.utilsService.getAuditLogCategory(item.type);
         return selectedCategories.includes(category);
       });
     }
@@ -252,7 +212,7 @@ function getAuditLogCategory(type: string): string {
   }
 
   getTypeDotColor(type: string): string {
-    const category = this.getAuditLogCategory(type);
+    const category = this.utilsService.getAuditLogCategory(type);
 
     switch(category) {
       case 'Access':
@@ -277,6 +237,6 @@ function getAuditLogCategory(type: string): string {
       Data: item.data ? JSON.stringify(item.data) : ''
     }));
 
-    this.utilsService.generateCSV(JSON.stringify(exportData), 'auditlog', ["Date", "Type", "User", "User ID", "Object", "Data"]);
+    this.utilsService.generateCSV('auditlog', exportData);
   }
 }
