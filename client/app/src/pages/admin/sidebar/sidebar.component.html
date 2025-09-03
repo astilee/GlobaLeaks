@@ -33,7 +33,6 @@
   </a>
 }
 @if (nodeResolver.dataModel.root_tenant || authenticationService.session.properties.management_session && !nodeResolver.dataModel.is_profile) {
->>>>>>> origin/stable
   <a routerLink="/admin/network" routerLinkActive="active" id="admin_network" [attr.aria-current]="isActive('/admin/network') ? 'page' : 'false'">
     <i class="fas fa-network-wired"></i>
     <span>{{'Network'|translate}}</span>
