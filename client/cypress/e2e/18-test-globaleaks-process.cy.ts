@@ -43,6 +43,11 @@ describe("globaleaks process", function () {
         cy.get("#assignLabelButton").click();
 
         cy.get("#tip-action-star").click();
+        
+        // Test toolbar dropdowns are present
+        cy.get('#exportDropdown').should('be.visible');
+        cy.get('#actionsDropdown').should('be.visible');
+        cy.get('button[ngbTooltip="Logs"]').should('be.visible');
       });
 
       cy.waitForTipImageUpload();
@@ -52,6 +57,73 @@ describe("globaleaks process", function () {
       cy.get("[name='newCommentContent']").type(comment);
       cy.get("#comment-action-send").click();
       cy.get('#comment-0').should('contain', comment);
+
+      // Test audit log functionality
+      cy.get('button[ngbTooltip="Logs"]').should('be.visible').click();
+      cy.get('.modal-title').should('contain', 'Audit log');
+      
+      // Check if audit log table exists and has headers
+      cy.get('.table thead th').should('contain', 'User');
+      cy.get('.table thead th').should('contain', 'Type');
+      cy.get('.table thead th').should('contain', 'Date');
+      
+      // Check if audit log entries are displayed (if any exist)
+      cy.get('.table tbody tr').then(($rows) => {
+        if ($rows.length > 1) { // More than just the "No entries" row
+          // Test sorting functionality
+          cy.get('th.sortable').contains('Date').click();
+          cy.get('th.sortable i.fa-sort-up, th.sortable i.fa-sort-down').should('exist');
+          
+          // Test type filter dropdown
+          cy.get('i.fa-filter').click();
+          cy.get('ng-multiselect-dropdown').should('be.visible');
+          cy.get('i.fa-filter').click(); // Close filter
+          
+          // Test search functionality
+          cy.get('input[placeholder="Search"]').type('access');
+          
+          // Test export with filters applied
+          cy.get('button').contains('Export').should('be.visible').click();
+          
+          cy.get('input[placeholder="Search"]').clear();
+        }
+      });
+      
+      // Test pagination (if enough entries exist)
+      cy.get('ngb-pagination').then(($pagination) => {
+        if ($pagination.length > 0) {
+          cy.get('ngb-pagination button').should('exist');
+        }
+      });
+      
+      // Test export functionality in audit log modal
+      cy.get('button').contains('Export').should('be.visible').click();
+      
+      // Close audit log modal
+      cy.get('.modal-footer button').contains('Close').click();
+      cy.get('.modal-title').should('not.exist');
+
+      // Test export dropdown functionality
+      cy.get('#exportDropdown').click();
+      cy.get('.dropdown-menu').should('be.visible');
+      cy.get('.dropdown-item').contains('Download').should('be.visible');
+      cy.get('.dropdown-item').contains('Print').should('be.visible');
+      cy.get('body').click(); // Close dropdown
+
+      // Test actions dropdown functionality  
+      cy.get('#actionsDropdown').click();
+      cy.get('.dropdown-menu').should('be.visible');
+      cy.get('body').click(); // Close dropdown
+
+      // Test users dropdown functionality (if visible based on permissions)
+      cy.get('body').then(($body) => {
+        if ($body.find('#usersDropdown').length > 0) {
+          cy.get('#usersDropdown').click();
+          cy.get('.dropdown-menu').should('be.visible');
+          cy.get('body').click(); // Close dropdown
+        }
+      });
+
       cy.visit("/#/recipient/reports");
       cy.takeScreenshot("recipient/reports");
 
@@ -89,6 +161,33 @@ describe("globaleaks process", function () {
         cy.get('[data-cy="progress-bar-complete"]').should("be.visible");
       });
 
+      // Test whistleblower audit log functionality (if available)
+      cy.get('body').then(($body) => {
+        // Check if Logs button exists for whistleblowers
+        if ($body.find('button[ngbTooltip="Logs"]').length > 0) {
+          cy.get('button[ngbTooltip="Logs"]').should('be.visible').click();
+          cy.get('.modal-title').should('contain', 'Audit log');
+          
+          // Check audit log table structure
+          cy.get('.table thead th').should('contain', 'User');
+          cy.get('.table thead th').should('contain', 'Type');
+          cy.get('.table thead th').should('contain', 'Date');
+          
+          // Test basic functionality
+          cy.get('.table tbody tr').then(($rows) => {
+            if ($rows.length > 1) {
+              // Test search if entries exist
+              cy.get('input[placeholder="Search"]').type('upload');
+              cy.get('input[placeholder="Search"]').clear();
+            }
+          });
+          
+          // Close modal
+          cy.get('.modal-footer button').contains('Close').click();
+          cy.get('.modal-title').should('not.exist');
+        }
+      });
+
       cy.logout();
     });
 
@@ -97,13 +196,26 @@ describe("globaleaks process", function () {
       cy.visit("/#/recipient/reports");
 
       cy.get("#tip-0").first().click();
-      cy.get('#tip-action-export').invoke('click');
+      
+      // Test export dropdown functionality
+      cy.get('#exportDropdown').should('be.visible').click();
+      cy.get('.dropdown-menu').should('be.visible');
+      cy.get('.dropdown-item').contains('Download').should('be.visible').click();
+      
       cy.get(".TipInfoID").first().invoke("text").then(t => {
         expect(t.trim()).to.be.a("string");
       });
+      
+      // Test notification toggle buttons
       cy.get('[id="tip-action-silence"]').should('be.visible').click();
       cy.get('#tip-action-notify').should('be.visible').click();
       cy.get('#tip-action-silence').should('be.visible').should('be.visible');
+      
+      // Test actions dropdown functionality
+      cy.get('#actionsDropdown').should('be.visible').click();
+      cy.get('.dropdown-menu').should('be.visible');
+      cy.get('body').click(); // Close dropdown by clicking outside
+      
       cy.takeScreenshot("recipient/report");
 
       cy.logout();
@@ -148,8 +260,7 @@ describe("globaleaks process", function () {
     cy.get("select").first().select(1);
     cy.get("#SubmitButton").should("be.visible");
     cy.get("#SubmitButton").click();
-    cy.get("#ViewReportButton").should("be.visible");
-    cy.get("#ViewReportButton").click();
+    cy.get('.mt-md-3.clearfix').find('#ReceiptButton').click();
     cy.get("#open_additional_questionnaire").click();
     cy.get("input[type='text']").eq(1).should("be.visible").type("single line text input");
     cy.get("#SubmitButton").click();
