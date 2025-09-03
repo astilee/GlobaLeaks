@@ -70,7 +70,7 @@ export class TipAuditLogComponent implements OnInit {
   dropdownTypeModel: { id: number; label: string; color?: string; }[] = [];
   dropdownTypeData: { id: number; label: string; color?: string; }[] = [];
   typeDropdownVisible: boolean = false;
-  
+
   // Dropdown settings
   dropdownSettings: IDropdownSettings = {
     idField: "id",
@@ -95,18 +95,18 @@ export class TipAuditLogComponent implements OnInit {
     if (!userId) {
       return this.translateService.instant('Whistleblower');
     }
-    
+
     // Defensive check for users array
     if (!this.usersData || !Array.isArray(this.usersData)) {
       return userId; // Fallback to ID if no users data available
     }
-    
+
     const user = this.usersData.find(u => u && u.id === userId);
     if (user) {
       // Return name with username in parentheses for better identification
       return user.name ? `${user.name} (${user.username})` : user.username;
     }
-    
+
     // Return the ID if user not found (might be deleted user)
     return userId;
   }
@@ -118,7 +118,7 @@ export class TipAuditLogComponent implements OnInit {
   initializeTypeFilterData() {
     this.dropdownTypeData = [
       { id: 1, label: 'Access', color: 'info' },
-      { id: 2, label: 'Update', color: 'warning' }, 
+      { id: 2, label: 'Update', color: 'warning' },
       { id: 3, label: 'Delete', color: 'danger' }
     ];
   }
@@ -126,7 +126,7 @@ export class TipAuditLogComponent implements OnInit {
   loadAuditLogData() {
     // Determine which API endpoint to use based on user role
     const userRole = this.authenticationService.session.role;
-    
+
     if (userRole === 'receiver' && this.tipId) {
       // Use recipient audit log API
       this.httpService.requestRecipientTipAuditLogResource(this.tipId).subscribe({
@@ -166,7 +166,7 @@ export class TipAuditLogComponent implements OnInit {
         data: log.data
       };
     });
-    
+
     this.createDisplayedEntries();
   }
 
@@ -177,7 +177,7 @@ export class TipAuditLogComponent implements OnInit {
     // Apply search filter to raw data
     if (this.searchTerm.trim()) {
       const searchLower = this.searchTerm.toLowerCase();
-      preFiltered = preFiltered.filter(entry => 
+      preFiltered = preFiltered.filter(entry =>
         entry.user.toLowerCase().includes(searchLower) ||
         entry.action.toLowerCase().includes(searchLower) ||
         entry.type.toLowerCase().includes(searchLower)
@@ -203,7 +203,7 @@ export class TipAuditLogComponent implements OnInit {
         // Create a key based on user and day (YYYY-MM-DD format)
         const dayKey = entry.timestamp.toISOString().split('T')[0];
         const groupKey = `${entry.user}|${dayKey}`;
-        
+
         if (!accessReportGroups[groupKey]) {
           accessReportGroups[groupKey] = [];
         }
@@ -220,7 +220,7 @@ export class TipAuditLogComponent implements OnInit {
     // Second pass: create grouped entries for access_report actions
     Object.keys(accessReportGroups).forEach(groupKey => {
       const groupEntries = accessReportGroups[groupKey];
-      
+
       if (groupEntries.length === 1) {
         // Single entry - no need to group
         grouped.push({
@@ -229,10 +229,10 @@ export class TipAuditLogComponent implements OnInit {
         });
       } else {
         // Multiple entries - create a group
-        const latestEntry = groupEntries.reduce((latest, current) => 
+        const latestEntry = groupEntries.reduce((latest, current) =>
           current.timestamp > latest.timestamp ? current : latest
         );
-        
+
         grouped.push({
           ...latestEntry,
           id: `group_${groupKey}`,
@@ -257,7 +257,7 @@ export class TipAuditLogComponent implements OnInit {
       case 'export_report':
       case 'scheduled_backup':
         return 'Access';
-      
+
       // Update/modification actions
       case 'update_report_status':
       case 'update_report_expiration':
@@ -268,19 +268,19 @@ export class TipAuditLogComponent implements OnInit {
       case 'mask_information':
       case 'auto_expiration_reminder':
         return 'Update';
-      
+
       // Deletion actions
       case 'revoke_access':
       case 'delete_attachment':
       case 'delete_report':
         return 'Delete';
-      
+
       // Default fallback
       default:
         // Try to infer from action name patterns
         if (auditLogType.includes('delete') || auditLogType.includes('remove') || auditLogType.includes('revoke')) {
           return 'Delete';
-        } else if (auditLogType.includes('update') || auditLogType.includes('modify') || auditLogType.includes('change') || 
+        } else if (auditLogType.includes('update') || auditLogType.includes('modify') || auditLogType.includes('change') ||
                    auditLogType.includes('add') || auditLogType.includes('grant') || auditLogType.includes('upload') ||
                    auditLogType.includes('mask') || auditLogType.includes('set')) {
           return 'Update';
@@ -334,7 +334,7 @@ export class TipAuditLogComponent implements OnInit {
       case 'access':
         return 'text-info';  // Blue
       case 'delete':
-        return 'text-danger'; // Red  
+        return 'text-danger'; // Red
       case 'update':
         return 'text-warning'; // Yellow
       default:
@@ -398,10 +398,10 @@ export class TipAuditLogComponent implements OnInit {
   exportTipAuditLog() {
     // Get the filtered data for export
     const filteredData = this.getFilteredData();
-    
+
     // Prepare filter metadata
     const filterInfo = this.getFilterMetadata();
-    
+
     // Transform data to include all necessary information for export
     const exportData = filteredData.map(item => ({
       Date: new Date(item.timestamp).toLocaleString(),
@@ -414,7 +414,7 @@ export class TipAuditLogComponent implements OnInit {
     // Create filename with filter information
     const timestamp = new Date().toISOString().slice(0, 19).replace(/[:-]/g, '');
     let filename = `tip_audit_log_${this.tipId}_${timestamp}`;
-    
+
     if (filterInfo.hasFilters) {
       filename += '_filtered';
     }
@@ -440,7 +440,7 @@ export class TipAuditLogComponent implements OnInit {
   private getFilterMetadata() {
     const hasSearchFilter = this.searchTerm.trim().length > 0;
     const hasTypeFilter = this.dropdownTypeModel && this.dropdownTypeModel.length > 0;
-    
+
     let typeFilters = 'All';
     if (hasTypeFilter) {
       typeFilters = this.dropdownTypeModel.map(item => item.label).join(', ');
@@ -458,4 +458,4 @@ export class TipAuditLogComponent implements OnInit {
   cancel() {
     this.activeModal.dismiss();
   }
-} 
+}

@@ -43,7 +43,7 @@ describe("globaleaks process", function () {
         cy.get("#assignLabelButton").click();
 
         cy.get("#tip-action-star").click();
-        
+
         // Test toolbar dropdowns are present
         cy.get('#exportDropdown').should('be.visible');
         cy.get('#actionsDropdown').should('be.visible');
@@ -61,44 +61,44 @@ describe("globaleaks process", function () {
       // Test audit log functionality
       cy.get('button[ngbTooltip="Logs"]').should('be.visible').click();
       cy.get('.modal-title').should('contain', 'Audit log');
-      
+
       // Check if audit log table exists and has headers
       cy.get('.table thead th').should('contain', 'User');
       cy.get('.table thead th').should('contain', 'Type');
       cy.get('.table thead th').should('contain', 'Date');
-      
+
       // Check if audit log entries are displayed (if any exist)
       cy.get('.table tbody tr').then(($rows) => {
         if ($rows.length > 1) { // More than just the "No entries" row
           // Test sorting functionality
           cy.get('th.sortable').contains('Date').click();
           cy.get('th.sortable i.fa-sort-up, th.sortable i.fa-sort-down').should('exist');
-          
+
           // Test type filter dropdown
           cy.get('i.fa-filter').click();
           cy.get('ng-multiselect-dropdown').should('be.visible');
           cy.get('i.fa-filter').click(); // Close filter
-          
+
           // Test search functionality
           cy.get('input[placeholder="Search"]').type('access');
-          
+
           // Test export with filters applied
           cy.get('button').contains('Export').should('be.visible').click();
-          
+
           cy.get('input[placeholder="Search"]').clear();
         }
       });
-      
+
       // Test pagination (if enough entries exist)
       cy.get('ngb-pagination').then(($pagination) => {
         if ($pagination.length > 0) {
           cy.get('ngb-pagination button').should('exist');
         }
       });
-      
+
       // Test export functionality in audit log modal
       cy.get('button').contains('Export').should('be.visible').click();
-      
+
       // Close audit log modal
       cy.get('.modal-footer button').contains('Close').click();
       cy.get('.modal-title').should('not.exist');
@@ -110,7 +110,7 @@ describe("globaleaks process", function () {
       cy.get('.dropdown-item').contains('Print').should('be.visible');
       cy.get('body').click(); // Close dropdown
 
-      // Test actions dropdown functionality  
+      // Test actions dropdown functionality
       cy.get('#actionsDropdown').click();
       cy.get('.dropdown-menu').should('be.visible');
       cy.get('body').click(); // Close dropdown
@@ -167,12 +167,12 @@ describe("globaleaks process", function () {
         if ($body.find('button[ngbTooltip="Logs"]').length > 0) {
           cy.get('button[ngbTooltip="Logs"]').should('be.visible').click();
           cy.get('.modal-title').should('contain', 'Audit log');
-          
+
           // Check audit log table structure
           cy.get('.table thead th').should('contain', 'User');
           cy.get('.table thead th').should('contain', 'Type');
           cy.get('.table thead th').should('contain', 'Date');
-          
+
           // Test basic functionality
           cy.get('.table tbody tr').then(($rows) => {
             if ($rows.length > 1) {
@@ -181,7 +181,7 @@ describe("globaleaks process", function () {
               cy.get('input[placeholder="Search"]').clear();
             }
           });
-          
+
           // Close modal
           cy.get('.modal-footer button').contains('Close').click();
           cy.get('.modal-title').should('not.exist');
@@ -196,26 +196,26 @@ describe("globaleaks process", function () {
       cy.visit("/#/recipient/reports");
 
       cy.get("#tip-0").first().click();
-      
+
       // Test export dropdown functionality
       cy.get('#exportDropdown').should('be.visible').click();
       cy.get('.dropdown-menu').should('be.visible');
       cy.get('.dropdown-item').contains('Download').should('be.visible').click();
-      
+
       cy.get(".TipInfoID").first().invoke("text").then(t => {
         expect(t.trim()).to.be.a("string");
       });
-      
+
       // Test notification toggle buttons
       cy.get('[id="tip-action-silence"]').should('be.visible').click();
       cy.get('#tip-action-notify').should('be.visible').click();
       cy.get('#tip-action-silence').should('be.visible').should('be.visible');
-      
+
       // Test actions dropdown functionality
       cy.get('#actionsDropdown').should('be.visible').click();
       cy.get('.dropdown-menu').should('be.visible');
       cy.get('body').click(); // Close dropdown by clicking outside
-      
+
       cy.takeScreenshot("recipient/report");
 
       cy.logout();

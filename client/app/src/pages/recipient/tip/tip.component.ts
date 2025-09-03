@@ -392,7 +392,7 @@ export class TipComponent implements OnInit {
       backdrop: 'static',
       keyboard: false
     });
-    
+
     modalRef.componentInstance.tipId = this.tip_id;
     modalRef.componentInstance.tipData = this.tip; // Pass the tip data containing comments with audit logs
     modalRef.componentInstance.usersData = this.tip?.receivers || []; // Pass receivers as users data
