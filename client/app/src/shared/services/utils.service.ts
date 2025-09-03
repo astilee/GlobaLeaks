@@ -49,39 +49,47 @@ export class UtilsService {
 
   supportedViewTypes = ["application/pdf", "audio/mpeg", "image/gif", "image/jpeg", "image/png", "text/csv", "text/plain", "video/mp4"];
 
-  accessList = [
-    'access_report',
-    'login',
-    'login_failure',
-    'logout',
-    'whistleblower_login',
-    'whistleblower_login_failure',
-    'whistleblower_logout',
-  ];
-
-  updateList = [
-    'grant_access',
-    'revoke_access',
-    'transfer_access',
-    'whistleblower_new_report',
-  ];
-
-  deleteList = [
-    'delete_report',
-    'delete_user',
-    'reset_reports',
-  ];
-
-  // Helper to convert a list to a dictionary
-  toDict = (list: string[]) =>
-    Object.fromEntries(list.map(item => [item, true]));
-
-  // Build categories once
-  categories: Record<string, Record<string, boolean>> = {
-    Access: this.toDict(this.accessList),
-    Update: this.toDict(this.updateList),
-    Delete: this.toDict(this.deleteList),
+  actionLists = {
+    Access: [
+      'access_report',
+      'login',
+      'login_failure',
+      'logout',
+      'whistleblower_login',
+      'whistleblower_login_failure',
+      'whistleblower_logout',
+    ],
+    Update: [
+      'change_password',
+      'create_user',
+      'enable_2fa',
+      'grant_access',
+      'send_password_reset_email',
+      'transfer_access',
+      'version_update',
+      'update_report_expiration',
+      'update_report_status',
+      'whistleblower_new_report',
+    ],
+    Delete: [
+      'delete_report',
+      'delete_user',
+      'disable_2fa',
+      'reset_reports',
+      'revoke_access',
+      'update_redaction',
+    ],
   };
+
+  auditLogCategories: Record<string, Record<string, boolean>> = {
+    Access: this.listToDict(this.actionLists['Access']),
+    Update: this.listToDict(this.actionLists['Update']),
+    Delete: this.listToDict(this.actionLists['Delete']),
+  }
+
+  listToDict(list: string[]) {
+      return Object.fromEntries(list.map(item => [item, true]));
+  }
 
   updateNode(nodeResolverModel:nodeResolverModel) {
     this.httpService.updateNodeResource(nodeResolverModel).subscribe();
@@ -145,8 +153,8 @@ export class UtilsService {
   }
 
   getAuditLogCategory(type: string): string {
-    for (const category in this.categories) {
-      if (this.categories[category][type]) {
+    for (const category in this.auditLogCategories) {
+      if (this.auditLogCategories[category][type]) {
         return category;
       }
     }
