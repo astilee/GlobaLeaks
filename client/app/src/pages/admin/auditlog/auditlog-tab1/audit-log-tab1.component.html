@@ -6,7 +6,7 @@
       <div class="input-group input-group-sm">
         <input type="text" class="form-control" placeholder="{{'Search' | translate}}"
                [(ngModel)]="searchTerm" (input)="onSearchChange()">
-        <span class="input-group-text"><i class="fa-solid fa-search"></i></span>
+        <span class="input-group-text"><i class="fas fa-search"></i></span>
       </div>
     </div>
   </div>
@@ -18,9 +18,9 @@
           <span class="sortable" (click)="toggleSort('date')">
             {{'Date'|translate}}
             @if (sortField === 'date') {
-              <i class="fa-solid" [class]="sortDirection === 'asc' ? 'fa-sort-up' : 'fa-sort-down'"></i>
+              @if (sortDirection === 'asc') { <i class="fas fa-caret-up"></i> } @else { <i class="fas fa-caret-down"></i> }
             } @else {
-              <i class="fa-solid fa-sort text-muted"></i>
+              <span class="text-muted"><i class="fas fa-sort"></i></span>
             }
             <span class="ngb-datepicker-container ms-1" (click)="$event.stopPropagation()">
               <i class="fas fa-calendar" [ngClass]="{'calendar-active': dateFilter}" (click)="datePicker=!datePicker;typeDropdownVisible=false;$event.stopPropagation();"></i>
@@ -34,12 +34,12 @@
           <span class="sortable" (click)="toggleSort('type')">
             {{'Type'|translate}}
             @if (sortField === 'type') {
-              <i class="fa-solid" [class]="sortDirection === 'asc' ? 'fa-sort-up' : 'fa-sort-down'"></i>
+              @if (sortDirection === 'asc') { <i class="fas fa-caret-up"></i> } @else { <i class="fas fa-caret-down"></i> }
             } @else {
-              <i class="fa-solid fa-sort text-muted"></i>
+              <span class="text-muted"><i class="fas fa-sort"></i></span>
             }
             <span class="dropdown-multi-select-container ms-1" (click)="$event.stopPropagation()">
-              <i class="fa-solid fa-filter" [ngClass]="{ filterSelected: checkTypeFilter(dropdownTypeModel) }" (click)="toggleTypeDropdown();$event.stopPropagation();"></i>
+              <i class="fas fa-filter" [ngClass]="{ filterSelected: checkTypeFilter(dropdownTypeModel) }" (click)="toggleTypeDropdown();$event.stopPropagation();"></i>
               <span [class.d-none]="!typeDropdownVisible" (click)="$event.stopPropagation()">
                 <ng-multiselect-dropdown [class.dropdown-visible]="typeDropdownVisible" [settings]="dropdownSettings" [data]="dropdownTypeData" [(ngModel)]="dropdownTypeModel" (ngModelChange)="onTypeFilterChange($event)"></ng-multiselect-dropdown>
               </span>
@@ -49,17 +49,17 @@
         <th class="sortable" (click)="toggleSort('user_id')">
           {{'User'|translate}}
           @if (sortField === 'user_id') {
-            <i class="fa-solid" [class]="sortDirection === 'asc' ? 'fa-sort-up' : 'fa-sort-down'"></i>
+            @if (sortDirection === 'asc') { <i class="fas fa-caret-up"></i> } @else { <i class="fas fa-caret-down"></i> }
           } @else {
-            <i class="fa-solid fa-sort text-muted"></i>
+            <span class="text-muted"><i class="fas fa-sort"></i></span>
           }
         </th>
         <th class="sortable" (click)="toggleSort('object_id')">
           {{'Object'|translate}}
           @if (sortField === 'object_id') {
-            <i class="fa-solid" [class]="sortDirection === 'asc' ? 'fa-sort-up' : 'fa-sort-down'"></i>
+            @if (sortDirection === 'asc') { <i class="fas fa-caret-up"></i> } @else { <i class="fas fa-caret-down"></i> }
           } @else {
-            <i class="fa-solid fa-sort text-muted"></i>
+            <span class="text-muted"><i class="fas fa-sort"></i></span>
           }
         </th>
       </tr>
