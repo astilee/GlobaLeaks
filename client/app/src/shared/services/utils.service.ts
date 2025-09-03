@@ -53,10 +53,8 @@ export class UtilsService {
     Access: [
       'access_report',
       'login',
-      'login_failure',
       'logout',
       'whistleblower_login',
-      'whistleblower_login_failure',
       'whistleblower_logout',
     ],
     Update: [
@@ -75,9 +73,11 @@ export class UtilsService {
       'delete_report',
       'delete_user',
       'disable_2fa',
+      'login_failure',
       'reset_reports',
       'revoke_access',
       'update_redaction',
+      'whistleblower_login_failure',
     ],
   };
 
