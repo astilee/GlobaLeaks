@@ -1,3 +1,12 @@
+Changes in version 5.0.79
+    Fix incompatibilities with latest versions of systemd and debian trixie
+      by moving pid file to /var/globaleaks/globaleaks.pid
+
+Changes in version 5.0.78
+    Ensure FontAwesome SVG replacement uses 'nest' mode needed
+      to avoid duplication of icons when the icon should be replaced
+      (e.g. during column sorting)
+
 Changes in version 5.0.77
     Improve file viewer rendering of images applying auto-scaling to window size (#4617)
     Optimize client packaging
