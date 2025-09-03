@@ -40,7 +40,7 @@ def get_report_audit_log(session, tid, user_id, itip_id):
 
     logs = session.query(models.AuditLog) \
                   .filter(models.AuditLog.tid == tid,
-                          models.AuditLog.object_id) \
+                          models.AuditLog.object_id == itip_id) \
                   .order_by(models.AuditLog.date.desc())
 
     return [serialize_log(log) for log in logs]
