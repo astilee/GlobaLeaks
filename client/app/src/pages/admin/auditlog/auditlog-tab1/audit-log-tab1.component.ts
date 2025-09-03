@@ -33,7 +33,7 @@ export class AuditLogTab1Component implements OnInit {
   auditLog: auditlogResolverModel[] = [];
   users: User[] = [];
 
-  searchTerm = '';
+  search = '';
   sortField: string = '';
   sortDirection: 'asc' | 'desc' = 'asc';
 
@@ -143,8 +143,8 @@ export class AuditLogTab1Component implements OnInit {
     let filtered = this.auditLog;
 
     // Apply search filter
-    if (this.searchTerm.trim()) {
-      const searchLower = this.searchTerm.toLowerCase();
+    if (this.search.trim()) {
+      const searchLower = this.search.toLowerCase();
       filtered = filtered.filter(item =>
         item.type.toLowerCase().includes(searchLower) ||
         (item.user_id && item.user_id.toLowerCase().includes(searchLower)) ||

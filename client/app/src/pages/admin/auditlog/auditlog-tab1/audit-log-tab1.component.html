@@ -1,12 +1,11 @@
 @if (this.auditLog.slice()) {
-  <!-- Search Bar -->
   <div class="row mb-3">
-    <div class="col-md-8"></div>
-    <div class="col-md-4">
-      <div class="input-group input-group-sm">
-        <input type="text" class="form-control" placeholder="{{'Search' | translate}}"
-               [(ngModel)]="searchTerm" (input)="onSearchChange()">
-        <span class="input-group-text"><i class="fas fa-search"></i></span>
+    <div class="col d-flex justify-content-end">
+      <div class="input-group input-group-sm w-auto">
+        <input type="text" class="form-control" placeholder="{{ 'Search' | translate }}" [(ngModel)]="search" (input)="onSearchChange()">
+        <span class="input-group-text">
+          <i class="fas fa-search"></i>
+        </span>
       </div>
     </div>
   </div>

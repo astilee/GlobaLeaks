@@ -12,15 +12,8 @@
           <i class="fa-solid fa-upload"></i>{{'Import' | translate}}
         </label>
       </span>
-      <span id="SearchFilter" class="form-group float-end">
-        <br>
-          <br>
-            <input type="text" class="form-control" [placeholder]="'Search' | translate"
-              [attr.placeholder]="'Search' | translate" [(ngModel)]="search" name="search">
-          </span>
-        </div>
-      </div>
     </div>
+
     @if (showAddTenant) {
       <div class="row">
         <div class="col-md-6">
@@ -46,6 +39,18 @@
         </div>
       </div>
     }
+
+    <div class="row mb-3">
+      <div class="col d-flex justify-content-end">
+        <div class="input-group input-group-sm w-auto">
+          <input type="text" class="form-control" placeholder="{{ 'Search' | translate }}" [(ngModel)]="search">
+          <span class="input-group-text">
+            <i class="fas fa-search"></i>
+          </span>
+        </div>
+      </div>
+    </div>
+
     <div class="row">
       @if (tenants) {
         <div class="col-md-12">
