@@ -17,7 +17,6 @@ import {DateRangeSelectorComponent} from "@app/shared/components/date-selector/d
 @Component({
     selector: "src-auditlog-tab1",
     templateUrl: "./audit-log-tab1.component.html",
-    styleUrls: ["./audit-log-tab1.component.css"],
     standalone: true,
     imports: [NgbPagination, NgbPaginationPrevious, NgbPaginationNext, NgbPaginationFirst, NgbPaginationLast, NgbTooltipModule, DatePipe, NgClass, FormsModule, NgMultiSelectDropDownModule, DateRangeSelectorComponent, TranslatorPipe, TranslateModule]
 })
