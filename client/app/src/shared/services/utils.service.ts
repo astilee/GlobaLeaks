@@ -50,14 +50,14 @@ export class UtilsService {
   supportedViewTypes = ["application/pdf", "audio/mpeg", "image/gif", "image/jpeg", "image/png", "text/csv", "text/plain", "video/mp4"];
 
   actionLists = {
-    Access: [
+    Low: [
       'access_report',
       'login',
       'logout',
       'whistleblower_login',
       'whistleblower_logout',
     ],
-    Update: [
+    Medium: [
       'change_password',
       'create_user',
       'enable_2fa',
@@ -69,7 +69,7 @@ export class UtilsService {
       'update_report_status',
       'whistleblower_new_report',
     ],
-    Delete: [
+    High: [
       'delete_report',
       'delete_user',
       'disable_2fa',
@@ -82,9 +82,9 @@ export class UtilsService {
   };
 
   auditLogCategories: Record<string, Record<string, boolean>> = {
-    Access: this.listToDict(this.actionLists['Access']),
-    Update: this.listToDict(this.actionLists['Update']),
-    Delete: this.listToDict(this.actionLists['Delete']),
+    Low: this.listToDict(this.actionLists['Low']),
+    Medium: this.listToDict(this.actionLists['Medium']),
+    High: this.listToDict(this.actionLists['High']),
   }
 
   listToDict(list: string[]) {

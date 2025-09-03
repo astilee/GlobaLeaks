@@ -78,9 +78,9 @@ export class AuditLogTab1Component implements OnInit {
 
   initializeTypeFilterData() {
     this.dropdownTypeData = [
-      { id: 1, label: 'Access', color: 'info' },
-      { id: 2, label: 'Update', color: 'warning' },
-      { id: 3, label: 'Delete', color: 'danger' }
+      { id: 1, label: 'Low', color: 'info' },
+      { id: 2, label: 'Medium', color: 'warning' },
+      { id: 3, label: 'High', color: 'danger' }
     ];
   }
 
@@ -215,11 +215,11 @@ export class AuditLogTab1Component implements OnInit {
     const category = this.utilsService.getAuditLogCategory(type);
 
     switch(category) {
-      case 'Access':
+      case 'Low':
         return 'text-info';
-      case 'Delete':
+      case 'Medium':
         return 'text-danger';
-      case 'Update':
+      case 'High':
         return 'text-warning';
       default:
         return 'text-primary';
