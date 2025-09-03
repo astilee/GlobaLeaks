@@ -49,6 +49,40 @@ export class UtilsService {
 
   supportedViewTypes = ["application/pdf", "audio/mpeg", "image/gif", "image/jpeg", "image/png", "text/csv", "text/plain", "video/mp4"];
 
+  accessList = [
+    'access_report',
+    'login',
+    'login_failure',
+    'logout',
+    'whistleblower_login',
+    'whistleblower_login_failure',
+    'whistleblower_logout',
+  ];
+
+  updateList = [
+    'grant_access',
+    'revoke_access',
+    'transfer_access',
+    'whistleblower_new_report',
+  ];
+
+  deleteList = [
+    'delete_report',
+    'delete_user',
+    'reset_reports',
+  ];
+
+  // Helper to convert a list to a dictionary
+  toDict = (list: string[]) =>
+    Object.fromEntries(list.map(item => [item, true]));
+
+  // Build categories once
+  categories: Record<string, Record<string, boolean>> = {
+    Access: this.toDict(this.accessList),
+    Update: this.toDict(this.updateList),
+    Delete: this.toDict(this.deleteList),
+  };
+
   updateNode(nodeResolverModel:nodeResolverModel) {
     this.httpService.updateNodeResource(nodeResolverModel).subscribe();
   }
@@ -108,6 +142,16 @@ export class UtilsService {
   getDirection(language: string): string {
     const rtlLanguages = ["ar", "dv", "fa", "fa_AF", "he", "ps", "ug", "ur"];
     return rtlLanguages.includes(language) ? "rtl" : "ltr";
+  }
+
+  getAuditLogCategory(type: string): string {
+    for (const category in this.categories) {
+      if (this.categories[category][type]) {
+        return category;
+      }
+    }
+
+    return 'Update'; // default
   }
 
   view(authenticationService: AuthenticationService, url: string, _: string, callback: (blob: Blob) => void): void {
