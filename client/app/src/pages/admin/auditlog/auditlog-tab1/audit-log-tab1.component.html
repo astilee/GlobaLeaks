@@ -72,7 +72,7 @@
               <span [class]="getTypeDotColor(data.type)">●</span> {{ data.type }}
             </span>
           </td>
-          <td>{{ getUserName(data.user_id || '') }}</td>
+          <td>{{ getUserName(data.type, data.user_id || '') }}</td>
           <td>{{ data.object_id }}</td>
         </tr>
       }

@@ -84,8 +84,10 @@ export class AuditLogTab1Component implements OnInit {
     ];
   }
 
-  getUserName(userId: string): string {
-    if (!userId) {
+  getUserName(logType:string, userId: string): string {
+    if (userId === 'system') {
+      return this.translateService.instant('system');
+    } else if (logType.startsWith('whistleblower')) {
       return this.translateService.instant('Whistleblower');
     }
 
@@ -139,17 +141,17 @@ export class AuditLogTab1Component implements OnInit {
     this.currentPage = 1; // Reset to first page when sorting
   }
 
-    getFilteredData(): auditlogResolverModel[] {
+  getFilteredData(): auditlogResolverModel[] {
     let filtered = this.auditLog;
 
     // Apply search filter
     if (this.search.trim()) {
       const searchLower = this.search.toLowerCase();
       filtered = filtered.filter(item =>
-        item.type.toLowerCase().includes(searchLower) ||
+        item.type.includes(searchLower) ||
         (item.user_id && item.user_id.toLowerCase().includes(searchLower)) ||
-        (item.user_id && this.getUserName(item.user_id).toLowerCase().includes(searchLower)) ||
-        (item.object_id && item.object_id.toLowerCase().includes(searchLower)) ||
+        (item.user_id && this.getUserName(item.type, item.user_id).toLowerCase().includes(searchLower)) ||
+        (item.object_id && item.object_id.includes(searchLower)) ||
         item.date.toLowerCase().includes(searchLower)
       );
     }
@@ -184,8 +186,8 @@ export class AuditLogTab1Component implements OnInit {
           bValue = new Date(bValue).getTime();
         } else if (this.sortField === 'user_id') {
           // Sort by user name instead of user ID
-          aValue = this.getUserName(aValue).toLowerCase();
-          bValue = this.getUserName(bValue).toLowerCase();
+          aValue = this.getUserName(a.type, aValue).toLowerCase();
+          bValue = this.getUserName(a.type, bValue).toLowerCase();
         } else {
           aValue = aValue?.toString().toLowerCase() || '';
           bValue = bValue?.toString().toLowerCase() || '';
@@ -231,7 +233,7 @@ export class AuditLogTab1Component implements OnInit {
     const exportData = this.getFilteredData().map(item => ({
       Date: item.date,
       Type: item.type,
-      User: this.getUserName(item.user_id || ''),
+      User: this.getUserName(item.type, item.user_id || ''),
       'User ID': item.user_id || '',
       Object: item.object_id || '',
       Data: item.data ? JSON.stringify(item.data) : ''
