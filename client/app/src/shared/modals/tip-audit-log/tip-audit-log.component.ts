@@ -229,12 +229,12 @@ export class TipAuditLogComponent implements OnInit {
         });
       } else {
         // Multiple entries - create a group
-        const latestEntry = groupEntries.reduce((latest, current) =>
-          current.timestamp > latest.timestamp ? current : latest
+        const earliestEntry = groupEntries.reduce((earliest, current) =>
+          current.timestamp < earliest.timestamp ? current : earliest
         );
 
         grouped.push({
-          ...latestEntry,
+          ...earliestEntry,
           id: `group_${groupKey}`,
           isGroup: true,
           isExpanded: false,
