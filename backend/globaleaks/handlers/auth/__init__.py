@@ -26,8 +26,6 @@ def db_login_failure(session, tid, whistleblower=False):
 
     db_log(session, tid=tid, type='whistleblower_login_failure' if whistleblower else 'login_failure')
 
-    raise errors.InvalidAuthentication
-
 
 @transact
 def login_whistleblower(session, tid, receipt, client_using_tor, operator_id=None):
@@ -47,14 +45,14 @@ def login_whistleblower(session, tid, receipt, client_using_tor, operator_id=Non
             salt = ConfigFactory(session, tid).get_val('receipt_salt')
             key, hash = GCE.calculate_key_and_hash(receipt, salt)
     except:
-        db_login_failure(session, tid, 0)
+        raise errors.InvalidAuthentication
 
     itip = session.query(InternalTip) \
                   .filter(InternalTip.tid == tid,
                           InternalTip.receipt_hash == hash).one_or_none()
 
     if itip is None:
-        db_login_failure(session, tid, 1)
+        raise errors.InvalidAuthentication
 
     itip.wb_last_access = datetime_now()
     itip.tor = itip.tor and client_using_tor
@@ -106,7 +104,7 @@ def login(session, tid, username, password, authcode, client_using_tor, client_i
                                   User.enabled.is_(True), User.tid == tid).one_or_none()
 
     if user is None:
-        db_login_failure(session, tid, 0)
+        raise errors.InvalidAuthentication
 
     try:
         if len(user.hash) == 64:
@@ -115,10 +113,10 @@ def login(session, tid, username, password, authcode, client_using_tor, client_i
         else:
             key, hash = GCE.calculate_key_and_hash(password, user.salt)
     except:
-        db_login_failure(session, tid, 0)
+        raise errors.InvalidAuthentication
 
     if not password or not GCE.check_equality(hash, user.hash):
-        db_login_failure(session, tid, 0)
+        raise errors.InvalidAuthentication
 
     connection_check(tid, user.role, client_ip, client_using_tor)
 
@@ -210,12 +208,16 @@ class AuthenticationHandler(BaseHandler):
         if tid == 0:
             tid = self.request.tid
 
-        session = yield login(tid,
-                              request['username'],
-                              request['password'],
-                              request['authcode'],
-                              self.request.client_using_tor,
-                              self.request.client_ip)
+        try:
+            session = yield login(tid,
+                                  request['username'],
+                                  request['password'],
+                                  request['authcode'],
+                                  self.request.client_using_tor,
+                                  self.request.client_ip)
+        except:
+            yield tw(db_login_failure, self.request.tid, 0)
+            raise
 
         if tid != self.request.tid:
             returnValue({
@@ -238,6 +240,7 @@ class TokenAuthHandler(BaseHandler):
         session = Sessions.get(request['authtoken'])
         if session is None:
             yield tw(db_login_failure, self.request.tid, 0)
+            raise errors.InvalidAuthentication
 
         connection_check(self.request.tid, session.role,
                          self.request.client_ip, self.request.client_using_tor)
@@ -266,8 +269,12 @@ class ReceiptAuthHandler(BaseHandler):
             operator_id = self.session.properties.get('operator_session')
 
         if request['receipt']:
-            session = yield login_whistleblower(self.request.tid, request['receipt'],
-                                                self.request.client_using_tor, operator_id)
+            try:
+                session = yield login_whistleblower(self.request.tid, request['receipt'],
+                                                    self.request.client_using_tor, operator_id)
+            except:
+                yield tw(db_login_failure, self.request.tid, 1)
+                raise
         else:
             if not self.state.accept_submissions or self.state.tenants[self.request.tid].cache['disable_submissions']:
                 raise errors.SubmissionDisabled
