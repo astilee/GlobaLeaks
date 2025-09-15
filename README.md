@@ -1,5 +1,5 @@
 <div align="center">
- <a href="https://www.globaleaks.org"><img src="https://raw.githubusercontent.com/globaleaks/globaleaks-whistleblowing-software/stable/brand/assets/globaleaks-logo-color.png" width="400"></a>
+ <a href="https://www.globaleaks.org"><img src="https://raw.githubusercontent.com/globaleaks/globaleaks-whistleblowing-software/stable/brand/assets/webp/globaleaks-logo-color.webp" width="400"></a>
 </div>
 
 <div align="center">
@@ -25,6 +25,10 @@ The software is recognized by the [Digital Public Good Alliance](https://digital
 | [MDN HTTP Observatory](https://developer.mozilla.org/en-US/observatory/analyze?host=demo.globaleaks.org) | ![Status](https://img.shields.io/badge/observatory-A%2B-brightgreen)
 | [Security Headers](https://securityheaders.com/?q=https%3A%2F%2Fdemo.globaleaks.org%2F) | ![Status](https://img.shields.io/badge/security%20headers-A%2B-brightgreen)
 | [SSLLabs](https://www.ssllabs.com/ssltest/analyze.html?d=demo.globaleaks.org) | [![Status](https://img.shields.io/static/v1?label=SSLLabs&message=A%2B&color=%3CCOLOR%3E)](https://www.ssllabs.com/ssltest/analyze.html?d=demo.globaleaks.org&latest)
+| [Lighthouse Performance](https://htmlpreview.github.io/?https://raw.githubusercontent.com/globaleaks/globaleaks-lighthouse-audit/main/report.html) | ![Performance](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fglobaleaks%2Fglobaleaks-lighthouse-audit%2Fmain%2Fbadges%2Fperf.json&logo=lighthouse&label=Performance&labelColor=333333&cacheSeconds=300) |
+| [Lighthouse Accessibility](https://htmlpreview.github.io/?https://raw.githubusercontent.com/globaleaks/globaleaks-lighthouse-audit/main/report.html) | ![Accessibility](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fglobaleaks%2Fglobaleaks-lighthouse-audit%2Fmain%2Fbadges%2Fa11y.json&logo=lighthouse&label=Accessibility&labelColor=333333&cacheSeconds=300) |
+| [Lighthouse Best Practices](https://htmlpreview.github.io/?https://raw.githubusercontent.com/globaleaks/globaleaks-lighthouse-audit/main/report.html) | ![Best Practices](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fglobaleaks%2Fglobaleaks-lighthouse-audit%2Fmain%2Fbadges%2Fbp.json&logo=lighthouse&label=Best%20Practices&labelColor=333333&cacheSeconds=300) |
+| [Lighthouse SEO](https://htmlpreview.github.io/?https://raw.githubusercontent.com/globaleaks/globaleaks-lighthouse-audit/main/report.html) | ![SEO](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fglobaleaks%2Fglobaleaks-lighthouse-audit%2Fmain%2Fbadges%2Fseo.json&logo=lighthouse&label=SEO&labelColor=333333&cacheSeconds=300) |
 
 Project statistics on OpenHub: [www.openhub.net/p/globaleaks](https://www.openhub.net/p/globaleaks)
 
@@ -42,7 +46,7 @@ Join our [Community Chat](https://community.globaleaks.org) to get in touch with
 
 In case you need to file a security report please check our [Security Policy](https://github.com/globaleaks/globaleaks-whistleblowing-software/blob/stable/SECURITY.md).
 
-## Contributions and Donations <img src="https://raw.githubusercontent.com/globaleaks/globaleaks-whistleblowing-software/stable/brand/assets/heart.svg" alt="heart icon" width="24" />
+## Contributions and Donations <img src="https://raw.githubusercontent.com/globaleaks/globaleaks-whistleblowing-software/stable/brand/assets/svg/heart.svg" alt="heart icon" width="24" />
 Thank you! If you would like to to contribute to the project please check the [Contributors Guidelines](https://github.com/globaleaks/globaleaks-whistleblowing-software/blob/stable/CONTRIBUTING.md).
 
 As a pure community-driven project without major corporate backing, we also welcome [donations](https://github.com/sponsors/globaleaks).

@@ -34,7 +34,7 @@ function DO () {
 }
 
 HAS_SYSTEMD() {
-  [ "$(cat /proc/1/comm 2>/dev/null)" = "systemd" ]
+  [ -d /run/systemd/system ]
 }
 
 LOGFILE="./install.log"
@@ -112,19 +112,19 @@ if echo "$DISTRO_CODENAME" | grep -vqE "^(trixie)|(noble)$" ; then
   prompt_for_continuation
 fi
 
-# align apt-get cache to up-to-date state on configured repositories
-DO "apt-get -y update"
+# align apt cache to up-to-date state on configured repositories
+DO "apt -y update"
 
 if [ ! -f /etc/timezone ]; then
   echo "Etc/UTC" > /etc/timezone
 fi
 
-DO "apt-get install -y tzdata"
+DO "apt install -y tzdata"
 DO "dpkg-reconfigure -f noninteractive tzdata"
-DO "apt-get -y install gnupg net-tools wget"
+DO "apt -y install gnupg net-tools curl"
 
 if [[ "$DISTRO_CODENAME" != "trixie" ]]; then
-  DO "apt-get -y install software-properties-common"
+  DO "apt -y install software-properties-common"
 fi
 
 # The supported platforms are experimentally more than only Ubuntu as
@@ -136,25 +136,25 @@ fi
 if echo "$DISTRO_CODENAME" | grep -vqE "^(bionic|bookworm|bullseye|buster|focal|jammy|noble|trixie)$"; then
   # In case of unsupported platforms we fallback on trixie
   echo "No packages available for the current distribution; the install script will use the trixie repository."
-  DISTRO="Debian"
+  DISTRO="debian"
   DISTRO_CODENAME="trixie"
 fi
 
-if [ -f /tmp/globaleaks-setup-files/globaleaks.deb ]; then
-  dpkg -i /tmp/globaleaks-setup-files/globaleaks.deb || apt --fix-broken install -y
+if [ -f /tmp/globaleaks.deb ]; then
+  dpkg -i /tmp/globaleaks.deb || apt --fix-broken install -y
 else
   echo "Adding GlobaLeaks PGP key to trusted APT keys"
-  wget -qO- https://deb.globaleaks.org/globaleaks.asc | gpg --dearmor > /etc/apt/trusted.gpg.d/globaleaks.gpg
+  curl -sS https://deb.globaleaks.org/globaleaks.asc | gpg --dearmor -o /etc/apt/trusted.gpg.d/globaleaks.gpg
 
   echo "Updating GlobaLeaks apt source.list in /etc/apt/sources.list.d/globaleaks.list ..."
   echo "deb [signed-by=/etc/apt/trusted.gpg.d/globaleaks.gpg] http://deb.globaleaks.org $DISTRO_CODENAME/" > /etc/apt/sources.list.d/globaleaks.list
 
-  DO "apt-get update -y"
+  DO "apt update -y"
 
   if [[ $VERSION ]]; then
-    DO "apt-get install -y globaleaks=$VERSION"
+    DO "apt install -y --no-install-recommends python3-munkres globaleaks=$VERSION"
   else
-    DO "apt-get install -y globaleaks"
+    DO "apt install -y --no-install-recommends python3-munkres globaleaks"
   fi
 fi
 
