@@ -103,8 +103,7 @@ export class TipAuditLogComponent implements OnInit {
 
     const user = this.usersData.find(u => u && u.id === userId);
     if (user) {
-      // Return name with username in parentheses for better identification
-      return user.name ? `${user.name} (${user.username})` : user.username;
+      return user.name;
     }
 
     // Return the ID if user not found (might be deleted user)

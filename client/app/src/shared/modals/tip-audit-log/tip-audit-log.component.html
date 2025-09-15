@@ -63,7 +63,7 @@
             <td>{{entry.user}}</td>
             <td>
               <span class="badge bg-light text-dark">
-                <span [class]="getTypeDotColor(entry.type)">●</span> {{entry.action}}
+                <span [class]="getTypeDotColor(entry.type)"><i class="fas fa-circle-dot"></i></span> <span>{{entry.action}}</span>
               </span>
             </td>
             <td>
@@ -91,7 +91,7 @@
                 <td>{{childEntry.user}}</td>
                 <td>
                   <span class="badge bg-light text-dark">
-                    <span [class]="getTypeDotColor(childEntry.type)">●</span> {{childEntry.action}}
+                    <span [class]="getTypeDotColor(childEntry.type)"><i class="fas fa-circle-dot"></i></span> <span>{{childEntry.action}}</span>
                   </span>
                 </td>
                 <td>{{childEntry.timestamp | date:'dd-MM-yyyy HH:mm:ss'}}</td>
