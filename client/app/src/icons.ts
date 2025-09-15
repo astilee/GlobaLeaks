@@ -75,6 +75,8 @@ const icons = [
   solidIcons.faSitemap,
   solidIcons.faSliders,
   solidIcons.faSort,
+  solidIcons.faSortDown,
+  solidIcons.faSortUp,
   solidIcons.faSquare,
   solidIcons.faSquareCheck,
   solidIcons.faStar,
