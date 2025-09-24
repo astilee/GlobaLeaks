@@ -1,7 +1,7 @@
 # Implement the notification of new submissions
 import itertools
 
-from datetime import datetime, timedelta
+from datetime import datetime, date, timedelta
 from sqlalchemy import not_
 from sqlalchemy.sql.expression import func
 from twisted.internet import defer
@@ -23,7 +23,26 @@ def gen_cache_key(*args):
     return '-'.join(['{}'.format(arg) for arg in args])
 
 
+def _to_datetime(val):
+    if val is None:
+        return None
+    if isinstance(val, datetime):
+        return val
+    if isinstance(val, date):
+        return datetime.combine(val, datetime.min.time())
+    if isinstance(val, str):
+        try:
+            return datetime.fromisoformat(val)
+        except Exception:
+            return None
+    return None
+
+
 class MailGenerator(object):
+    simulate_mode = False
+    sent_reminders = {}
+    simulation_stats = {'users': {}, 'totals': {'grouped_emails': 0, 'total_reminders': 0}}
+
     def __init__(self, state):
         self.state = state
         self.cache = {}
@@ -140,13 +159,15 @@ class MailGenerator(object):
 
     @transact
     def generate(self, session):
-        now = datetime_now()
+        now_dt = datetime_now()
+        now_date = now_dt.date()
 
         config = ConfigFactory(session, 1)
         timestamp_daily_notifications = config.get_val('timestamp_daily_notifications')
 
         rtips_ids = {}
         silent_tids = []
+        thresholds = [28, 14, 7, 3, 1]
 
         for tid in self.state.tenants:
             cache = self.state.tenants[tid].cache
@@ -154,40 +175,40 @@ class MailGenerator(object):
                 silent_tids.append(tid)
 
         results1 = session.query(models.User, models.ReceiverTip, models.InternalTip, models.ReceiverTip) \
-                          .filter(models.User.id == models.ReceiverTip.receiver_id,
-                                  models.InternalTip.id == models.ReceiverTip.internaltip_id,
-                                  models.ReceiverTip.new.is_(True)) \
-                          .order_by(models.InternalTip.creation_date)
+            .filter(models.User.id == models.ReceiverTip.receiver_id,
+                    models.InternalTip.id == models.ReceiverTip.internaltip_id,
+                    models.ReceiverTip.new.is_(True)) \
+            .order_by(models.InternalTip.creation_date)
 
         results2 = session.query(models.User, models.ReceiverTip, models.InternalTip, models.Comment) \
-                                 .filter(models.User.id == models.ReceiverTip.receiver_id,
-                                         models.ReceiverTip.internaltip_id == models.Comment.internaltip_id,
-                                         models.InternalTip.id == models.ReceiverTip.internaltip_id,
-                                         models.Comment.new.is_(True)) \
-                                 .order_by(models.Comment.creation_date)
+            .filter(models.User.id == models.ReceiverTip.receiver_id,
+                    models.ReceiverTip.internaltip_id == models.Comment.internaltip_id,
+                    models.InternalTip.id == models.ReceiverTip.internaltip_id,
+                    models.Comment.new.is_(True)) \
+            .order_by(models.Comment.creation_date)
 
         results3 = session.query(models.User, models.ReceiverTip, models.InternalTip, models.WhistleblowerFile) \
-                          .filter(models.User.id == models.ReceiverTip.receiver_id,
-                                    models.ReceiverTip.id == models.WhistleblowerFile.receivertip_id,
-                                    models.InternalTip.id == models.ReceiverTip.internaltip_id,
-                                    models.InternalFile.id == models.WhistleblowerFile.internalfile_id,
-                                    models.WhistleblowerFile.new.is_(True)) \
-                          .order_by(models.InternalFile.creation_date)
+            .filter(models.User.id == models.ReceiverTip.receiver_id,
+                    models.ReceiverTip.id == models.WhistleblowerFile.receivertip_id,
+                    models.InternalTip.id == models.ReceiverTip.internaltip_id,
+                    models.InternalFile.id == models.WhistleblowerFile.internalfile_id,
+                    models.WhistleblowerFile.new.is_(True)) \
+            .order_by(models.InternalFile.creation_date)
 
         for user, rtip, itip, obj in itertools.chain(results1, results2, results3):
             tid = user.tid
 
             if (tid in silent_tids) or \
-                rtips_ids.get(rtip.id, False) or \
-                rtip.last_notification > rtip.last_access or \
-                (isinstance(obj, models.Comment) and \
-                 (obj.author_id == user.id or
-                  obj.visibility == models.EnumVisibility.personal.name)):
+                    rtips_ids.get(rtip.id, False) or \
+                    rtip.last_notification > rtip.last_access or \
+                    (isinstance(obj, models.Comment) and \
+                     (obj.author_id == user.id or
+                      obj.visibility == models.EnumVisibility.personal.name)):
                 obj.new = False
                 continue
 
             obj.new = False
-            rtip.last_notification = now
+            rtip.last_notification = now_dt
 
             rtips_ids[rtip.id] = True
 
@@ -203,11 +224,10 @@ class MailGenerator(object):
                 self.process_mail_creation(session, tid, data)
             except:
                 pass
-
-        if now < datetime.fromtimestamp(timestamp_daily_notifications) + timedelta(1):
+        if now_dt < datetime.fromtimestamp(timestamp_daily_notifications) + timedelta(1):
             return
 
-        config.set_val('timestamp_daily_notifications', now)
+        config.set_val('timestamp_daily_notifications', now_dt)
 
         for tid in self.state.tenants:
             self.db_generate_emails_for_expiring_reports(session, tid)
@@ -217,7 +237,7 @@ class MailGenerator(object):
         for user in session.query(models.User).filter(models.User.id == models.ReceiverTip.receiver_id,
                                                       not_(models.User.id.in_(silent_tids)),
                                                       models.ReceiverTip.internaltip_id == models.InternalTip.id,
-                                                      models.InternalTip.reminder_date < now).distinct():
+                                                      models.InternalTip.reminder_date < now_dt).distinct():
 
             data = {'type': 'tip_reminder'}
 
@@ -227,6 +247,112 @@ class MailGenerator(object):
             except:
                 pass
 
+        max_threshold = max(thresholds)
+
+        rows = session.query(models.User, models.ReceiverTip, models.InternalTip) \
+            .filter(models.User.id == models.ReceiverTip.receiver_id,
+                    models.ReceiverTip.internaltip_id == models.InternalTip.id,
+                    models.InternalTip.status == 'opened',
+                    models.InternalTip.expiration_date != None,
+                    models.InternalTip.expiration_date > now_dt,
+                    models.InternalTip.expiration_date <= now_dt + timedelta(days=max_threshold)) \
+            .order_by(models.InternalTip.expiration_date)
+
+        notifications_by_user = {}
+        for user, rtip, itip in rows:
+            tid = user.tid
+            if tid in silent_tids:
+                continue
+
+            exp_dt = _to_datetime(itip.expiration_date)
+            if not exp_dt:
+                continue
+
+            threshold_days = self.state.tenants[1].cache.notification.tip_expiration_threshold
+            if exp_dt - now_dt > timedelta(days=threshold_days):
+                return
+
+            applicable = []
+            for t in thresholds:
+                target_dt = exp_dt - timedelta(days=t)
+                if target_dt <= now_dt:
+                    applicable.append((t, target_dt))
+
+            if not applicable:
+                continue
+
+            chosen_threshold, chosen_target_dt = max(applicable, key=lambda x: x[1])
+
+            last_sent_dt = _to_datetime(user.last_expiration_reminder_date)
+
+            if last_sent_dt is None or last_sent_dt < chosen_target_dt:
+                days_until_exp = (exp_dt.date() - now_date).days
+                notifications_by_user.setdefault(user.id, {'user_obj': user, 'tid': tid, 'entries': []})['entries'].append({
+                    'itip': itip,
+                    'rtip': rtip,
+                    'threshold': chosen_threshold,
+                    'target_dt': chosen_target_dt,
+                    'days_until_exp': days_until_exp
+                })
+
+        for _, payload in notifications_by_user.items():
+            user = payload['user_obj']
+            tid = payload['tid']
+            entries = payload['entries']
+
+            try:
+                serialized_user = serialize_user(session, user, user.language)
+            except:
+                continue
+
+            tips_serialized = []
+            for e in entries:
+                try:
+                    tip_ser = serializers.serialize_rtip(session, e['itip'], e['rtip'], user.language)
+                    tip_ser['days_until_exp'] = e['days_until_exp']
+                    tip_ser['reminder_threshold'] = e['threshold']
+                    tips_serialized.append(tip_ser)
+                except:
+                    continue
+
+            if self.simulate_mode:
+                uid = str(user.id)
+                user_stats = self.simulation_stats['users'].setdefault(uid, {
+                    'grouped_mails': 0,
+                    'total_reminders': 0,
+                    'reminders_per_report': {}
+                })
+
+                # Count grouped email for this user
+                user_stats['grouped_mails'] += 1
+                self.simulation_stats['totals']['grouped_emails'] += 1
+
+                # Track each report’s reminder
+                for e in entries:
+                    key = (user.id, e['itip'].id)
+                    self.sent_reminders.setdefault(key, []).append(e['threshold'])
+                    user_stats['reminders_per_report'].setdefault(str(e['itip'].id), []).append(e['threshold'])
+
+                    # Increment totals
+                    user_stats['total_reminders'] += 1
+                    self.simulation_stats['totals']['total_reminders'] += 1
+
+            if not tips_serialized:
+                continue
+
+            data = {
+                'type': 'tip_expiration_summary',
+                'user': serialized_user,
+                'expiring_submission_count': len(tips_serialized),
+                'earliest_expiration_date': min([e['itip'].expiration_date for e in entries]),
+                'tips': tips_serialized
+            }
+            try:
+                self.process_mail_creation(session, tid, data)
+            except:
+                continue
+
+            user.last_expiration_reminder_date = now_dt
 
 
 @transact
