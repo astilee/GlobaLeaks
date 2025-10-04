@@ -4,7 +4,6 @@
 # Build Arguments:
 #   BASE_IMAGE:     The base image for the OS (e.g., debian:trixie-slim@sha256:...)
 #   DISTRIBUTION:   The target distribution codename (e.g., trixie)
-
 ARG BASE_IMAGE=debian:trixie-slim@sha256:f2306da7a8fb6440535937baed0ce0018736742d6dc5beec9d6a31355b259726
 ARG DISTRIBUTION=trixie
 
@@ -20,6 +19,8 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 COPY files/* /tmp/
 
+RUN groupadd -r globaleaks --gid=1000 && useradd -r -d /var/globaleaks -g globaleaks --uid=1000 globaleaks
+
 RUN apt-get update -q && \
     apt-get dist-upgrade -y && \
     apt-get install -y --no-install-recommends lsb-release && \
@@ -32,6 +33,6 @@ RUN mkdir -p /run/globaleaks && chown -R globaleaks:globaleaks /run/globaleaks
 
 EXPOSE 8080 8443
 
-USER globaleaks
+USER 1000:1000
 
 CMD ["/usr/bin/python3", "/usr/bin/globaleaks", "--working-path=/var/globaleaks/", "-n"]

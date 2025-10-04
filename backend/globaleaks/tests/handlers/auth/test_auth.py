@@ -398,6 +398,9 @@ class TestSessionHandler(helpers.TestHandlerWithPopulatedDB):
         handler = self.request({}, headers={'x-session': session_id})
         yield handler.delete()
 
+        self.assertEqual(handler.request.responseHeaders.hasHeader("Clear-Site-Data"), True)
+        self.assertEqual(handler.request.responseHeaders.getRawHeaders("Clear-Site-Data")[0], '"*"')
+
     @inlineCallbacks
     def test_successful_whistleblower_logout(self):
         self._handler = auth.ReceiptAuthHandler
@@ -419,6 +422,9 @@ class TestSessionHandler(helpers.TestHandlerWithPopulatedDB):
         # Logout
         handler = self.request({}, headers={'x-session': response['id']})
         yield handler.delete()
+
+        self.assertEqual(handler.request.responseHeaders.hasHeader("Clear-Site-Data"), True)
+        self.assertEqual(handler.request.responseHeaders.getRawHeaders("Clear-Site-Data")[0], '"*"')
 
 
 class TestTokenAuth(helpers.TestHandlerWithPopulatedDB):

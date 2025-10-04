@@ -102,6 +102,7 @@ export class TipComponent implements OnInit {
   redactMode:boolean = false;
   redactOperationTitle: string;
   tabs: Tab[];
+  submission: any;
 
   ngOnInit() {
     this.loadTipDate();
@@ -120,7 +121,9 @@ export class TipComponent implements OnInit {
           this.loading = false;
           this.RTipService.initialize(response);
           this.tip = this.RTipService.tip;
-          this.activatedRoute.queryParams.subscribe((params: { [x: string]: string; }) => {
+          this.submission = { submission: this.tip, identity_provided: this.tip.identity_provided };
+
+          this.activatedRoute.queryParams.subscribe((params: Record<string, string>) => {
             this.tip.tip_id = params["tip_id"];
           });
 

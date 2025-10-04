@@ -134,7 +134,8 @@ Content-Security-Policy
 The backend implements a strict `Content Security Policy (CSP) <https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP>`_ preventing any interaction with third-party resources and restricting execution of code by means of `Trusted Types <https://www.w3.org/TR/trusted-types/>`_.
 ::
 
-  Content-Security-Policy: base-uri 'none'; connect-src 'self'; default-src 'none'; font-src 'self'; form-action 'none'; frame-ancestors 'none'; frame-src 'self'; img-src 'self' data:; media-src 'self'; script-src 'self'; style-src 'self'; trusted-types angular angular#bundler default dompurify; require-trusted-types-for 'script'; report-uri /api/report;
+  Content-Security-Policy: base-uri 'none'; connect-src 'self'; default-src 'none'; font-src 'self'; form-action 'none'; frame-ancestors 'none'; frame-src 'self'; img-src 'self' data:; media-src 'self'; script-src 'self'; style-src 'self'; trusted-types angular angular#bundler default dompurify; require-trusted-types-for 'script'; report-to csp-endpoint;
+  Reporting-Endpoints: csp-endpoint="/api/report"
 
 Specific policies are implemented in adherence to the principle of least privilege.
 
@@ -201,6 +202,13 @@ To prevent or limit forensic traces left on devices used by whistleblowers and i
 ::
 
   Cache-Control: no-store
+
+Clear-Site-Data
++++++++++++++++
+To ensure that all locally stored data associated with a user session—including cookies, storage, cache, and execution contexts—is deleted upon logout, the platform uses the [Clear-Site-Data](https://www.w3.org/TR/clear-site-data/) HTTP header with the wildcard configuration "*". This mitigates risks of sensitive information persisting on client devices, including data unintentionally stored by third-party libraries or retained by browser mechanisms such as the back-forward cache (bfcache).
+::
+
+  Clear-Site-Data: "*"
 
 Crawlers policy
 ---------------

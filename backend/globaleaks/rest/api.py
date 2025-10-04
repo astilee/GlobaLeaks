@@ -552,7 +552,7 @@ class APIResourceWrapper(Resource):
                           b"sandbox;"
                           b"trusted-types;"
                           b"require-trusted-types-for 'script';"
-                          b"report-uri /api/report;")
+                          b"report-to csp-endpoint")
 
         # CSP Policy on the entry point
         if request.path == b'/index.html':
@@ -570,7 +570,7 @@ class APIResourceWrapper(Resource):
                               b"style-src 'self' 'nonce-" + request.nonce + b"';"
                               b"trusted-types angular angular#bundler dompurify default;"
                               b"require-trusted-types-for 'script';"
-                              b"report-uri /api/report;")
+                              b"report-to csp-endpoint")
 
         # CSP Policy for the crypto worker with reporting of any violation
         elif request.path == b'/workers/crypto.worker.js':
@@ -583,7 +583,7 @@ class APIResourceWrapper(Resource):
                               b"sandbox;"
                               b"trusted-types;"
                               b"require-trusted-types-for 'script';"
-                              b"report-uri /api/report;")
+                              b"report-to csp-endpoint")
 
         # CSP Policy for the file viewer
         elif request.path.startswith(b'/viewer'):
@@ -601,11 +601,13 @@ class APIResourceWrapper(Resource):
                                   b"sandbox allow-scripts;"
                                   b"trusted-types;"
                                   b"require-trusted-types-for 'script';"
-                                  b"report-uri /api/report;")
+                                  b"report-to csp-endpoint")
 
                 request.setHeader(b"Cross-Origin-Resource-Policy", "cross-origin")
             else:
                 request.setHeader(b'Access-Control-Allow-Origin', "null")
+
+        request.setHeader(b'Reporting-Endpoints', "csp-endpoint=\"/api/report\"")
 
         # Disable features that could be used to deanonymize the user
         microphone = False
@@ -639,9 +641,6 @@ class APIResourceWrapper(Resource):
                                                  b"usb=(),"
                                                  b"web-share=(),"
                                                  b"xr-spatial-tracking=()")
-
-        # Prevent old browsers not supporting CSP frame-ancestors directive to includes the platform within an iframe
-        request.setHeader(b'X-Frame-Options', b'deny')
 
         # Prevent the browsers to implement automatic mime type detection and execution.
         request.setHeader(b'X-Content-Type-Options', b'nosniff')
