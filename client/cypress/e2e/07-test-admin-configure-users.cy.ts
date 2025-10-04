@@ -30,6 +30,11 @@ describe("admin add, configure, and delete users", () => {
       value:"Profile6",
       address: "globaleaks-analyst1@mailinator.com",
     },
+    {
+      name: "Multi Role User",
+      value:"Profile7 (Multi Role)",
+      address: "globaleaks-multi-role-user@mailinator.com",
+    },
   ];
 
   const new_profiles = [
@@ -57,6 +62,10 @@ describe("admin add, configure, and delete users", () => {
       name: "Profile6",
       value:"analyst",
     },
+    {
+      name: "Profile7 (Multi Role)",
+      value:"admin",
+    },
   ];
 
   it("should add new users and profiles", () => {
@@ -64,16 +73,16 @@ describe("admin add, configure, and delete users", () => {
     cy.visit("/#/admin/users");
     cy.get('[data-cy="profiles"]').click();
 
-    const make_profile = (user:any) => {
+    const make_profile = (profile:any) => {
       cy.get(".show-add-profile-btn").click();
-      cy.get('select[name="role"]').select(user.value);
-      cy.get('input[name="name"]').clear().type(user.name);
+      cy.get('select[name="role"]').select(profile.value);
+      cy.get('input[name="name"]').clear().type(profile.name);
       cy.get("#add-btn").click();
     };
 
     for (let i = 0; i < new_profiles.length; i++) {
       make_profile(new_profiles[i]);
-      cy.get(".userList").should('have.length', i+1);
+      cy.get(".profileList").should('have.length', i+1);
     }
 
     cy.get('[data-cy="users"]').click();
@@ -98,7 +107,7 @@ describe("admin add, configure, and delete users", () => {
     cy.visit("/#/admin/users");
     cy.get('[data-cy="profiles"]').click().should("be.visible").click();
 
-    cy.get(".userList").contains("Profile1").parents(".config-item").within(() => {
+    cy.get(".profileList").contains("Profile1").parents(".config-item").within(() => {
       cy.get('button[name="edit_profile"]').click();
 
       cy.get('input[name="can_mask_information"]').click();
@@ -107,7 +116,7 @@ describe("admin add, configure, and delete users", () => {
       cy.get('input[name="can_transfer_access_to_reports"]').click();
       cy.get('input[name="can_delete_submission"]').click();
       cy.get('input[name="can_edit_general_settings"]').click();
-      cy.get("#save_user").click();
+      cy.get("#save_profile").click();
     });
   });
 
@@ -133,3 +142,44 @@ describe("admin add, configure, and delete users", () => {
   });
 
 });
+
+describe("Multiple role profile", () => {
+  it("should add multiple role to the profile", () => {
+    cy.login_admin();
+    cy.visit("/#/admin/users");
+    cy.get('[data-cy="profiles"]').click().should("be.visible").click();
+    cy.get(".profileList").contains("Profile7 (Multi Role)").parents(".config-item").within(() => {
+      cy.get('button[name="edit_profile"]').click();
+      cy.get('ng-select').click();
+      cy.get('.ng-dropdown-panel .ng-option').contains('Recipient').click();
+      cy.get("#save_profile").click();
+    });
+  });
+
+  it("should require password change upon successful authentication", () => {
+    cy.login_receiver("Multi Role User", Cypress.env("init_password"), "#/login", true);
+    cy.get('[name="changePasswordArgs.password"]').should('be.visible').type(Cypress.env("user_password"));
+    cy.get('[name="changePasswordArgs.confirm"]').type(Cypress.env("user_password"));
+    cy.get('button[name="submit"]').click();
+    cy.url().should("include", "/admin/home");
+    cy.logout();
+  });
+
+  it("should switch role from admin to recipient", () => {
+    cy.login_admin('Multi Role User');
+    cy.window().then((win) => {
+      cy.stub(win, 'open').callsFake((url) => {
+        win.location.href = url;
+      });
+    });
+
+    cy.get("#SwitchRoleLink").click();
+    cy.get('.modal-title').should('contain', 'Switch role');
+    cy.get('ng-select').click();
+    cy.get('.ng-dropdown-panel .ng-option').contains('Recipient').click();
+    cy.get('#modal-action-ok').click();
+
+    cy.url().should('include', '/recipient/home');
+    cy.logout();
+  });
+})

@@ -31,6 +31,14 @@
           <span class="text-separator">|</span>
         </span>
       }
+      @if (preferences.dataModel.profile && preferences.dataModel.profile.roles.length > 1) {
+        <span id="SwitchRoleBox">
+          <a id="SwitchRoleLink" [href]="'#'+authentication.session.homepage" (click)="openSwitchUserModal()" ngbTooltip="{{'Switch role' | translate}}">
+            <i class="fa-solid fa-fw fa-users"></i>
+          </a>
+          <span class="text-separator">|</span>
+        </span>
+      }
       @if (authentication.session && authentication.session.role !== 'whistleblower') {
         <span id="SupportLinkBox">
           <a id="SupportLink" href="#" (click)="utilsService.openSupportModal()" ngbTooltip="{{'Request support' | translate}}">

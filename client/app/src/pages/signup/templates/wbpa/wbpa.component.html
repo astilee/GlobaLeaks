@@ -20,7 +20,7 @@
     <div class="col-md-6 form-group">
       <label>{{'Phone number'|translate}}</label>
       <span class="text-danger" ngbTooltip="{{'This field is mandatory' | translate}}">*</span>
-      <input name="phonenumber" #phone="ngModel" class="form-control" [(ngModel)]="signup.phone" type="text" [pattern]="Constants.Constants.phoneNumberRegexp" required>
+      <input name="phone" #phone="ngModel" class="form-control" [(ngModel)]="signup.phone" type="text" [pattern]="Constants.Constants.phoneNumberRegexp" required>
       @if (phone?.errors?.['pattern']) {
         <div class="text-danger">
           <span>{{'Invalid phone number'|translate}}</span>
@@ -86,7 +86,7 @@
     <div class="col-md-6 form-group">
       <label>{{'Tax code'|translate}}</label>
       <span class="text-danger" ngbTooltip="{{'This field is mandatory' | translate}}">*</span>
-      <input name="vat_code" class="form-control" [(ngModel)]="signup.organization_vat_code" type="text" [required]="!signup.organization_tax_code && !signup.organization_vat_code">
+      <input name="vat_code" class="form-control" [(ngModel)]="signup.organization_vat_code" type="text" [required]="!signup.organization_vat_code">
     </div>
   </div>
   <div class="row">

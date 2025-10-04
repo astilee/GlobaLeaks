@@ -10,10 +10,27 @@
       <label>
         <span>{{'Username'|translate}}</span>: </label> {{preferenceResolver.dataModel.username}}
       </div>
-      <div id="Role">
-        <label>
-          <span>{{'Role'|translate}}</span>: </label>
-          <span>{{role}}</span>
+        <div id="Role">
+          <label>
+            <span>{{'Default Role'|translate}}</span>:
+          </label>
+          @if (preferenceResolver.dataModel.profile.roles && preferenceResolver.dataModel.profile.roles.length > 1) {
+           <ng-select
+             [items]="roleOptions"
+             bindLabel="role"
+             bindValue="value"
+             [(ngModel)]="userRole"
+             [placeholder]="'Change default role' | translate"
+             (ngModelChange)="onDefaultRoleChange($event)">
+           </ng-select>
+          }
+          @else {
+            <span>
+              {{ preferenceResolver.dataModel.role === 'receiver'
+                ? 'Recipient'
+                : (preferenceResolver.dataModel.role.charAt(0).toUpperCase() + preferenceResolver.dataModel.role.slice(1)) }}
+            </span>
+          }
         </div>
         <div id="Name">
           <label>

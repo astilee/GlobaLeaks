@@ -37,7 +37,7 @@ def serialize_user_profile(session, profile):
         'tid': profile.tid,
         'name': profile.name,
         'role': profile.role,
-        'roles': profile.roles_list,
+        'roles': sorted(profile.roles_list),
         'permissions': {}
     }
 
@@ -163,6 +163,7 @@ def db_user_update_user(session, tid, user_session, request):
 
     user.language = request.get('language', State.tenants[tid].cache.default_language)
     user.name = request['name']
+    user.role = request['role']
     user.public_name = request['public_name'] or request['name']
     user.notification = request['notification']
 

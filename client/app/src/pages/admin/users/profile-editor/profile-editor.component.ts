@@ -14,12 +14,13 @@ import {nodeResolverModel} from "@app/models/resolvers/node-resolver-model";
 import {preferenceResolverModel} from "@app/models/resolvers/preference-resolver-model";
 import {NgClass, CommonModule} from "@angular/common";
 import {TranslatorPipe} from "@app/shared/pipes/translate";
+import {NgSelectComponent, NgOptionTemplateDirective} from "@ng-select/ng-select";
 
 @Component({
     selector: "src-profile-editor",
     templateUrl: "./profile-editor.component.html",
     standalone: true,
-    imports: [CommonModule, FormsModule, NgbTooltipModule, NgClass, TranslatorPipe]
+    imports: [CommonModule, NgSelectComponent, NgOptionTemplateDirective, FormsModule, NgbTooltipModule, NgClass, TranslatorPipe]
 })
 export class ProfileEditorComponent implements OnInit {
   private modalService = inject(NgbModal);
@@ -27,19 +28,25 @@ export class ProfileEditorComponent implements OnInit {
   private preference = inject(PreferenceResolver);
   private authenticationService = inject(AuthenticationService);
   private nodeResolver = inject(NodeResolver);
-  private utilsService = inject(UtilsService);
+  protected utilsService = inject(UtilsService);
 
-  @Input() user: UserProfile;
-  @Input() users: UserProfile[];
+  @Input() profile: UserProfile;
+  @Input() profiles: UserProfile[];
   @Input() index: number;
-  @Input() editUser: NgForm;
+  @Input() editProfile: NgForm;
   @Output() dataToParent = new EventEmitter<string>();
   editing = false;
   nodeData: nodeResolverModel;
   preferenceData: preferenceResolverModel;
   authenticationData: AuthenticationService;
   appServiceData: AppDataService;
-  defaultUsersArr = ['Admin', 'Analyst', 'Custodian', 'Receiver'];
+  roles = [
+       { value: 'admin', role: 'Admin' },
+       { value: 'analyst', role: 'Analyst' },
+       { value: 'custodian', role: 'Custodian' },
+       { value: 'receiver', role: 'Recipient' }
+     ];
+
   protected readonly Constants = Constants;
 
   ngOnInit(): void {
@@ -55,13 +62,26 @@ export class ProfileEditorComponent implements OnInit {
     if (this.appDataService) {
       this.appServiceData = this.appDataService;
     }
+
+    this.profile.roles.sort();
+
+    if (!this.profile || !this.profile || !Array.isArray(this.profile.roles)) {
+      this.roles;
+    } else {
+       this.roles = this.roles.filter(r => !this.profile.roles.includes(r.value));
+    }
+    if (this.profile.role === 'receiver') {
+      this.roles.push({ value: 'receiver', role: 'Recipient' });
+    } else {
+      this.roles.push({ value: this.profile.role, role: this.profile.role.charAt(0).toUpperCase() + this.profile.role.slice(1) });
+    }
   }
 
   toggleEditing() {
     this.editing = !this.editing;
   }
 
-  saveUser(userData: UserProfile ) {
+  saveProfile(userData: UserProfile ) {
     const user = userData;
     return this.utilsService.updateAdminUserProfile(userData.id, userData).subscribe({
       next:()=>{
@@ -76,8 +96,8 @@ export class ProfileEditorComponent implements OnInit {
     this.dataToParent.emit();
   }
 
-  deleteUser(user:UserProfile) {
-    this.openConfirmableModalDialog(user, "").subscribe();
+  deleteProfile(profile: UserProfile) {
+    this.openConfirmableModalDialog(profile, "").subscribe();
   }
 
   openConfirmableModalDialog(arg: UserProfile, scope: any): Observable<string> {
@@ -90,7 +110,7 @@ export class ProfileEditorComponent implements OnInit {
       modalRef.componentInstance.confirmFunction = () => {
         observer.complete()
         return this.utilsService.deleteAdminUserProfile(arg.id).subscribe(_ => {
-          this.utilsService.deleteResource(this.users, arg);
+          this.utilsService.deleteResource(this.profiles, arg);
         });
       };
     });
@@ -100,11 +120,41 @@ export class ProfileEditorComponent implements OnInit {
     return this.authenticationData.session?.user_id;
   }
 
-  exportProfile(user:UserProfile){
-    this.utilsService.saveAs(this.authenticationService, user.name + ".json", "api/admin/users/" + user.id);
+  exportProfile(profile:UserProfile){
+    this.utilsService.saveAs(this.authenticationService, profile.name + ".json", "api/admin/profiles/" + profile.id);
   }
 
-  onRoleSelected() {
-    this.user.roles = [this.user.role];
+  userIsNotAdmin(profile: any): boolean {
+    return !profile.roles.includes('admin');
+  }
+
+  hasSpecificRole(profile: any): boolean {
+    return profile.roles && profile.roles.some((role: string) => ['analyst', 'custodian', 'receiver'].includes(role));
+  }
+
+  assignRole(role: string) {
+    if (role && !this.profile.roles.includes(role)) {
+      this.profile.roles.push(role);
+      this.profile.roles.sort();
+      this.roles = this.roles.filter(r => r.value !== role);
+      if (!this.profile.role) {
+        this.profile.role = role;
+      }
+    }
+  }
+  
+  removeRole(index: number, role: string) {
+    this.profile.roles.splice(index, 1);
+    if (!this.roles.some(r => r.value === role)) {
+      const displayName = role === 'receiver' ? 'Recipient' : role.charAt(0).toUpperCase() + role.slice(1);
+      this.roles = [...this.roles, { value: role, role: displayName }];
+    }
+    if (this.profile.role === role) {
+      this.profile.role = this.profile.roles[0] || '';
+    }
+  }
+  
+  setDefaultRole(role: string) {
+    this.profile.role = role;
   }
 }

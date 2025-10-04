@@ -166,6 +166,7 @@ UserUserDesc = {
     'pgp_key_expiration': str,
     'pgp_key_public': str,
     'language': str,
+    'profile': dict,
     'notification': bool
 }
 

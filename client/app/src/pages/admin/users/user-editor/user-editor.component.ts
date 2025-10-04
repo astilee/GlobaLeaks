@@ -31,8 +31,9 @@ export class UserEditorComponent implements OnInit {
   private preference = inject(PreferenceResolver);
   private authenticationService = inject(AuthenticationService);
   private nodeResolver = inject(NodeResolver);
-  private utilsService = inject(UtilsService);
+  protected utilsService = inject(UtilsService);
   private cryptoService = inject(CryptoService);
+  protected preferenceResolver = inject(PreferenceResolver);
 
   @Input() user: User;
   @Input() users: User[];
@@ -51,7 +52,7 @@ export class UserEditorComponent implements OnInit {
   authenticationData: AuthenticationService;
   appServiceData: AppDataService;
   protected readonly Constants = Constants;
-
+  
   ngOnInit(): void {
     if (this.nodeResolver.dataModel) {
       this.nodeData = this.nodeResolver.dataModel;
@@ -86,9 +87,7 @@ export class UserEditorComponent implements OnInit {
   }
 
   disable2FA(user: User) {
-    this.utilsService.runAdminOperation("disable_2fa", {"value": user.id}, false).subscribe(_ => {
-      user.two_factor = false;
-    });
+    this.utilsService.runAdminOperation("disable_2fa", {"value": user.id}, true).subscribe();
   }
 
   async setPassword(setPasswordArgs: { user_id: string, password: string }) {
@@ -151,7 +150,7 @@ export class UserEditorComponent implements OnInit {
     this.utilsService.runAdminOperation("send_password_reset_email", {"value": user.id}, true).subscribe();
   }
 
-  loadPublicKeyFile(files: FileList | null,user:User) {
+  loadPublicKeyFile(files: FileList | null, user:User) {
     if (files && files.length > 0) {
       this.utilsService.readFileAsText(files[0])
         .subscribe((txt: string) => {
@@ -165,16 +164,27 @@ export class UserEditorComponent implements OnInit {
     return this.authenticationData.session?.user_id;
   }
 
-  getProfile(profileId: string): UserProfile | undefined {
+  getUserProfile(profileId: string): UserProfile | undefined {
     return this.profiles.find((p) => p.id === profileId);
   }
 
-  getProfileName(profileId: string): string {
-    return this.getProfile(profileId)!.name;
+  getUserRoleOrProfileLabel(user: any): string {
+    const roleMap: { [key: string]: string } = {
+      'admin': 'Admin',
+      'analyst': 'Analyst',
+      'custodian': 'Custodian',
+      'receiver': 'Recipient'
+    };
+
+    if (user.id == user.profile_id) {
+      return roleMap[user.role];
+    } else {
+      return this.getUserProfile(user.profile_id)!.name;
+    }
   }
 
   getUserDisplayName(user:any) {
-    const profileName = this.getProfileName(user.profile_id);
+    const profileName = this.getUserProfile(user.profile_id)!.name;
 
     let roleDisplay = '';
     switch (user.role) {
@@ -197,6 +207,19 @@ export class UserEditorComponent implements OnInit {
     return user.id !== user.profile_id ? `${profileName} (${roleDisplay})` : roleDisplay;
   }
 
+  setDefaultRole(role: string) {
+    this.user.role = role;
+  }
+
+  onUserProfileChange() {
+    const profile = this.getUserProfile(this.user.profile_id);
+
+    if (profile) {
+        this.user.profile = profile;
+        this.user.role = profile.role;
+    }
+  }
+
   toggleUserEscrow(user: User) {
     this.utilsService.runAdminOperation("toggle_user_escrow", {"value": user.id}, true).subscribe({
       next:()=>{},
@@ -204,12 +227,5 @@ export class UserEditorComponent implements OnInit {
         user.escrow = !user.escrow;
       }
     });
-  }
-
-  onProfileSelected() {
-    let profile = this.getProfile(this.user.profile_id);
-    if (profile) {
-      this.user.role = profile.role;
-    }
   }
 }
