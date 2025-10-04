@@ -230,32 +230,6 @@
                 </div>
             </div>
           }
-          @if (user.id !== user.profile_id) {
-            <div class="form-group">
-              <label>{{ 'Role' | translate }}</label>
-              <div>
-                <ul class="selection-list">
-                @for (role of user.profile.roles.sort(); track role; let index = $index;) {
-                  <li>
-                    <span class="action-btns">
-                      @if (role === user.role) {
-                        <span class="default-role">
-                          <i class="fa-solid fa-check"></i>
-                        </span>
-                      }
-                      @if (role !== user.role) {
-                        <span class="non-default-role" ngbTooltip="{{'Set as default' | translate}}" (click)="setDefaultRole(role)">
-                          <i class="fa-solid fa-check"></i>
-                        </span>
-                      }
-                    </span>
-                    <label>{{ utilsService.getRoleDisplayName(role) }}</label>
-                  </li>
-                }
-                </ul>
-              </div>
-            </div>
-          }
         </div>
       </div>
       @if (user.role === 'admin') {

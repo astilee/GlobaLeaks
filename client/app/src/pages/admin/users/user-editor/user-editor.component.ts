@@ -207,10 +207,6 @@ export class UserEditorComponent implements OnInit {
     return user.id !== user.profile_id ? `${profileName} (${roleDisplay})` : roleDisplay;
   }
 
-  setDefaultRole(role: string) {
-    this.user.role = role;
-  }
-
   onUserProfileChange() {
     const profile = this.getUserProfile(this.user.profile_id);
 
