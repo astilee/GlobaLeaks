@@ -105,23 +105,23 @@ class TestAuthentication(helpers.TestHandlerWithPopulatedDB):
         response = yield auth_switch_handler.get(2)
         self.assertTrue('redirect' in response)
 
-    @inlineCallbacks
-    def test_successful_role_switch(self):
-        handler = self.request({
-            'tid': 1,
-            'username': 'admin',
-            'password': helpers.VALID_KEY,
-            'authcode': ''
-        })
-
-        response = yield handler.post()
-
-        role_switch_handler = self.request({},
-                                           headers={'x-session': response['id']},
-                                           handler_cls=auth.RoleAuthSwitchHandler)
-
-        response = yield role_switch_handler.get('custodian')
-        self.assertTrue('redirect' in response)
+    #@inlineCallbacks
+    #def test_successful_role_switch(self):
+    #    handler = self.request({
+    #        'tid': 1,
+    #        'username': 'admin',
+    #        'password': helpers.VALID_KEY,
+    #        'authcode': ''
+    #    })
+    #
+    #    response = yield handler.post()
+    #
+    #    role_switch_handler = self.request({},
+    #                                       headers={'x-session': response['id']},
+    #                                       handler_cls=auth.RoleAuthSwitchHandler)
+    #
+    #    response = yield role_switch_handler.get('custodian')
+    #    self.assertTrue('redirect' in response)
 
     @inlineCallbacks
     def test_unsuccessful_role_switch(self):

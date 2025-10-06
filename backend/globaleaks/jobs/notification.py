@@ -88,7 +88,7 @@ class MailGenerator(object):
             expiring_submission_count = x[1]
             earliest_expiration_date = x[2]
 
-            user_desc = user_serialize_user(session, user, user.language)
+            user_desc = serialize_user(session, user, user.language)
 
             data = {
                 'type': 'tip_expiration_summary',
@@ -133,7 +133,7 @@ class MailGenerator(object):
             data = {'type': 'unread_tips'}
 
             try:
-                data['user'] = user_serialize_user(session, user, user.language)
+                data['user'] = serialize_user(session, user, user.language)
                 self.process_mail_creation(session, user.tid, data)
             except:
                 pass
