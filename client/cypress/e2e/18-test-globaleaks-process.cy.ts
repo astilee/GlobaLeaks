@@ -47,7 +47,7 @@ describe("globaleaks process", function () {
         // Test toolbar dropdowns are present
         cy.get('#exportDropdown').should('be.visible');
         cy.get('#actionsDropdown').should('be.visible');
-        cy.get('button[ngbTooltip="Logs"]').should('be.visible');
+        cy.get('[id="tip-action-logs"]').should('be.visible');
       });
 
       cy.waitForTipImageUpload();
@@ -59,7 +59,7 @@ describe("globaleaks process", function () {
       cy.get('#comment-0').should('contain', comment);
 
       // Test audit log functionality
-      cy.get('button[ngbTooltip="Logs"]').should('be.visible').click();
+      cy.get('[id="tip-action-logs"]').should('be.visible').click();
       cy.get('.modal-title').should('contain', 'Audit log');
 
       // Check if audit log table exists and has headers
@@ -165,7 +165,7 @@ describe("globaleaks process", function () {
       cy.get('body').then(($body) => {
         // Check if Logs button exists for whistleblowers
         if ($body.find('button[ngbTooltip="Logs"]').length > 0) {
-          cy.get('button[ngbTooltip="Logs"]').should('be.visible').click();
+          cy.get('[id="tip-action-logs"]').should('be.visible').click();
           cy.get('.modal-title').should('contain', 'Audit log');
 
           // Check audit log table structure
