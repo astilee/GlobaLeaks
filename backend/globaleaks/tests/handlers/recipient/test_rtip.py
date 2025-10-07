@@ -87,7 +87,6 @@ class TestRTipInstance(helpers.TestHandlerWithPopulatedDB):
         rtip_descs = yield self.get_rtips()
 
         for rtip_desc in rtip_descs:
-            expiration_date = rtip_desc
             operation = {
               'operation': 'postpone',
               'args': {
@@ -113,7 +112,6 @@ class TestRTipInstance(helpers.TestHandlerWithPopulatedDB):
         rtip_descs = yield self.get_rtips()
 
         for rtip_desc in rtip_descs:
-            expiration_date = rtip_desc
             operation = {
               'operation': 'postpone',
               'args': {

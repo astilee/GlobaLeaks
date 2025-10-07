@@ -1,5 +1,4 @@
 # -*- coding: UTF-8 -*-
-from sqlalchemy import tuple_
 from globaleaks import models
 from globaleaks.db.appdata import load_appdata
 from globaleaks.db.migrations.update import MigrationBase

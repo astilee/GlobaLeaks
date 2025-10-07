@@ -111,8 +111,7 @@ class SecureTemporaryFile:
 
         while discard_size > 0:
             to_read = min(CHUNK_SIZE, discard_size)
-            data = self.dec.update(os.read(self.fd, to_read))
-            data = self.enc.update(data)
+            self.enc.update(self.dec.update(os.read(self.fd, to_read)))
             discard_size -= to_read
 
         self.position = offset

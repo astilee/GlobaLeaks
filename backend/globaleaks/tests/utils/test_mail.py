@@ -1,6 +1,5 @@
 from email import message_from_bytes
 from twisted.internet.defer import Deferred, fail, succeed
-from twisted.test.proto_helpers import MemoryReactorClock
 from twisted.trial import unittest
 from twisted.mail.smtp import ESMTPSenderFactory
 from unittest.mock import patch
@@ -33,7 +32,6 @@ class TestMailUtils(unittest.TestCase):
     @patch("globaleaks.utils.mail.ESMTPSenderFactory")
     def test_sendmail_success(self, mock_factory, mock_connect):
         """Test that sendmail initiates an SMTP connection correctly and handles success."""
-        reactor = MemoryReactorClock()
 
         mock_factory.return_value = ESMTPSenderFactory(
             username="user".encode(),
@@ -64,7 +62,6 @@ class TestMailUtils(unittest.TestCase):
     @patch("globaleaks.utils.mail.TCP4ClientEndpoint.connect", side_effect=lambda *args, **kwargs: fail(Exception("Connection Failed")))
     def test_sendmail_failure(self, mock_connect):
         """Test that sendmail handles failures correctly."""
-        reactor = MemoryReactorClock()
 
         d = sendmail(tid=1,
                      smtp_host="smtp.example.com",

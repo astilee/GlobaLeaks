@@ -152,7 +152,6 @@ def db_revoke_tip_access(session, tid, user_id, itip, receiver_id):
 @transact
 def grant_tip_access(session, tid, user_session, itip_id, receiver_id):
     user_id = user_session.user_id
-    user_cc = user_session.cc
 
     log_data = {
         'recipient_id': receiver_id
@@ -189,7 +188,6 @@ def revoke_tip_access(session, tid, user_session, itip_id, receiver_id):
 @transact
 def transfer_tip_access(session, tid, user_session, itip_id, receiver_id):
     user_id = user_session.user_id
-    user_cc = user_session.cc
 
     log_data = {
         'recipient_id': receiver_id
@@ -725,12 +723,10 @@ def redact_answers(answers, redactions):
 @transact
 def redact_report(session, user_session, report, enforce=False):
     user_id = user_session.user_id
-    user_cc = user_session.cc
 
     user = session.query(models.User).get(user_id)
 
     redactions = session.query(models.Redaction).filter(models.Redaction.internaltip_id == report['id']).all()
-    profile = session.query(UserProfile).filter(UserProfile.id == user.profile_id).first()
 
     if not enforce and \
             (user_session.permissions.can_mask_information or \
@@ -1072,15 +1068,6 @@ def create_redaction(session, tid, user_session, data):
     if not user_session.permissions.can_mask_information:
         return
 
-    mask_content = {}
-    if itip.crypto_tip_pub_key:
-        if isinstance(data, dict):
-            mask_content = data
-        else:
-            content_str = data.get('content', str(data))
-            content_bytes = content_str.encode()
-            mask_content = Base64Encoder.encode(GCE.asymmetric_encrypt(itip.crypto_tip_pub_key, content_bytes)).decode()
-
     redaction = models.Redaction()
     redaction.id = data.get('id')
     redaction.reference_id = data.get('reference_id')
@@ -1369,10 +1356,6 @@ class ReceiverFileDownload(BaseHandler):
     def get(self, rfile_id):
         name, filename, tip_prv_key, pgp_key = yield self.download_rfile(self.request.tid, self.session.user_id,
                                                                          rfile_id)
-
-        filelocation = os.path.join(self.state.settings.attachments_path, filename)
-        if not os.path.exists(filelocation):
-            filelocation = os.path.join(self.state.settings.attachments_path, filename)
 
         filelocation = os.path.join(self.state.settings.attachments_path, filename)
         directory_traversal_check(self.state.settings.attachments_path, filelocation)

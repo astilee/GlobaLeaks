@@ -1,5 +1,4 @@
 import json
-from nacl.encoding import Base64Encoder
 from twisted.internet.defer import inlineCallbacks
 
 from globaleaks import models
@@ -17,11 +16,9 @@ from globaleaks.state import State
 from globaleaks.transactions import db_get_user
 from globaleaks.utils.crypto import GCE, generateRandomPassword, sha256
 from globaleaks.utils.utility import datetime_now, datetime_null, uuid4
-from sqlalchemy import or_
 
 
 def sync_roles(session, profile, request):
-    role = request['role']
     roles = request['roles']
 
     if not request['roles'] or request['role'] not in request['roles']:

@@ -866,7 +866,7 @@ class TestGLWithPopulatedDB(TestGL):
         for t in models.field_types:
             field = get_dummy_field(t)
             field['fieldgroup_id'] = fieldgroup_id
-            field = yield create_field(1, field, 'en')
+            yield create_field(1, field, 'en')
 
         # create a second step including the whistleblower identity question
         step = get_dummy_step()
@@ -917,7 +917,7 @@ class TestGLWithPopulatedDB(TestGL):
         self.dummySubmission['score'] = 0
         self.dummySubmission['receipt'] = receipt
 
-        itip_id = yield create_submission(1, self.dummySubmission, session, True, False)
+        yield create_submission(1, self.dummySubmission, session, True, False)
 
     @inlineCallbacks
     def perform_post_submission_actions(self):
@@ -1003,8 +1003,6 @@ class TestHandler(TestGLWithPopulatedDB):
 
         if kwargs is None:
             kwargs = {}
-
-        session = None
 
         if user_id is None and role is not None:
             if role == 'admin':

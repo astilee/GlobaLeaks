@@ -206,7 +206,6 @@ class Trie:
         """
         Search for a matching handler based on the path.
         """
-        match = None
         node = self.root
         parts = path.strip('/').split('/')
 

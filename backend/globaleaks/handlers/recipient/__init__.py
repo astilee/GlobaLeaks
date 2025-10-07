@@ -6,14 +6,14 @@ from datetime import datetime
 from nacl.encoding import Base64Encoder
 from sqlalchemy.sql.expression import distinct, func, and_, or_
 
+import globaleaks.handlers.recipient.export
+
 from globaleaks import models
 from globaleaks.handlers.base import BaseHandler
 from globaleaks.handlers.recipient.rtip import db_grant_tip_access, db_revoke_tip_access, db_notify_grant_access
-from globaleaks.orm import db_get, db_log, transact
+from globaleaks.orm import db_log, transact
 from globaleaks.rest import requests, errors
 from globaleaks.utils.crypto import GCE
-
-import globaleaks.handlers.recipient.export
 
 
 @transact

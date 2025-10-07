@@ -179,8 +179,6 @@ def db_wizard(session, tid, hostname, request):
     :param hostname: The hostname to be configured
     :param request: A user request
     """
-    admin_password = receiver_password = ''
-
     language = request['node_language']
 
     root_tenant_node = config.ConfigFactory(session, 1)
@@ -211,7 +209,6 @@ def db_wizard(session, tid, hostname, request):
        node.set_val('hostname', hostname)
 
     crypto_stat_prv_key = ""
-    crypto_stat_pub_key = ""
     if encryption:
         crypto_stat_prv_key, crypto_stat_pub_key = GCE.generate_keypair()
         node.set_val('crypto_stat_pub_key', crypto_stat_pub_key)

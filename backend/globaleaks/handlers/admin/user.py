@@ -126,7 +126,8 @@ def db_create_user(session, tid, user_session, request, language):
 
 
 def db_delete_user(session, tid, user_session, user_id):
-    current_user = db_get(session, models.User, models.User.id == user_session.user_id)
+    db_get(session, models.User, models.User.id == user_session.user_id)
+
     user = db_get(session, models.User, models.User.id == user_id)
 
     if user_session.user_id == user_id:

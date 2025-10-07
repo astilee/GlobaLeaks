@@ -1,6 +1,4 @@
-import copy 
-
-from sqlalchemy import and_, case, delete, not_, or_, tuple_
+from sqlalchemy import and_, delete, or_, tuple_
 from sqlalchemy.orm import aliased
 
 from globaleaks import LANGUAGES_SUPPORTED_CODES
@@ -335,8 +333,6 @@ def initialize_config(session, tid, data):
 
 
 def load_defaults(session, appdata):
-    langs = LANGUAGES_SUPPORTED_CODES
-
     session.query(Config).filter(Config.tid == DEFAULT_PROFILE_ID).delete(synchronize_session=False)
     session.query(ConfigL10N).filter(ConfigL10N.tid == DEFAULT_PROFILE_ID).delete(synchronize_session=False)
 
