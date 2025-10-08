@@ -9,7 +9,7 @@ from twisted.internet.defer import inlineCallbacks, returnValue
 import globaleaks.handlers.auth.token
 from globaleaks.handlers.base import connection_check, BaseHandler
 from globaleaks.handlers.user import user_permissions
-from globaleaks.models import InternalTip, User, UserProfile, UserProfilePermission
+from globaleaks.models import InternalTip, User, UserProfile
 from globaleaks.models.config import ConfigFactory
 from globaleaks.orm import db_log, transact, tw
 from globaleaks.rest import errors, requests

@@ -1,12 +1,9 @@
 # -*- coding: UTF-8 -*-
-from globaleaks import models
-from globaleaks.db.appdata import load_appdata
 from globaleaks.db.migrations.update import MigrationBase
 from globaleaks.handlers.admin import tenant, user
 from globaleaks.handlers.user import user_permissions
 from globaleaks.models import Model
 from globaleaks.models.config import get_default
-from globaleaks.models.config_desc import ConfigDescriptor
 from globaleaks.models.properties import *
 from globaleaks.utils.utility import datetime_now
 

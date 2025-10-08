@@ -13,7 +13,6 @@ from globaleaks.utils.utility import datetime_now, datetime_null
 
 import globaleaks.handlers.user.validate_email
 
-
 user_permissions = ObjectDict({
     'can_edit_general_settings': False,
     'can_delete_submission': False,

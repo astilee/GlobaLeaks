@@ -6,7 +6,6 @@ from globaleaks.models import Config, ConfigL10N
 from globaleaks.models.properties import *
 from globaleaks.models.config_desc import ConfigDescriptor, ConfigFilters, ConfigL10NFilters
 from globaleaks.utils.onion import generate_onion_service_v3
-from globaleaks.utils.utility import datetime_null
 
 
 # List of variables that on creation are set with the value

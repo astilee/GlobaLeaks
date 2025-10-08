@@ -8,7 +8,7 @@ from globaleaks.orm import db_del, tw
 from globaleaks.rest import errors, requests
 from globaleaks.utils.fs import read_file
 from globaleaks.utils.log import log
-from globaleaks.models import Config, EnabledLanguage
+from globaleaks.models import EnabledLanguage
 
 def db_update_enabled_languages(session, tid, languages, default_language):
     """

@@ -34,13 +34,12 @@ from globaleaks.db.migrations.update_65 import Comment_v_64, \
 from globaleaks.db.migrations.update_66 import SubmissionSubStatus_v_65
 from globaleaks.db.migrations.update_67 import \
         InternalTip_v_66, ReceiverFile_v_66, Redaction_v_66, User_v_66, WhistleblowerFile_v_66
-from globaleaks.db.migrations.update_68 import Subscriber_v_67, User_v_67
+from globaleaks.db.migrations.update_68 import Subscriber_v_67
 from globaleaks.db.migrations.update_69 import Field_v_68, InternalTipAnswers_v_68, User_v_68, Tenant_v_68, \
     Subscriber_v_68, InternalFile_v_68, ReceiverFile_v_68, Mail_v_68
 from globaleaks.db.migrations.update_70 import InternalTipAnswers_v_69, User_v_69
 from globaleaks.db.migrations.update_71 import Tenant_v_70
 
-from globaleaks.handlers.admin import tenant
 from globaleaks.orm import get_engine, get_session, make_db_uri
 from globaleaks.models import config, Base
 from globaleaks.settings import Settings

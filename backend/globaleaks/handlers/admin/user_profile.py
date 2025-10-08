@@ -2,20 +2,14 @@ import json
 from twisted.internet.defer import inlineCallbacks
 
 from globaleaks import models
-from globaleaks.handlers.admin.operation import set_tmp_key
 from globaleaks.handlers.base import BaseHandler
-from globaleaks.handlers.user import parse_pgp_options, \
-                                     serialize_user, \
-                                     serialize_user_profile, \
+from globaleaks.handlers.user import serialize_user_profile, \
                                      user_permissions
 from globaleaks.handlers.user.reset_password import db_generate_password_reset_token
-from globaleaks.models import config, Config, UserProfile, fill_localized_keys
-from globaleaks.orm import db_del, db_get, db_log, transact, tw
+from globaleaks.models import config, UserProfile, fill_localized_keys
+from globaleaks.orm import db_get, db_log, transact, tw
 from globaleaks.rest import errors, requests
-from globaleaks.state import State
-from globaleaks.transactions import db_get_user
-from globaleaks.utils.crypto import GCE, generateRandomPassword, sha256
-from globaleaks.utils.utility import datetime_now, datetime_null, uuid4
+from globaleaks.utils.utility import uuid4
 
 
 def sync_roles(session, profile, request):
