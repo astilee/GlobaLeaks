@@ -142,7 +142,7 @@ export class ProfileEditorComponent implements OnInit {
       }
     }
   }
-  
+
   removeRole(index: number, role: string) {
     this.profile.roles.splice(index, 1);
     if (!this.roles.some(r => r.value === role)) {
@@ -153,7 +153,7 @@ export class ProfileEditorComponent implements OnInit {
       this.profile.role = this.profile.roles[0] || '';
     }
   }
-  
+
   setDefaultRole(role: string) {
     this.profile.role = role;
   }

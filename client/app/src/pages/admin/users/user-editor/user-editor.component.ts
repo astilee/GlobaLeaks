@@ -52,7 +52,7 @@ export class UserEditorComponent implements OnInit {
   authenticationData: AuthenticationService;
   appServiceData: AppDataService;
   protected readonly Constants = Constants;
-  
+
   ngOnInit(): void {
     if (this.nodeResolver.dataModel) {
       this.nodeData = this.nodeResolver.dataModel;

@@ -96,7 +96,7 @@ export class UsersTab2Component implements OnInit {
     }
     this.selected.value = [];
   }
-  
+
   setDefaultRole(role: string) {
     this.new_profile.role = role;
   }

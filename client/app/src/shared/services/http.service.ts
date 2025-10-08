@@ -458,7 +458,7 @@ export class HttpService {
   requestRoleSwitch(role: string): Observable<{ redirect: string }> {
     return this.httpClient.get<{ redirect: string }>(`api/auth/roleauthswitch/${role}`);
   }
-  
+
   runOperation(url: string, operation: string, args: any, refresh: boolean) {
 
     const data = {

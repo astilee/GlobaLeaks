@@ -35,7 +35,7 @@ export class UserComponent {
   protected translationService = inject(TranslationService);
   private router = inject(Router);
   private modalService = inject(NgbModal);
-  
+
   private lastLang: string | null = null;
   selectedRole = {value: []};
   constructor(private appRef: ApplicationRef) {
@@ -101,7 +101,7 @@ export class UserComponent {
           next: (response: { redirect: string }) => {
             if (response.redirect) {
               window.open(response.redirect);
-            } 
+            }
           },
         });
       })

@@ -194,28 +194,28 @@ export class TipAuditLogComponent implements OnInit {
 
   private groupAccessReportEntries(entries: AuditLogEntry[]): GroupedAuditLogEntry[] {
     const grouped: GroupedAuditLogEntry[] = [];
-    
+
     // Sort entries by timestamp (oldest first for sequential processing)
     const sortedEntries = [...entries].sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
-    
+
     let i = 0;
     while (i < sortedEntries.length) {
       const currentEntry = sortedEntries[i];
-      
+
       // Check if this is an access_report entry
       if (currentEntry.action === 'access_report') {
         const currentDayKey = currentEntry.timestamp.toISOString().split('T')[0];
         const groupEntries: AuditLogEntry[] = [currentEntry];
-        
+
         // Look ahead to find consecutive access_report entries from the same user and same day
         let j = i + 1;
         while (j < sortedEntries.length) {
           const nextEntry = sortedEntries[j];
           const nextDayKey = nextEntry.timestamp.toISOString().split('T')[0];
-          
+
           // Check if next entry is access_report, same user, and same day
-          if (nextEntry.action === 'access_report' && 
-              nextEntry.user === currentEntry.user && 
+          if (nextEntry.action === 'access_report' &&
+              nextEntry.user === currentEntry.user &&
               nextDayKey === currentDayKey) {
             groupEntries.push(nextEntry);
             j++;
@@ -224,7 +224,7 @@ export class TipAuditLogComponent implements OnInit {
             break;
           }
         }
-        
+
         // Create group or single entry based on count
         if (groupEntries.length === 1) {
           // Single entry - no need to group
@@ -235,7 +235,7 @@ export class TipAuditLogComponent implements OnInit {
         } else {
           // Multiple consecutive entries - create a group
           const earliestEntry = groupEntries[0]; // Already sorted oldest first
-          
+
           grouped.push({
             ...earliestEntry,
             id: `group_${currentEntry.user}_${i}`,
@@ -245,7 +245,7 @@ export class TipAuditLogComponent implements OnInit {
             groupCount: groupEntries.length
           });
         }
-        
+
         // Move index to next unprocessed entry
         i = j;
       } else {
@@ -257,7 +257,7 @@ export class TipAuditLogComponent implements OnInit {
         i++;
       }
     }
-    
+
     // Sort the final array by timestamp (newest first for display)
     return grouped.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
   }
