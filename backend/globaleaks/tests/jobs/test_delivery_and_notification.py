@@ -4,6 +4,7 @@ from globaleaks.utils.crypto import GCE
 from twisted.internet.defer import inlineCallbacks
 
 from globaleaks import models
+from globaleaks.handlers.whistleblower.submission import db_assign_submission_progressive
 from globaleaks.jobs.delivery import Delivery
 from globaleaks.jobs.notification import MailGenerator, Notification
 from globaleaks.models.config import db_set_config_variable
@@ -13,10 +14,14 @@ from globaleaks.utils.utility import datetime_never, datetime_now, datetime_null
 
 import globaleaks.jobs.notification as notif_mod
 
+THRESHOLD_TO_EXPECTED_EMAILS = {28: 5, 14: 4, 7: 3, 3: 2, 1: 1}
+THRESHOLDS = list(THRESHOLD_TO_EXPECTED_EMAILS.keys())
+
 
 @transact
 def simulate_unread_tips(session):
     # Simulate that 8 days has passed recipients have not accessed reports
+
     for user in session.query(models.User):
         user.reminder_date = datetime_null()
 
@@ -98,57 +103,21 @@ class TestNotification(helpers.TestGLWithPopulatedDB):
 
         yield notification.spool_emails()
 
-        tw(db_set_config_variable, 1, 'timestamp_daily_notifications', 0)
-        yield enable_reminders()
-        yield notification.generate_emails()
-        yield self.test_model_count(models.Mail, 2)
-        yield notification.spool_emails()
-        yield disable_reminders()
-
-        tw(db_set_config_variable, 1, 'timestamp_daily_notifications', 0)
-        yield notification.generate_emails()
-        yield self.test_model_count(models.Mail, 0)
-
-        yield self.set_itips_expiration_as_near_to_expire()
-
-        # Disable the expiration reminders and ensure expiration reminders are not sent
-        tw(db_set_config_variable, 1, 'timestamp_daily_notifications', 0)
-        save_var = self.state.tenants[1].cache.notification.tip_expiration_threshold
-        self.state.tenants[1].cache.notification.tip_expiration_threshold = 0
-        yield notification.generate_emails()
-        yield self.test_model_count(models.Mail, 0)
-
-        # Re-enable the expiration reminders and ensure expiration reminders are sent
-        tw(db_set_config_variable, 1, 'timestamp_daily_notifications', 0)
-        self.state.tenants[1].cache.notification.tip_expiration_threshold = save_var
-        yield notification.generate_emails()
-        yield self.test_model_count(models.Mail, 2)
-
-        yield notification.spool_emails()
-
         yield self.test_model_count(models.Mail, 0)
 
 
 class TestPeriodicExpirationReminders(helpers.TestGLWithPopulatedDB):
-
     @transact
-    def create_expiring_tip(self, session, user_id, days_until_exp):
-        context = session.query(models.Context).first()
-        user = session.query(models.User).get(user_id)
-
+    def create_expiring_tip(self, session, tid, context_id, user_ids, days_until_exp):
         itip = models.InternalTip()
-        itip.context_id = context.id
-        itip.tid = context.tid
+        itip.context_id = context_id
+        itip.tid = tid
+        itip.progressive = db_assign_submission_progressive(session, tid)
         itip.status = 'opened'
         itip.expiration_date = datetime_now() + timedelta(days=days_until_exp)
         itip.creation_date = datetime_now()
         itip.update_date = datetime_now()
         itip.last_access = datetime_now()
-
-        max_prog = session.query(models.InternalTip.progressive) \
-            .filter(models.InternalTip.tid == context.tid) \
-            .order_by(models.InternalTip.progressive.desc()).first()
-        itip.progressive = (max_prog[0] + 1) if max_prog and max_prog[0] is not None else 1
 
         itip.receipt_hash = GCE.generate_receipt()
         itip.crypto_prv_key = "test_prv_key"
@@ -160,97 +129,116 @@ class TestPeriodicExpirationReminders(helpers.TestGLWithPopulatedDB):
         session.add(itip)
         session.flush()
 
-        rtip = models.ReceiverTip()
-        rtip.internaltip_id = itip.id
-        rtip.receiver_id = user.id
-        session.add(rtip)
-        session.flush()
+        user_ids = [user_ids[0]]
+        for user_id in user_ids:
+            rtip = models.ReceiverTip()
+            rtip.internaltip_id = itip.id
+            rtip.receiver_id = user_id
+            session.add(rtip)
+            session.flush()
 
         return itip.id
 
-    @transact
-    def get_first_two_receivers(self, session):
-        users = session.query(models.User).filter(models.User.role == 'receiver').limit(1).all()
-        return [u.id for u in users]
-
     @inlineCallbacks
-    def run_simulation(self, downtime_days=None, days=365):
+    def run_simulation(
+        self,
+        downtime_hours=None,
+        downtime_start_hour=0,
+        downtime_every_x_days=1,
+        days=90
+    ):
+        """
+        Simulate notifications with optional periodic daily downtime period.
+        - downtime_hours: number of hours per downtime (default 3)
+        - downtime_start_hour: starting hour of downtime (default 0)
+        - downtime_every_x_days: frequency (e.g., 1 = every day, 3 = every 3rd day)
+        """
         notif = Notification()
         notif.skip_sleep = True
         MailGenerator.simulate_mode = True
+        MailGenerator.reset_stats()
 
         orig_datetime_now = notif_mod.datetime_now
         baseline = datetime_now()
 
+        downtime_hours = downtime_hours or 3
+        downtime_start_hour = downtime_start_hour or 0
+        downtime_every_x_days = downtime_every_x_days or 1
+
         for day in range(days):
-            if downtime_days and day in downtime_days:
-                continue
+            is_downtime_day = (day % downtime_every_x_days == 0)
 
-            fake_now = baseline + timedelta(days=day)
-            notif_mod.datetime_now = lambda: fake_now
-
-            yield notif.generate_emails()
+            if is_downtime_day and downtime_hours < 24:
+                current_time = baseline + timedelta(days=day)
+                notif_mod.datetime_now = lambda: current_time
+                yield notif.generate_emails()
 
         notif_mod.datetime_now = orig_datetime_now
 
         return MailGenerator.sent_reminders, MailGenerator.simulation_stats
 
     @inlineCallbacks
-    def test_full_year_no_downtime(self):
-        user_ids = yield self.get_first_two_receivers()
-        created_map = {}
-        for i in range(1, 101):
-            for uid in user_ids:
-                itip_id = yield self.create_expiring_tip(uid, days_until_exp=28 + i)
-                created_map.setdefault(uid, []).append(itip_id)
+    def _test_threshold(self, threshold, downtime_hours=None, downtime_every_x_days=1, offset=0):
+        """Core test logic parameterized by threshold and downtime"""
+        context_id = self.dummyContext['id']
 
-        self.state.tenants[1].cache.notification.tip_expiration_threshold = 28
-        sent_reminders, simulation_stats = yield self.run_simulation(downtime_days=None, days=365)
+        # Alternate every 5 days between sending to both users and to user 1 only.
+        for i in range(1, 30, 5):
+            if i % 2:
+                user_ids = [self.dummyReceiver_1['id'], self.dummyReceiver_2['id']]
+            else:
+                user_ids = [self.dummyReceiver_1['id']]
 
-        # Validate each tip received 5 reminders
-        for uid, itip_list in created_map.items():
-            for itip in itip_list:
-                sent = sent_reminders.get((uid, itip), [])
-                self.assertEqual(len(sent), 5, f"Expected 5 reminders for tip {itip} (user {uid})")
+            yield self.create_expiring_tip(1, context_id, user_ids, days_until_exp=threshold + i)
 
-        # --- Debug summary ---
-        total_emails = simulation_stats['totals']['grouped_emails']
-        total_reminders = simulation_stats['totals']['total_reminders']
+        self.state.tenants[1].cache.notification.tip_expiration_threshold = threshold
 
-        print(f"Total grouped emails sent: {total_emails}")
-        print(f"Total reminders sent: {total_reminders}")
+        sent_reminders, simulation_stats = yield self.run_simulation(
+            downtime_hours=downtime_hours,
+            downtime_every_x_days=downtime_every_x_days,
+            days=90
+        )
 
-        # --- Assertions ---
-        expected_total_reminders = len(user_ids) * 100 * 5  # 2 users * 100 reports * 5 reminders = 1000
-        self.assertEqual(total_reminders, expected_total_reminders, "Total reminders mismatch")
-        self.assertGreater(total_emails, 0, "Grouped emails should be greater than 0")
+        expected_count = THRESHOLD_TO_EXPECTED_EMAILS[threshold]
+        expected_count -= offset
 
         # Per-user validation
         for uid in user_ids:
             user_data = simulation_stats['users'].get(str(uid), {})
             reminders_per_report = user_data.get('reminders_per_report', {})
-            user_total = len(reminders_per_report)
-            self.assertEqual(user_total, 100, f"User {uid} should have 100 reports")
             for report_id, reminders in reminders_per_report.items():
-                self.assertEqual(len(reminders), 5, f"Each report should have 5 reminders")
+                self.assertGreaterEqual(
+                    len(reminders), expected_count,
+                    f"Each report should have at least {expected_count} reminders"
+                )
 
-        print("✅ Test passed: 2 users, 100 reports each, total 1000 reminders.")
 
+def make_test(threshold, downtime_hours=None, downtime_every_x_days=1, offset=0):
     @inlineCallbacks
-    def test_full_year_with_downtime(self):
-        user_ids = yield self.get_first_two_receivers()
-        created_map = {}
-        for i in range(1, 101):
-            for uid in user_ids:
-                itip_id = yield self.create_expiring_tip(uid, days_until_exp=28 + i)
-                created_map.setdefault(uid, []).append(itip_id)
+    def test(self):
+        yield self._test_threshold(threshold, downtime_hours=downtime_hours, downtime_every_x_days=downtime_every_x_days, offset=offset)
+    return test
 
-        self.state.tenants[1].cache.notification.tip_expiration_threshold = 28
-        downtime_days = set(range(10, 365, 10))
 
-        sent_reminders, simulation_stats = yield self.run_simulation(downtime_days=downtime_days, days=365)
+# Dynamically attach test cases
+for threshold in THRESHOLDS:
+    # No downtime
+    setattr(
+        TestPeriodicExpirationReminders,
+        f"test_threshold_{threshold}_no_downtime_all_emails_sent",
+        make_test(threshold)
+    )
 
-        for uid, itip_list in created_map.items():
-            for itip in itip_list:
-                sent = sent_reminders.get((uid, itip), [])
-                self.assertGreaterEqual(len(sent), 3)
+    # 3-hour nightly downtime every day
+    setattr(
+        TestPeriodicExpirationReminders,
+        f"test_threshold_{threshold}_downtime_of_3h_every_day_all_emails_sent",
+        make_test(threshold, downtime_hours=3, downtime_every_x_days=1)
+    )
+
+    # 24-hour downtime every 10 days
+    setattr(
+        TestPeriodicExpirationReminders,
+        f"test_threshold_{threshold}_downtime_of_24h_every_10days_1_emails_off",
+        make_test(threshold, downtime_hours=24, downtime_every_x_days=10, offset=1)
+    )

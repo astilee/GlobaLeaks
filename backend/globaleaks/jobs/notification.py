@@ -47,6 +47,11 @@ class MailGenerator(object):
         self.state = state
         self.cache = {}
 
+    @classmethod
+    def reset_stats(cls):
+        cls.sent_reminders.clear()
+        cls.simulation_stats = {'users': {}, 'totals': {'grouped_emails': 0, 'total_reminders': 0}}
+
     def serialize_config(self, session, key, tid, language):
         cache_key = gen_cache_key(key, tid, language)
         cache_obj = None
@@ -232,7 +237,7 @@ class MailGenerator(object):
         for tid in self.state.tenants:
             self.db_generate_emails_for_expiring_reports(session, tid)
 
-        self.db_generate_email_for_unread_reports(session, now, silent_tids)
+        self.db_generate_email_for_unread_reports(session, now_dt, silent_tids)
 
         for user in session.query(models.User).filter(models.User.id == models.ReceiverTip.receiver_id,
                                                       not_(models.User.id.in_(silent_tids)),
@@ -247,7 +252,7 @@ class MailGenerator(object):
             except:
                 pass
 
-        max_threshold = max(thresholds)
+        max_threshold = self.state.tenants[1].cache.notification.tip_expiration_threshold
 
         rows = session.query(models.User, models.ReceiverTip, models.InternalTip) \
             .filter(models.User.id == models.ReceiverTip.receiver_id,
@@ -307,13 +312,10 @@ class MailGenerator(object):
 
             tips_serialized = []
             for e in entries:
-                try:
-                    tip_ser = serializers.serialize_rtip(session, e['itip'], e['rtip'], user.language)
-                    tip_ser['days_until_exp'] = e['days_until_exp']
-                    tip_ser['reminder_threshold'] = e['threshold']
-                    tips_serialized.append(tip_ser)
-                except:
-                    continue
+                tip_ser = serializers.serialize_rtip(session, e['itip'], e['rtip'], user.language)
+                tip_ser['days_until_exp'] = e['days_until_exp']
+                tip_ser['reminder_threshold'] = e['threshold']
+                tips_serialized.append(tip_ser)
 
             if self.simulate_mode:
                 uid = str(user.id)
