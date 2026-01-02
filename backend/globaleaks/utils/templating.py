@@ -362,7 +362,7 @@ class ExportMessageKeyword(TipKeyword):
     data_keys = TipKeyword.data_keys + ['comment']
 
     def Author(self):
-        return 'Recipient' if self.data['comment']['author_id'] else 'Whistleblower'
+        return 'Recipient' if self.data['comment']['author_id'] else 'Reporting person'
 
     def Content(self):
         return self.data['comment']['content']
@@ -457,7 +457,7 @@ class SoftwareUpdateKeyword(UserNodeKeyword):
         return 'https://github.com/globaleaks/globaleaks-whistleblowing-software/blob/stable/CHANGELOG'
 
     def UpdateGuideUrl(self):
-        return 'https://docs.globaleaks.org/en/stable/user/admin/UpgradeGuide.html'
+        return 'https://docs.globaleaks.org/en/stable/setup/update.html'
 
 
 class UserCredentials(Keyword):

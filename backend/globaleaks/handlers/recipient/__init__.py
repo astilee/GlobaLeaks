@@ -11,7 +11,7 @@ import globaleaks.handlers.recipient.export
 from globaleaks import models
 from globaleaks.handlers.base import BaseHandler
 from globaleaks.handlers.recipient.rtip import db_grant_tip_access, db_revoke_tip_access, db_notify_grant_access
-from globaleaks.orm import db_log, transact
+from globaleaks.orm import db_get, db_log, transact
 from globaleaks.rest import requests, errors
 from globaleaks.utils.crypto import GCE
 
@@ -155,26 +155,42 @@ def perform_tips_operation(session, tid, user_session, user_cc, operation, args)
     """
     user_id = user_session.user_id
 
+    log_data = {
+        'recipient_id': args['receiver']
+    }
+
+    receiver = db_get(session, models.User, models.User.id == user_id)
+
     result = session.query(models.InternalTip, models.ReceiverTip) \
                                  .filter(models.ReceiverTip.receiver_id == user_id,
                                          models.InternalTip.id == models.ReceiverTip.internaltip_id,
                                          models.InternalTip.id.in_(args['rtips']))
 
     if operation == 'grant' and user_session.permissions.can_grant_access_to_reports:
-        notify = False
+        notified = False
         for itip, rtip in result:
-            new_receiver, _ = db_grant_tip_access(session, tid, user_session, itip, rtip, args['receiver'])
-            if new_receiver:
-                notify = True
-                db_log(session, tid=tid, type='grant_access', user_id=user_id, object_id=itip.id)
+           new_receiver, _ = db_grant_tip_access(session, tid, user_session, itip, rtip, args['receiver'])
+           if new_receiver:
+                db_log(session, tid=tid, type='grant_access', user_id=user_id, object_id=itip.id, data=log_data)
 
-        if notify:
-            db_notify_grant_access(session, new_receiver)
+                if not notified:
+                    db_notify_grant_access(session, new_receiver)
+                    notified = True
 
     elif operation == 'revoke' and user_session.permissions.can_grant_access_to_reports:
         for itip, _ in result:
             if db_revoke_tip_access(session, tid, user_id, itip, args['receiver']):
-                db_log(session, tid=tid, type='revoke_access', user_id=user_id, object_id=itip.id)
+                db_log(session, tid=tid, type='revoke_access', user_id=user_id, object_id=itip.id, data=log_data)
+
+    elif operation == 'transfer' and receiver.can_transfer_access_to_reports:
+        for itip, _ in result:
+            new_receiver, _ = db_grant_tip_access(session, tid, user_id, user_cc, itip, rtip, args['receiver'])
+            if new_receiver:
+                db_revoke_tip_access(session, tid, user, itip, user_id)
+                db_log(session, tid=tid, type='transfer_access', user_id=user_id, object_id=itip.id, data=log_data)
+                if not notified:
+                    db_notify_grant_access(session, new_receiver)
+                    notified = True
 
     else:
         raise errors.ForbiddenOperation

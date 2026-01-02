@@ -1,4 +1,4 @@
-import {ApplicationRef, Component, inject, OnInit} from "@angular/core";
+import {Component, inject} from "@angular/core";
 import {AuthenticationService} from "@app/services/helper/authentication.service";
 import {PreferenceResolver} from "@app/shared/resolvers/preference.resolver";
 import {AppConfigService} from "@app/services/root/app-config.service";
@@ -36,12 +36,18 @@ export class UserComponent {
   private router = inject(Router);
   private modalService = inject(NgbModal);
 
-  private lastLang: string | null = null;
   selectedRole = {value: []};
-  constructor(private appRef: ApplicationRef) {
+
+  constructor() {
     this.onQueryParameterChangeListener();
   }
 
+  onChangeLanguage() {
+    sessionStorage.setItem("language", this.translationService.language);
+
+    window.location.reload();
+  }
+  
   canSwitchUser() {
     if (this.preferences.dataModel &&
 	this.preferences.dataModel.profile &&
@@ -55,32 +61,38 @@ export class UserComponent {
 
   onQueryParameterChangeListener() {
     this.activatedRoute.queryParams.subscribe(params => {
-      const currentLang = params['lang'];
-      const isSubmissionRoute = this.router.url.includes('/submission');
-      const storageLanguage = sessionStorage.getItem("language");
+      const storedLang = sessionStorage.getItem("language");
+      const langParam = params['lang'];
       const languagesEnabled = this.appDataService.public.node.languages_enabled;
 
-      if (currentLang && languagesEnabled.includes(currentLang)) {
-        if (isSubmissionRoute && this.lastLang && this.lastLang !== currentLang) {
-          location.reload();
-        }
-        else if (storageLanguage !== currentLang) {
-          this.translationService.onChange(currentLang);
-          sessionStorage.setItem("language", currentLang);
-          if (!isSubmissionRoute) {
-            this.appConfigService.reinit(true);
-            this.utilsService.reloadCurrentRouteFresh();
-          }
-        }
+      if (langParam && langParam !== storedLang && languagesEnabled.includes(langParam)) {
+        sessionStorage.setItem("language", langParam);
+
+        // Get current hash
+        let hash = window.location.hash; // e.g., "#!/some/path?lang=en&foo=bar"
+
+        // Split path and query
+        const [path, query] = hash.split('?');
+
+        // Remove the 'lang' param from the query if present
+        const newQuery = query
+          ? query
+              .split('&')
+              .filter(param => !param.startsWith('lang='))
+              .join('&')
+          : '';
+
+        // Rebuild hash
+        window.location.hash = newQuery ? `${path}?${newQuery}` : path;
+
+        window.location.reload();
       }
-      this.lastLang = currentLang;
     });
   }
 
   onLogout(event: Event) {
     event.preventDefault();
     const promise = () => {
-      this.translationService.onChange(this.appDataService.public.node.default_language);
       this.appConfigService.reinit(false);
       this.appConfigService.onValidateInitialConfiguration();
     };
@@ -105,12 +117,5 @@ export class UserComponent {
           },
         });
       })
-  }
-
-  onChangeLanguage() {
-    this.translationService.onChange(this.translationService.language);
-    this.appConfigService.reinit(true);
-    this.utilsService.reloadCurrentRouteFresh(true);
-    this.appRef.tick();
   }
 }

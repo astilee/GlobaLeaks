@@ -1,4 +1,4 @@
-import {ChangeDetectorRef, Component, ElementRef, OnInit, ViewChild, inject} from "@angular/core";
+import {Component, ElementRef, OnInit, ViewChild, inject} from "@angular/core";
 import {AppConfigService} from "@app/services/root/app-config.service";
 import {Constants} from "@app/shared/constants/constants";
 import {PreferenceResolver} from "@app/shared/resolvers/preference.resolver";
@@ -27,12 +27,10 @@ import {NgSelectComponent} from "@ng-select/ng-select";
     selector: "src-preference-tab1",
     templateUrl: "./preference-tab1.component.html",
     standalone: true,
-    imports: [FormsModule,NgSelectComponent, NgClass, DatePipe, TranslateModule, TranslatorPipe]
+    imports: [FormsModule, NgSelectComponent, NgClass, DatePipe, TranslateModule, TranslatorPipe]
 })
 export class PreferenceTab1Component implements OnInit {
-  private translationService = inject(TranslationService);
   protected appConfigService = inject(AppConfigService);
-  private cdr = inject(ChangeDetectorRef);
   private translateService = inject(TranslateService);
   private httpService = inject(HttpService);
   private twoFactorAuthData = inject(TwoFactorAuthData);
@@ -91,10 +89,10 @@ export class PreferenceTab1Component implements OnInit {
       this.twoFactorAuthData.totp.qrcode_string = "";
       this.twoFactorAuthData.totp.edit = false;
 
-      this.modalService.open(Enable2faComponent, {backdrop: 'static', keyboard: false});
+      this.modalService.open(Enable2faComponent, {backdrop: 'static', keyboard: false, ariaLabelledBy: 'modal-title'});
 
     } else {
-      const modalRef = this.modalService.open(ConfirmationWith2faComponent, {backdrop: 'static', keyboard: false});
+      const modalRef = this.modalService.open(ConfirmationWith2faComponent, {backdrop: 'static', keyboard: false, ariaLabelledBy: 'modal-title'});
       modalRef.componentInstance.confirmFunction = (secret: string) => {
         if (secret) {
           const data = {
@@ -139,7 +137,8 @@ export class PreferenceTab1Component implements OnInit {
           const erk = response.data["text"].match(/.{1,4}/g).join("-");
           const modalRef = this.modalService.open(EncryptionRecoveryKeyComponent, {
             backdrop: 'static',
-            keyboard: false
+            keyboard: false,
+            ariaLabelledBy: 'modal-title'
           });
           modalRef.componentInstance.erk = erk;
         },
@@ -151,7 +150,8 @@ export class PreferenceTab1Component implements OnInit {
             const erk = error.error["text"].match(/.{1,4}/g).join("-");
             const modalRef = this.modalService.open(EncryptionRecoveryKeyComponent, {
               backdrop: 'static',
-              keyboard: false
+              keyboard: false,
+              ariaLabelledBy: 'modal-title'
             });
             modalRef.componentInstance.erk = erk;
           }
@@ -162,10 +162,10 @@ export class PreferenceTab1Component implements OnInit {
 
   getEncryptionRecoveryKey(event: Event) {
     let modalRef: NgbModalRef;
-    if (this.preferenceResolver.dataModel.two_factor) {
-      modalRef = this.modalService.open(ConfirmationWith2faComponent, {backdrop: 'static', keyboard: false});
+      if (this.preferenceResolver.dataModel.two_factor) {
+      modalRef = this.modalService.open(ConfirmationWith2faComponent, {backdrop: 'static', keyboard: false, ariaLabelledBy: 'modal-title'});
     } else {
-      modalRef = this.modalService.open(ConfirmationWithPasswordComponent, {backdrop: 'static', keyboard: false});
+      modalRef = this.modalService.open(ConfirmationWithPasswordComponent, {backdrop: 'static', keyboard: false, ariaLabelledBy: 'modal-title'});
     }
 
     modalRef.componentInstance.confirmFunction = (secret: string) => {
@@ -180,13 +180,7 @@ export class PreferenceTab1Component implements OnInit {
     const requestObservable = this.httpService.updatePreferenceResource(JSON.stringify(this.preferenceResolver.dataModel));
     requestObservable.subscribe(
       {
-        next: _ => {
-          this.translationService.onChange(this.preferenceResolver.dataModel.language);
-          this.cdr.detectChanges();
-          this.translationService.onChange(this.languageModel);
-          this.appConfigService.reinit(false);
-          this.utilsService.reloadCurrentRouteFresh(true);
-        },
+        next: _ => {},
         error: _ =>{
           if (this.uploaderInput) {
             this.uploaderInput.nativeElement.value = "";

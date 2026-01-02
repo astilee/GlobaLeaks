@@ -13,14 +13,16 @@ import {NgClass} from "@angular/common";
 import {FormsModule} from "@angular/forms";
 import {UserEditorComponent} from "../user-editor/user-editor.component";
 import {TranslatorPipe} from "@app/shared/pipes/translate";
-import {OrderByPipe} from "@app/shared/pipes/order-by.pipe";
+import {forkJoin} from 'rxjs';
 import {switchMap} from 'rxjs/operators';
+import {PaginatedInterfaceComponent} from "@app/shared/components/paginated-interface/paginated-interface.component";
+
 
 @Component({
     selector: "src-users-tab1",
     templateUrl: "./users-tab1.component.html",
     standalone: true,
-    imports: [FormsModule, NgbTooltipModule, NgClass, UserEditorComponent, TranslatorPipe, OrderByPipe]
+    imports: [FormsModule, NgbTooltipModule, NgClass, PaginatedInterfaceComponent, TranslatorPipe, UserEditorComponent, TranslatorPipe]
 })
 export class UsersTab1Component implements OnInit {
   private httpService = inject(HttpService);
@@ -32,10 +34,9 @@ export class UsersTab1Component implements OnInit {
   showAddUser = false;
   tenantData: tenantResolverModel;
   users: User[];
-  profiles: UserProfile[]=[];
-  custom_profiles: UserProfile[]=[];
-  selectable_profiles: UserProfile[]=[];
-
+  profiles: UserProfile[] = [];
+  custom_profiles: UserProfile[] = [];
+  selectable_profiles: UserProfile[] = [];
   new_user: { username: string, role: string, name: string, email: string, profile_id: string, profile: {}, send_activation_link: boolean } = {
     username: "",
     role: "",
@@ -76,22 +77,41 @@ export class UsersTab1Component implements OnInit {
     });
   }
 
-  getResolver() {
-    this.httpService.requestUserProfilesResource().pipe(
-      switchMap((profilesResponse: UserProfile[]) => {
-        this.profiles = profilesResponse;
-        this.custom_profiles = profilesResponse.filter(profile => profile.custom === true);
-        this.selectable_profiles = profilesResponse.filter(profile => profile.custom === false);
+  getResolver(): void {
+    forkJoin({
+      profiles: this.httpService.requestUserProfilesResource(),
+      users: this.httpService.requestUsersResource()
+    }).subscribe({
+      next: ({ profiles, users }: { profiles: UserProfile[]; users: User[] }) => {
+        this.profiles = profiles;
 
-        return this.httpService.requestUsersResource();
-      })
-    ).subscribe(usersResponse => {
-      this.users = usersResponse;
+        this.custom_profiles = profiles.filter((p: UserProfile) => p.custom);
+        this.selectable_profiles = profiles.filter((p: UserProfile) => !p.custom);
 
-      // Attach profiles to each user
-      this.users.forEach((user: User) => {
-        user.profile = this.custom_profiles.find(profile => profile.id === user.profile_id)!;
-      });
+        // Build lookup map for performance
+        const profileMap = new Map<string, UserProfile>(
+          this.profiles.map((p: UserProfile) => [p.id, p])
+        );
+
+        // Attach profiles to users (NO nulls allowed)
+        this.users = users.map((user: User) => {
+          const profile = profileMap.get(user.profile_id);
+
+          if (!profile) {
+            throw new Error(
+              `Missing profile for user ${user.id} (profile_id=${user.profile_id})`
+            );
+          }
+
+          return {
+            ...user,
+            profile
+          };
+        });
+      },
+      error: (err: unknown) => {
+        console.error('Failed to load users or profiles', err);
+      }
     });
   }
 

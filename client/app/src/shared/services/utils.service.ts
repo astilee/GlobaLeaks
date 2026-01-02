@@ -159,7 +159,7 @@ export class UtilsService {
       }
     }
 
-    return 'Update'; // default
+    return 'Low'; // default
   }
 
   view(authenticationService: AuthenticationService, url: string, _: string, callback: (blob: Blob) => void): void {
@@ -260,7 +260,6 @@ export class UtilsService {
   }
 
   reloadCurrentRouteFresh(removeQueryParam = false) {
-
     let currentUrl = this.router.url;
     if (removeQueryParam) {
       currentUrl = this.router.url.split("?")[0];
@@ -311,7 +310,7 @@ export class UtilsService {
     if (this.appDataService.public.node.custom_support_url) {
       window.open(this.appDataService.public.node.custom_support_url, "_blank");
     } else {
-      this.modalService.open(RequestSupportComponent,{backdrop: "static",keyboard: false});
+      this.modalService.open(RequestSupportComponent,{backdrop: "static", keyboard: false});
     }
   }
 
@@ -586,9 +585,9 @@ export class UtilsService {
       let modalRef;
 
       if (this.preferenceResolver.dataModel.two_factor) {
-        modalRef = this.modalService.open(ConfirmationWith2faComponent,{backdrop: "static",keyboard: false});
+        modalRef = this.modalService.open(ConfirmationWith2faComponent,{backdrop: "static", keyboard: false, ariaLabelledBy: 'modal-title'});
       } else {
-        modalRef = this.modalService.open(ConfirmationWithPasswordComponent,{backdrop: "static",keyboard: false});
+        modalRef = this.modalService.open(ConfirmationWithPasswordComponent,{backdrop: "static", keyboard: false, ariaLabelledBy: 'modal-title'});
       }
 
       modalRef.componentInstance.confirmFunction = (secret: string) => {
@@ -601,7 +600,7 @@ export class UtilsService {
   openConfirmableModalDialogReport(arg: string, scope: any): Observable<string> {
     scope = !scope ? this : scope;
     return new Observable((observer) => {
-      const modalRef = this.modalService.open(DeleteConfirmationComponent,{backdrop: "static",keyboard: false});
+      const modalRef = this.modalService.open(DeleteConfirmationComponent,{backdrop: "static", keyboard: false, ariaLabelledBy: 'modal-title'});
       modalRef.componentInstance.arg = arg;
       modalRef.componentInstance.scope = scope;
       modalRef.componentInstance.confirmFunction = () => {
@@ -803,7 +802,7 @@ export class UtilsService {
   }
 
   public viewRFile(file: WbFile) {
-    const modalRef = this.modalService.open(FileViewComponent, {backdrop: 'static', keyboard: false});
+    const modalRef = this.modalService.open(FileViewComponent, {backdrop: 'static', keyboard: false, ariaLabelledBy: 'modal-title'});
     modalRef.componentInstance.args = {
       file: file,
       loaded: false,
