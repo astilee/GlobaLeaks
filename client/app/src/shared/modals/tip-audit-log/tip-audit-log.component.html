@@ -1,6 +1,6 @@
 <div class="modal-header">
   <div class="modal-title">{{'Audit log' | translate}}</div>
-  <button type="button" class="btn-close" (click)="cancel()" [attr.aria-label]="'Close' | translate"></button>
+  <button type="button" class="btn-close" (click)="cancel()" [attr.aria-label]="'Close' | translate"><i class="fa-solid fa-circle-xmark" aria-hidden="true"></i></button>
 </div>
 <div class="modal-body">
   <!-- Search Bar -->
@@ -130,7 +130,7 @@
   </div>
 </div>
 <div class="modal-footer">
-  <button class="btn btn-outline-secondary" (click)="cancel()">
+  <button id="modal-action-cancel" class="btn btn-outline-secondary" (click)="cancel()">
     <i class="fas fa-times"></i>
     <span>{{'Close' | translate}}</span>
   </button>

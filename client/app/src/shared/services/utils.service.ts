@@ -2,7 +2,7 @@ import {EventEmitter, Injectable, Renderer2, inject} from "@angular/core";
 import Flow from "@flowjs/flow.js";
 import {TranslateService} from "@ngx-translate/core";
 import {ActivatedRoute, Router} from "@angular/router";
-import {NgbModal} from "@ng-bootstrap/ng-bootstrap";
+import {NgbDateStruct, NgbModal} from "@ng-bootstrap/ng-bootstrap";
 import {RequestSupportComponent} from "@app/shared/modals/request-support/request-support.component";
 import {HttpService} from "@app/shared/services/http.service";
 import {HttpClient, HttpHeaders} from "@angular/common/http";
