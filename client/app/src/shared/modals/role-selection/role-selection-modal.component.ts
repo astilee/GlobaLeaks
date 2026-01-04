@@ -1,4 +1,4 @@
-import { Component, Input, inject } from "@angular/core";
+import { Component, Input, inject, OnInit } from "@angular/core";
 import { NgbActiveModal } from "@ng-bootstrap/ng-bootstrap";
 import {
   NgSelectComponent,
@@ -8,7 +8,7 @@ import {
 import { FormsModule } from "@angular/forms";
 import { TranslateModule } from "@ngx-translate/core";
 import { TranslatorPipe } from "@app/shared/pipes/translate";
-import { PreferenceResolver } from "@app/shared/resolvers/preference.resolver";
+import { AuthenticationService } from "@app/services/helper/authentication.service";
 
 @Component({
   selector: "src-role-selection",
@@ -23,17 +23,22 @@ import { PreferenceResolver } from "@app/shared/resolvers/preference.resolver";
     NgOptionTemplateDirective
   ]
 })
-export class RoleSelectionModalComponent {
+export class RoleSelectionModalComponent implements OnInit {
   private activeModal = inject(NgbActiveModal);
-  protected preferenceResolver = inject(PreferenceResolver);
+  protected authenticationService = inject(AuthenticationService);
 
-  @Input() roles: string[] = [];
+  @Input() roles: { value: string; role: string }[] = [];
   @Input() modalTitle: string;
 
   selectedRole = { value: '' };
+  selectableRoles: { value: string; role: string }[] = [];
 
-  constructor() {
-    this.selectedRole.value = this.preferenceResolver?.dataModel?.profile.role || '';
+  ngOnInit(): void {
+    this.selectedRole.value = this.authenticationService.session.role;
+
+    this.selectableRoles = this.roles.filter(
+      r => r.value !== this.authenticationService.session.role
+    );
   }
 
   confirm(): void {
