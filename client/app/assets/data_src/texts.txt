@@ -42,6 +42,7 @@ Attachments
 Attention
 Audio
 Audit log
+Auditor
 Authentication failed
 Authorization
 Authorize
@@ -269,6 +270,7 @@ Number of hours before sending a report expiration alert
 Object
 One or more recipients have not performed the first login yet. This means they won't be receiving reports.
 Open
+Open reports
 Opened
 Options
 Organization
@@ -296,6 +298,7 @@ Private Key
 Privileges
 Proceed
 Profile
+Profiles
 Project name
 Public name
 Question
@@ -329,6 +332,7 @@ Report
 Report date
 Report statuses
 Reports
+Reports with exclusive access
 Request access to the reporting person's identity
 Request date
 Request motivation
@@ -437,6 +441,7 @@ The platform supports the configuration of HTTPS through this interface.
 The provided recovery key is invalid.
 The provided reset token is invalid or expired.
 The access code is either invalid or the report has expired.
+The situation has changed. Please review before proceeding.
 The specified input is not valid.
 The specified input is not valid:
 The specified old password is not valid
@@ -458,6 +463,7 @@ To
 To:
 Tor
 Tor Onion Service
+Total reports
 Transfer
 Transfer access
 Trigger conditions

@@ -145,6 +145,9 @@ msgstr "Audio"
 msgid "Audit log"
 msgstr "Audit log"
 
+msgid "Auditor"
+msgstr "Auditor"
+
 msgid "Authentication failed"
 msgstr "Authentication failed"
 
@@ -858,6 +861,9 @@ msgstr ""
 msgid "Open"
 msgstr "Open"
 
+msgid "Open reports"
+msgstr "Open reports"
+
 msgid "Opened"
 msgstr "Opened"
 
@@ -938,6 +944,9 @@ msgstr "Proceed"
 
 msgid "Profile"
 msgstr "Profile"
+
+msgid "Profiles"
+msgstr "Profiles"
 
 msgid "Project name"
 msgstr "Project name"
@@ -1037,6 +1046,9 @@ msgstr "Report statuses"
 
 msgid "Reports"
 msgstr "Reports"
+
+msgid "Reports with exclusive access"
+msgstr "Reports with exclusive access"
 
 msgid "Request access to the reporting person's identity"
 msgstr "Request access to the reporting person's identity"
@@ -1388,6 +1400,9 @@ msgstr "The provided reset token is invalid or expired."
 msgid "The access code is either invalid or the report has expired."
 msgstr "The access code is either invalid or the report has expired."
 
+msgid "The situation has changed. Please review before proceeding."
+msgstr "The situation has changed. Please review before proceeding."
+
 msgid "The specified input is not valid."
 msgstr "The specified input is not valid."
 
@@ -1454,6 +1469,9 @@ msgstr "Tor"
 
 msgid "Tor Onion Service"
 msgstr "Tor Onion Service"
+
+msgid "Total reports"
+msgstr "Total reports"
 
 msgid "Transfer"
 msgstr "Transfer"
