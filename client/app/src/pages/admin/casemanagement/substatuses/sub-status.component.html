@@ -79,7 +79,7 @@
           @if (this.subStatusEditing[index]) {
             <div ngForm="editStep">
               <hr />
-              <div class="row">
+              <div class="row align-items-end">
                 <div class="col-md-3">
                   <div class="form-group">
                     <label for="substatus-label-{{substatus.id}}">{{'Label'|translate}}</label>
@@ -95,14 +95,14 @@
                     </select>
                   </div>
                 </div>
-                <div class="col-md-1">
-                  <div class="form-group">
-                    <label for="substatus-timetolive-{{substatus.id}}" class="visually-hidden">{{'Expiration date' | translate}}</label>
-                    @if (isCustomOptionSelected(substatus.tip_timetolive_option)) {
+                @if (isCustomOptionSelected(substatus.tip_timetolive_option)) {
+                  <div class="col-md-1">
+                    <div class="form-group">
+                      <label for="substatus-timetolive-{{substatus.id}}" class="visually-hidden">{{'Expiration date' | translate}}</label>
                       <input id="substatus-timetolive-{{substatus.id}}" class="form-control" name="substatus.tip_timetolive" [(ngModel)]="substatus.tip_timetolive" type="number" min="1" required/>
-                    }
+                    </div>
                   </div>
-                </div>
+                }
               </div>
             </div>
           }
