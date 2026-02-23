@@ -3,7 +3,99 @@ module.exports = function(grunt) {
       fs = require("fs"),
       path = require("path"),
       superagent = require("superagent"),
-      gettextParser = require('gettext-parser');
+      gettextParser = require('gettext-parser'),
+      { pipeline } = require("stream"),
+      yauzl = require("yauzl");
+
+  const remoteFonts = [
+    // plain file example (already working):
+    {
+      url: "https://github.com/satbyy/go-noto-universal/releases/download/v7.0/GoNotoKurrent-Regular.ttf",
+      type: "file",
+      output: "GoNotoKurrent-Regular.ttf",
+    },
+
+    // Inter zip → extract one file
+    {
+      url: "https://github.com/rsms/inter/releases/download/v4.1/Inter-4.1.zip",
+      type: "zip",
+      pick: "extras/ttf/Inter-Regular.ttf",
+      output: "Inter-Regular.ttf",
+    },
+  ];
+
+  function downloadToFile(url, outPath, cb) {
+    grunt.file.mkdir(path.dirname(outPath));
+
+    const tmpPath = outPath + ".download";
+    const stream = fs.createWriteStream(tmpPath);
+
+    stream.on("finish", function () {
+      try {
+        fs.renameSync(tmpPath, outPath);
+        cb(null);
+      } catch (e) {
+        cb(e);
+      }
+    });
+
+    stream.on("error", function (e) {
+      cb(e);
+    });
+
+    agent.get(url).pipe(stream);
+  }
+
+  // entryPath deve combaciare esattamente con il path dentro lo zip
+  function extractZipEntry(zipPath, entryPath, outPath, cb) {
+    try {
+      grunt.file.mkdir(path.dirname(outPath));
+    } catch (e) {
+      return cb(e);
+    }
+
+    yauzl.open(zipPath, { lazyEntries: true }, (err, zipfile) => {
+      if (err) return cb(err);
+
+      let done = false;
+      const finishOnce = (e) => {
+        if (done) return;
+        done = true;
+        try { zipfile.close(); } catch (_) {}
+        cb(e || null);
+      };
+
+      zipfile.readEntry();
+
+      zipfile.on("entry", (entry) => {
+        // Normalizza a slash (gli zip usano quasi sempre /)
+        const name = entry.fileName;
+
+        if (name !== entryPath) {
+          return zipfile.readEntry();
+        }
+
+        // Se è una directory, non va bene
+        if (/\/$/.test(name)) {
+          return finishOnce(new Error(`ZIP entry is a directory: ${entryPath}`));
+        }
+
+        zipfile.openReadStream(entry, (err, rs) => {
+          if (err) return finishOnce(err);
+
+          const ws = fs.createWriteStream(outPath);
+          pipeline(rs, ws, (err) => finishOnce(err || null));
+        });
+      });
+
+      zipfile.on("end", () => {
+        // Finito di scorrere entries senza match
+        if (!done) finishOnce(new Error(`ZIP entry not found: ${entryPath}`));
+      });
+
+      zipfile.on("error", finishOnce);
+    });
+  }
 
   class SimpleGettext {
     constructor() {
@@ -609,6 +701,69 @@ module.exports = function(grunt) {
     });
   }
 
+  grunt.registerTask("fetchFonts", function () {
+    const done = this.async();
+
+    const destDir = "app/fonts";
+    const tmpDir = "tmp/fonts";
+    grunt.file.mkdir(destDir);
+    grunt.file.mkdir(tmpDir);
+
+    if (!Array.isArray(remoteFonts) || remoteFonts.length === 0) {
+      console.log("fetchFonts: no remote fonts configured.");
+      return done();
+    }
+
+    let i = 0;
+    const next = () => {
+      if (i >= remoteFonts.length) return done();
+
+      const item = remoteFonts[i++];
+      const outPath = path.join(destDir, item.output);
+
+      if (item.type === "file") {
+        console.log(`fetchFonts: downloading ${item.url} -> ${outPath}`);
+        return downloadToFile(item.url, outPath, (err) => {
+          if (err) {
+            console.log(`fetchFonts: failed downloading ${item.url}: ${err}`);
+            return done(false);
+          }
+          next();
+        });
+      }
+
+      if (item.type === "zip") {
+        const zipName = path.basename(item.url.split("#")[0].split("?")[0]);
+        const zipPath = path.join(tmpDir, zipName);
+
+        console.log(`fetchFonts: downloading ${item.url} -> ${zipPath}`);
+        return downloadToFile(item.url, zipPath, (err) => {
+          if (err) {
+            console.log(`fetchFonts: failed downloading ${item.url}: ${err}`);
+            return done(false);
+          }
+
+          console.log(`fetchFonts: extracting ${item.pick} -> ${outPath}`);
+          extractZipEntry(zipPath, item.pick, outPath, (err2) => {
+            if (err2) {
+              console.log(`fetchFonts: failed extracting from ${zipName}: ${err2}`);
+              return done(false);
+            }
+
+            // Optional cleanup
+            try { fs.unlinkSync(zipPath); } catch (e) {}
+            next();
+          });
+        });
+      }
+
+      console.log(`fetchFonts: unknown type for ${item.url}`);
+      done(false);
+    };
+
+    next();
+  });
+
   grunt.registerTask("makeTranslationsSource", async function() {
     const done = this.async();
     const gettextParser = await loadGettextParser();
@@ -1096,7 +1251,7 @@ module.exports = function(grunt) {
   // Run this task to fetch translations from transifex and create application files
   grunt.registerTask("updateTranslations", ["fetchTranslations", "makeAppData", "verifyAppData"]);
 
-  grunt.registerTask("package", ["copy:build", "webpack", "string-replace", "postcss", "copy:package"]);
+  grunt.registerTask("package", ["fetchFonts", "copy:build", "webpack", "string-replace", "postcss", "copy:package"]);
 
   grunt.registerTask("build", ["clean", "shell:build", "package", "shell:brotli_compress", "clean:tmp"]);
 

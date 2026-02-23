@@ -6,7 +6,10 @@ ZIP="fontawesome7.zip"
 SRC="fontawesome7"
 OUT="texmf"
 
-echo "Downloading fontawesome7 from CTAN…"
+echo "Downloading fontawesome7"
+mkdir -p _static/fa7 && curl -L "https://use.fontawesome.com/releases/v7.2.0/fontawesome-free-7.2.0-web.zip" -o /tmp/fa7.zip && unzip -q /tmp/fa7.zip -d _static/fa7 && mv _static/fa7/fontawesome-free-7.2.0-web/* _static/fa7/ && rmdir _static/fa7/fontawesome-free-7.2.0-web
+
+echo "Downloading fontawesome7 package from CTAN…"
 curl -L "$URL" -o "$ZIP"
 
 echo "Extracting…"
