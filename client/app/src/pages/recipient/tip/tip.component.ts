@@ -145,7 +145,7 @@ export class TipComponent implements OnInit {
 
   initNavBar() {
     setTimeout(() => {
-      this.active = "Everyone";
+      this.active = this.active || "Everyone";
       this.tabs = [
         {
           title: "Everyone",
