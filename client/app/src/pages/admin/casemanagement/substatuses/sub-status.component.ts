@@ -84,10 +84,8 @@ export class SubStatusComponent implements OnInit {
   }
 
   saveSubmissionsSubStatus(subStatusParam: Substatus): void {
-    if (subStatusParam.tip_timetolive_option <= -1) {
-      subStatusParam.tip_timetolive = -1;
-    } else if (subStatusParam.tip_timetolive_option === 0) {
-      subStatusParam.tip_timetolive = 0;
+    if (subStatusParam.tip_timetolive_option <= -1 || subStatusParam.tip_timetolive <= 0) {
+      subStatusParam.tip_timetolive_option = subStatusParam.tip_timetolive = -1;
     }
     const url = "api/admin/statuses/" + this.submissionsStatus.id + "/substatuses/" + subStatusParam.id;
     this.httpService.requestUpdateStatus(url, subStatusParam).subscribe(_ => {
