@@ -86,22 +86,24 @@
                     <input id="substatus-label-{{substatus.id}}" class="form-control" name="substatus.label" [(ngModel)]="substatus.label" type="text" required />
                   </div>
                 </div>
-                <div class="col-md-3">
-                  <div class="form-group">
-                    <label><span>{{ 'Expiration date' | translate }}</span> (<span>{{ 'days' | translate }}</span>)</label>
-                    <select class="form-control" name="substatus.tip_timetolive_option" [(ngModel)]="substatus.tip_timetolive_option">
-                      <option value="-1">{{ 'Disabled' | translate }}</option>
-                      <option value="0">{{ 'Custom' | translate }}</option>
-                    </select>
-                  </div>
-                </div>
-                @if (isCustomOptionSelected(substatus.tip_timetolive_option)) {
-                  <div class="col-md-1">
+                @if (substatus.submissionstatus_id === 'closed') {
+                  <div class="col-md-3">
                     <div class="form-group">
-                      <label for="substatus-timetolive-{{substatus.id}}" class="visually-hidden">{{'Expiration date' | translate}}</label>
-                      <input id="substatus-timetolive-{{substatus.id}}" class="form-control" name="substatus.tip_timetolive" [(ngModel)]="substatus.tip_timetolive" type="number" min="1" required/>
+                      <label><span>{{ 'Expiration date' | translate }}</span> (<span>{{ 'days' | translate }}</span>)</label>
+                      <select class="form-control" name="substatus.tip_timetolive_option" [(ngModel)]="substatus.tip_timetolive_option">
+                        <option value="-1">{{ 'Disabled' | translate }}</option>
+                        <option value="0">{{ 'Custom' | translate }}</option>
+                      </select>
                     </div>
                   </div>
+                  @if (isCustomOptionSelected(substatus.tip_timetolive_option)) {
+                    <div class="col-md-1">
+                      <div class="form-group">
+                        <label for="substatus-timetolive-{{substatus.id}}" class="visually-hidden">{{'Expiration date' | translate}}</label>
+                        <input id="substatus-timetolive-{{substatus.id}}" class="form-control" name="substatus.tip_timetolive" [(ngModel)]="substatus.tip_timetolive" type="number" min="1" required/>
+                      </div>
+                    </div>
+                  }
                 }
               </div>
             </div>
