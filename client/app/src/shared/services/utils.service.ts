@@ -220,7 +220,8 @@ export class UtilsService {
   }
 
   showWBLoginBox() {
-    return this.router.url.startsWith("/submission");
+    return this.appDataService.public.node.homepage === '/submission' ||
+        this.router.url.startsWith("/submission");
   }
 
   showUserStatusBox() {
