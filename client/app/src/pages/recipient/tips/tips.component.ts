@@ -54,7 +54,7 @@ export class TipsComponent implements OnInit {
   dropdownContextData: { id: number; label: string; }[] = [];
   dropdownScoreModel: { id: number; label: string; }[] = [];
   dropdownScoreData: { id: number; label: string; }[] = [];
-  sortKey = "creation_date";
+  sortKey: keyof rtipResolverModel = 'creation_date';
   sortReverse = true;
   channelDropdownVisible = false;
   statusDropdownVisible = false;
