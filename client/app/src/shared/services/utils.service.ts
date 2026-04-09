@@ -303,7 +303,7 @@ export class UtilsService {
         const objString = JSON.stringify(obj);
 
         // Create a regular expression for the search term with 'i' flag for case-insensitive search
-        const regex = new RegExp(searchTerm, 'i');
+        const regex = new RegExp(String(searchTerm).trim(), 'i');
 
         // Test if the search term is found in the object string
         return regex.test(objString);
