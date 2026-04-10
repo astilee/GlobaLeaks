@@ -1,5 +1,13 @@
 Changes in version 5.0.90
-
+    Add receipt page when homepage is set to be /submission
+    Fix failure in gl-admin backup (#4811)
+    Fix search site function by tenant number (#4810)
+    Fix regression on search filter on sites list (#4803)
+    Fix reordering of reports using column filters (#4802)
+    Fix issue #4800
+    Bump client dependencies to latest stable versions
+    Add mongolian translation
+    Update translations
 
 Changes in version 5.0.89
     Fix gl-admin restore command failing with missing directory error
