@@ -54,9 +54,9 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: GlobaLeaks\n"
-"PO-Revision-Date: 2026-03-19 11:46+0000\n"
-"Last-Translator: Anonymous "
-"<anonymous@users.noreply.localizationlab.weblate.cloud>\n"
+"PO-Revision-Date: 2026-03-28 13:06+0000\n"
+"Last-Translator: Ettore Atalan "
+"<atalanttore@users.noreply.localizationlab.weblate.cloud>\n"
 "Language-Team: German <https://localizationlab.weblate.cloud/projects/"
 "globaleaks/stable/de/>\n"
 "Language: de\n"
@@ -1909,7 +1909,6 @@ msgstr "Von: {Author}"
 msgid "Date: {EventTime}"
 msgstr "Datum: {EventTime}"
 
-#, fuzzy
 msgid "From: Whistleblower"
 msgstr "Von: Hinweisgeber"
 
