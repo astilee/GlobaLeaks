@@ -886,6 +886,65 @@ module.exports = function(grunt) {
     }
   });
 
+  grunt.registerTask("buildL10nJson", async function() {
+    const done = this.async();
+    const gettextParser = await loadGettextParser();
+
+    let gt = new SimpleGettext();
+    gt.setTextDomain("stable");
+
+    const enPo = gettextParser.po.parse(
+      fs.readFileSync("app/assets/data_src/pot/en.po")
+    );
+
+    gt.addTranslations("en", "stable", enPo);
+
+    const strings = Object.keys(enPo.translations[""]);
+
+    let supported_languages = [];
+    grunt.file.recurse("app/assets/data_src/pot/", function(_, __, ___, filename) {
+      supported_languages.push(filename.replace(/.po$/, ""));
+    });
+
+    grunt.file.mkdir("app/assets/data/l10n");
+
+    supported_languages.forEach(function(lang_code) {
+      if (lang_code === "en") return;
+
+      const poPath = `app/assets/data_src/pot/${lang_code}.po`;
+      if (!fs.existsSync(poPath)) return;
+
+      let translations = {};
+
+      gt.addTranslations(
+        lang_code,
+        "stable",
+        gettextParser.po.parse(fs.readFileSync(poPath))
+      );
+
+      gt.setLocale(lang_code);
+
+      strings.forEach(function(str) {
+        if (str === "") return;
+
+        translations[str] = str_unescape(
+          gt.gettext(str_escape(str))
+        );
+      });
+
+      let output = JSON.stringify(translations, null, 2);
+
+      fs.writeFileSync(
+        `app/assets/data/l10n/${lang_code}.json`,
+        output
+      );
+
+      console.log(`Generated l10n JSON for ${lang_code}`);
+    });
+
+    done();
+  });
+
   // Run this task to push translations source on Weblate (no git access)
   grunt.registerTask("weblateUploadSource", function() {
     const done = this.async();
@@ -940,7 +999,7 @@ module.exports = function(grunt) {
 
   grunt.registerTask("pushTranslationsSource", ["confirm", "weblateUploadSource"]);
 
-  grunt.registerTask("updateTranslations", ["weblateFetchTranslations", "makeAppData", "verifyAppData"]);
+  grunt.registerTask("updateTranslations", ["weblateFetchTranslations", "buildL10nJson", "makeAppData", "verifyAppData"]);
 
   grunt.registerTask("package", ["fetchFonts", "copy:build", "webpack", "string-replace", "postcss", "copy:package"]);
 
