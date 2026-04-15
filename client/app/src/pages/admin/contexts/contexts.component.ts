@@ -9,6 +9,7 @@ import {UsersResolver} from "@app/shared/resolvers/users.resolver";
 import {HttpService} from "@app/shared/services/http.service";
 import {UtilsService} from "@app/shared/services/utils.service";
 import {NgClass} from "@angular/common";
+import {HttpClient} from "@angular/common/http";
 import {FormsModule} from "@angular/forms";
 import {ContextEditorComponent} from "@app/pages/admin/contexts/context-editor/context-editor.component";
 import {TranslatorPipe} from "@app/shared/pipes/translate";
@@ -23,6 +24,7 @@ import {PaginatedInterfaceComponent} from "@app/shared/components/paginated-inte
     imports: [ContextEditorComponent, FormsModule, NgbTooltipModule, NgClass, PaginatedInterfaceComponent, TranslatorPipe]
 })
 export class ContextsComponent implements OnInit {
+  private http = inject(HttpClient);
   protected preference = inject(PreferenceResolver);
   protected httpService = inject(HttpService);
   protected authenticationService = inject(AuthenticationService);
@@ -71,6 +73,26 @@ export class ContextsComponent implements OnInit {
     }
 
     return max + 1;
+  }
+
+  swap(index: number, n: number): void {
+    const target = index + n;
+
+    if (target < 0 || target >= this.contextsData.length) {
+      return;
+    }
+
+    const updated = [...this.contextsData];
+
+    [updated[index], updated[target]] =
+      [updated[target], updated[index]];
+
+    this.contextsData = updated;
+
+    this.http.put("api/admin/contexts", {
+      operation: "order_elements",
+      args: { ids: this.contextsData.map(c => c.id) },
+    }).subscribe();
   }
 
   onDelete(id: string) {

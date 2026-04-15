@@ -45,6 +45,7 @@ export class FieldsComponent implements OnInit {
   @Input() step: Step;
   @Input() parsedFields: ParsedFields;
   @Output() deleted = new EventEmitter<string>();
+  @Output() updated = new EventEmitter<string>();
   custom = "custom";
   editing = false;
   openMinDate = false;
@@ -124,21 +125,25 @@ export class FieldsComponent implements OnInit {
   moveUpAndSave(field: Step | Field): void {
     this.utilsService.moveUp(field);
     this.saveField(field);
+    this.updated.emit();
   }
 
   moveDownAndSave(field: Step | Field): void {
     this.utilsService.moveDown(field);
     this.saveField(field);
+    this.updated.emit();
   }
 
   moveLeftAndSave(field: Step | Field): void {
     this.utilsService.moveLeft(field);
     this.saveField(field);
+    this.updated.emit();
   }
 
   moveRightAndSave(field: Step | Field): void {
     this.utilsService.moveRight(field);
     this.saveField(field);
+    this.updated.emit();
   }
 
   typeSwitch(type: string): string {
@@ -305,5 +310,9 @@ export class FieldsComponent implements OnInit {
 
   isCustomValidation(field: Step | Field): boolean {
     return field?.attrs?.input_validation?.value === 'custom';
+  }
+
+  onUpdate() {
+    this.children = [...this.children];
   }
 }
