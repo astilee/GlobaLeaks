@@ -1,3 +1,7 @@
+Changes in version 5.0.91
+    Fix admin UI in relation to reordering of users, context and questions
+    Bump client dependencies to latest stable versions
+
 Changes in version 5.0.90
     Add receipt page when homepage is set to be /submission
     Fix failure in gl-admin backup (#4811)
