@@ -55,4 +55,8 @@ export class StepComponent implements OnInit {
   onDelete(id: string) {
     this.step.children = this.step.children.filter(i => i.id !== id);
   }
+
+  onUpdate() {
+    this.step.children = [...this.step.children];
+  }
 }
