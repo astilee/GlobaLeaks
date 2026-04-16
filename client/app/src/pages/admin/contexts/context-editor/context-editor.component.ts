@@ -1,4 +1,3 @@
-import {HttpClient} from "@angular/common/http";
 import {Component, EventEmitter, Input, OnInit, Output, inject} from "@angular/core";
 import {NgForm, FormsModule} from "@angular/forms";
 import {NgbModal, NgbTooltipModule} from "@ng-bootstrap/ng-bootstrap";
@@ -25,7 +24,6 @@ import {FilterPipe} from "@app/shared/pipes/filter.pipe";
     imports: [ImageUploadDirective, FormsModule, NgbTooltipModule, NgSelectComponent, NgOptionTemplateDirective, NgClass, TranslatorPipe, FilterPipe]
 })
 export class ContextEditorComponent implements OnInit {
-  private http = inject(HttpClient);
   private modalService = inject(NgbModal);
   protected nodeResolver = inject(NodeResolver);
   private usersResolver = inject(UsersResolver);
@@ -37,6 +35,7 @@ export class ContextEditorComponent implements OnInit {
   @Input() index: number;
   @Input() editContext: NgForm;
   @Output() deleted = new EventEmitter<string>();
+  @Output() reorder = new EventEmitter<{ index: number; direction: number }>();
   editing = false;
   showAdvancedSettings = false;
   showSelect = false;
@@ -58,29 +57,14 @@ export class ContextEditorComponent implements OnInit {
     this.editing = !this.editing;
   }
 
-  swap($event: Event, index: number, n: number): void {
-    $event.stopPropagation();
-
-    const target = index + n;
-    if (target < 0 || target >= this.contextsData.length) {
-      return;
-    }
-
-    [this.contextsData[index], this.contextsData[target]] =
-      [this.contextsData[target], this.contextsData[index]];
-
-    this.http.put("api/admin/contexts", {
-      operation: "order_elements",
-      args: {ids: this.contextsData.map(c => c.id)},
-    }).subscribe();
-  }
-
   moveUp(e: Event, idx: number): void {
-    this.swap(e, idx, -1);
+    e.stopPropagation();
+    this.reorder.emit({ index: idx, direction: -1 });
   }
 
   moveDown(e: Event, idx: number): void {
-    this.swap(e, idx, 1);
+    e.stopPropagation();
+    this.reorder.emit({ index: idx, direction: 1 });
   }
 
   swapReceiver(index: number, n: number): void {
