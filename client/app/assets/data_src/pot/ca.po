@@ -895,6 +895,15 @@ msgstr "Contrasenya"
 msgid "Password change interval"
 msgstr "Periodicitat de canvi de contrasenya"
 
+msgid "Comment period after report closure (days)"
+msgstr "Període de comentaris després del tancament de l'informe (dies)"
+
+msgid "A positive value allows comments for the specified number of days after closure."
+msgstr "Un valor positiu permet comentaris durant el nombre especificat de dies després del tancament de l’informe."
+
+msgid "Set the value to 0 to disable comments immediately after closure."
+msgstr "Establiu el valor a 0 per desactivar els comentaris immediatament després del tancament de l’informe."
+
 msgid "Password reset"
 msgstr "Restablir contrasenya"
 

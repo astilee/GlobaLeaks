@@ -882,6 +882,15 @@ msgstr "Password"
 msgid "Password change interval"
 msgstr "Password change interval"
 
+msgid "Comment period after report closure (days)"
+msgstr "Comment period after report closure (days)"
+
+msgid "A positive value allows comments for the specified number of days after closure."
+msgstr "A positive value allows comments for the specified number of days after closure."
+
+msgid "Set the value to 0 to disable comments immediately after closure."
+msgstr "Set the value to 0 to disable comments immediately after closure."
+
 msgid "Password reset"
 msgstr "Password reset"
 

@@ -924,6 +924,15 @@ msgstr "Contraseña"
 msgid "Password change interval"
 msgstr "Intervalo de cambio de contraseña"
 
+msgid "Comment period after report closure (days)"
+msgstr "Periodo de comentarios tras el cierre del informe (días)"
+
+msgid "A positive value allows comments for the specified number of days after closure."
+msgstr "Un valor positivo permite comentarios durante el número de días especificado tras el cierre del informe."
+
+msgid "Set the value to 0 to disable comments immediately after closure."
+msgstr "Establezca el valor a 0 para desactivar los comentarios inmediatamente después del cierre del informe."
+
 msgid "Password reset"
 msgstr "Restablecimiento de contraseña"
 
