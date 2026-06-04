@@ -1474,6 +1474,9 @@ msgstr "Este nombre de dominio no está disponible."
 msgid "This field is mandatory"
 msgstr "Este campo es obligatorio"
 
+msgid "This report is closed and no longer accepts comments."
+msgstr "Este informe está cerrado y ya no admite comentarios."
+
 msgid "This is a demo platform, please do not use it for real submissions."
 msgstr ""
 "Este es un buzón de demostración, por favor no lo utilice para denuncias "

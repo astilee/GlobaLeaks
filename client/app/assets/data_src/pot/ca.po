@@ -1445,6 +1445,9 @@ msgstr "Aquest nom de domini no està disponible."
 msgid "This field is mandatory"
 msgstr "Aquest camp és obligatori"
 
+msgid "This report is closed and no longer accepts comments."
+msgstr "Aquest informe està tancat i ja no s'accepten comentaris."
+
 msgid "This is a demo platform, please do not use it for real submissions."
 msgstr "Aquesta és una plataforma de demostració, no la utilitzeu per a enviaments reals."
 
