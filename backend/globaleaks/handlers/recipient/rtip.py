@@ -1007,7 +1007,8 @@ def create_comment(session, tid, user_id, itip_id, content, visibility='public')
     :return: A serialized descriptor of the comment
     """
     _, rtip, itip = db_access_rtip(session, tid, user_id, itip_id)
-    assert_comment_submission_allowed(session, itip)
+    if visibility not in {'internal', 'personal'}:
+        assert_comment_submission_allowed(session, itip)
 
     rtip.last_access = datetime_now()
     if visibility == 'public':

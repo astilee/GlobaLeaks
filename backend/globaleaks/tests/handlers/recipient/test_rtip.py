@@ -464,6 +464,24 @@ class TestRTipCommentCollection(helpers.TestHandlerWithPopulatedDB):
             yield self.assertFailure(handler.post(rtip_desc['id']), errors.InputValidationError)
 
     @inlineCallbacks
+    def test_post_internal_and_personal_comments_are_allowed_after_comment_window_expires(self):
+        yield tw(helpers.db_set_config_variable, 1, 'comment_period_after_closure_days', 0)
+
+        rtip_descs = yield self.get_rtips()
+        for rtip_desc in rtip_descs:
+            yield rtip.update_tip_submission_status(1, rtip_desc['receiver_id'], rtip_desc['id'], 'closed', None)
+
+            for visibility in ['internal', 'personal']:
+                body = {
+                    'content': "can you provide an evidence of what you are telling?",
+                    'visibility': visibility
+                }
+
+                handler = self.request(body, role='receiver', user_id=rtip_desc['receiver_id'])
+                comment = yield handler.post(rtip_desc['id'])
+                self.assertEqual(comment['visibility'], visibility)
+
+    @inlineCallbacks
     def test_get_marks_comments_as_read_only_when_comment_window_has_expired(self):
         yield tw(helpers.db_set_config_variable, 1, 'comment_period_after_closure_days', 0)
 

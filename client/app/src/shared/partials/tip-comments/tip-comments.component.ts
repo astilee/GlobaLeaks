@@ -40,7 +40,7 @@ export class TipCommentsComponent {
   newComments: Comment;
 
   get commentsAllowed(): boolean {
-    return this.tipService?.tip?.comments_allowed ?? true;
+    return this.key !== "public" || (this.tipService?.tip?.comments_allowed ?? true);
   }
 
   public toggleCollapse() {
